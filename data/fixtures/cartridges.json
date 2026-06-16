@@ -1,0 +1,11 @@
+[
+  {
+    "cartridge_name": "UB2950",
+    "lr_um": 17.0,
+    "ze_deg": -0.2,
+    "wally_zenith_deg": 0.0,
+    "sra_deg": 91.0,
+    "vta_deg": 22.76,
+    "notes": null
+  }
+]

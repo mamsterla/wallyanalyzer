@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "wallyanalyzer"
+version = "0.1.0"
+description = "Python port of Matlab Wally analyzer algorithms"
+requires-python = ">=3.11"
+dependencies = [
+  "numpy>=1.26",
+]
+
+[project.scripts]
+wally-measure = "wallyanalyzer.tools.run_measurement_validation:main"
+wally-compile = "wallyanalyzer.tools.run_compile_validation:main"
+wally-render-png = "wallyanalyzer.tools.render_svg_pngs:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

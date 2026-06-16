@@ -1,0 +1,25 @@
+.DS_Store
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.venv/
+venv/
+
+# Large local/reference data
+*.wav
+data/*.wav
+data/*.xlsx
+data/~$*.xlsx
+data/*.pptx
+data/noname
+data/outputs/
+*.docx
+*.zip
+
+# Local render artifacts
+*.png
+!data/RTI1P27_graph.png
+
+# macOS / editor
+*.swp
