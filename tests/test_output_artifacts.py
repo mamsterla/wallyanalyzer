@@ -74,6 +74,10 @@ class OutputArtifactTests(unittest.TestCase):
             svg_text = svg_path.read_text(encoding="utf-8")
             self.assertIn("Measurement validation: demo", svg_text)
             self.assertIn("Lag (µs)", svg_text)
+            self.assertIn("dB((L-R)/(L+R))", svg_text)
+            self.assertIn("ΔLR / Fundamental (%) and PNx excess (%)", svg_text)
+            self.assertIn("deLagged", svg_text)
+            self.assertIn("PNx Left", svg_text)
 
     def test_render_svg_to_png_uses_inkscape(self):
         with tempfile.TemporaryDirectory() as tmpdir:

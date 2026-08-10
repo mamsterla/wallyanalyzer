@@ -35,6 +35,7 @@ def render_compile_validation_svg(
     dist_model_pct = 100.0 * np.abs(result.distortion_model)
     dist_fit_pct = 100.0 * np.abs(result.distortion_fit)
     lr_diff_over_sum_rms_pct = 100.0 * result.lr_diff_over_sum_rms_ratio_smooth
+    show_dist_fit = not np.allclose(dist_model_pct, dist_fit_pct, equal_nan=True)
 
     summary = result.summary
     acquisition = result.measurement.acquisition
@@ -52,9 +53,10 @@ def render_compile_validation_svg(
     peak_idx = int(np.argmax(np.abs(result.ate_fitted_deg)))
     avg_rotations = max(1, int(round(result.diagnostics.get("smoothing_window", 1) / max(1, round(360.0 / result.measurement.skip_deg)))))
     piv_spin_adj = 0.0 if acquisition.pivot_spindle_adjustment_mm is None else float(acquisition.pivot_spindle_adjustment_mm)
-    title_line_1 = title or result.measurement.source_file
+    title_line_1 = title or f"Wally Analysis, {Path(result.measurement.source_file).name}"
     title_line_2 = system_line
-    side_stamp = datetime.now().strftime("%d-%b-%Y %H:%M") + "   CompileSine24 template / Python port"
+    source_algorithm = str(result.diagnostics.get("source_algorithm", "Python port"))
+    side_stamp = datetime.now().strftime("%d-%b-%Y %H:%M") + f"   {source_algorithm}"
 
     svg = [
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{SVG_WIDTH}" height="{SVG_HEIGHT}" viewBox="0 0 {SVG_WIDTH} {SVG_HEIGHT}">',
@@ -101,12 +103,15 @@ def render_compile_validation_svg(
             kind="circle",
         )
     )
+    raw_noise_deg = result.diagnostics.get("play_yaw_noise_deg")
+    if raw_noise_deg is None or not np.isfinite(raw_noise_deg):
+        raw_noise_deg = float(np.nanstd(result.ate_raw_deg[np.isfinite(result.ate_raw_deg)] - np.nanmean(result.ate_raw_deg[np.isfinite(result.ate_raw_deg)])))
     svg.extend(
         _legend_svg(
             left=MARGIN_LEFT + 28,
             top=MARGIN_TOP + 12,
             entries=[
-                ("raw", f"ATEraw±{float(np.nanstd(result.ate_raw_deg[np.isfinite(result.ate_raw_deg)] - np.nanmean(result.ate_raw_deg[np.isfinite(result.ate_raw_deg)]))):.3g}"),
+                ("raw", f"ATEraw±{float(raw_noise_deg):.3g}"),
                 ("fit1", f"{avg_rotations}rot avg"),
                 ("fit4", f"ATEfit±{3.0 * summary.apparent_tracking_fit_rms_deg:.3g}°"),
             ],
@@ -115,22 +120,35 @@ def render_compile_validation_svg(
 
     middle_y = MARGIN_TOP + panel_height + 54
     svg.extend([
-        f'<text x="{SVG_WIDTH/2:.1f}" y="{middle_y:.1f}" text-anchor="middle" class="mid">{_escape(f"Mount: Z={0.0 if acquisition.cantilever_yaw_deg is None else float(acquisition.cantilever_yaw_deg):.3g}°, L={float(acquisition.effective_length_mm):.3f}mm, ΔPivSpin={piv_spin_adj:.3f}mm, OH={summary.effective_overhang_mm:.3f}mm")}</text>',
-        f'<text x="{SVG_WIDTH/2:.1f}" y="{middle_y + 28:.1f}" text-anchor="middle" class="mid">{_escape(f"ATEfit: SY={summary.effective_stylus_yaw_deg:.3g}°, LR={summary.effective_lr_um:.3g}µm, max| |= {summary.apparent_tracking_error_peak_abs_deg:.3g}°, ⟨ATE⟩={summary.apparent_tracking_error_mean_deg:.3g}°")}</text>',
+        f'<text x="{SVG_WIDTH/2:.1f}" y="{middle_y:.1f}" text-anchor="middle" class="mid">{_escape(f"Mount: Z={summary.effective_mount_yaw_deg:.3g}°, L={float(acquisition.effective_length_mm):.3f}mm, ATEfit: SY={summary.effective_stylus_yaw_deg:.3g}°, LR={summary.effective_lr_um:.3g}µm")}</text>',
+        f'<text x="{SVG_WIDTH/2:.1f}" y="{middle_y + 28:.1f}" text-anchor="middle" class="mid">{_escape(f"OH={summary.effective_overhang_mm:.3f}mm, max| |= {summary.apparent_tracking_error_peak_abs_deg:.3g}°, |ATE|={summary.apparent_tracking_error_mean_deg:.3g}°, APivSpin={piv_spin_adj:.3f}mm")}</text>',
         f'<text x="{SVG_WIDTH/2:.1f}" y="{middle_y + 56:.1f}" text-anchor="middle" class="mid">{_escape(f"RMSfit={summary.apparent_tracking_fit_rms_deg:.4f}°, {result.measurement.periods_per_segment}cycles of 1kHz every {result.measurement.skip_deg:.0f}°")}</text>',
         f'<text x="{SVG_WIDTH - 12:.1f}" y="{SVG_HEIGHT/2:.1f}" transform="rotate(-90 {SVG_WIDTH - 12:.1f},{SVG_HEIGHT/2:.1f})" text-anchor="middle" class="small">{_escape(side_stamp)}</text>',
     ])
 
     lower_top = MARGIN_TOP + panel_height + PANEL_GAP
+    lower_series = [harm2_pct, harm3_pct, dist_model_pct, lr_diff_over_sum_rms_pct]
+    lower_classes = ["fit1", "fit5", "fit2", "fit3"]
+    lower_x_series = [radius_smooth, radius_smooth, radius_smooth, radius_smooth]
+    legend_entries = [
+        ("fit1", f"<2nd>={float(np.nanmean(harm2_pct)):.4g}%"),
+        ("fit5", f"<3rd>={float(np.nanmean(harm3_pct)):.4g}%"),
+        ("fit2", f"Dist.Param({result.measurement.cut_velocity_m_per_s * 100.0:.3g}cm/s)"),
+    ]
+    if show_dist_fit:
+        lower_series.append(dist_fit_pct)
+        lower_classes.append("fit4")
+        lower_x_series.append(radius_smooth)
+        legend_entries.append(("fit4", "Dist.Fit"))
     lower_ymax = max(
         3.0,
-        float(np.nanmax(np.concatenate([harm2_pct, harm3_pct, dist_model_pct, dist_fit_pct, lr_diff_over_sum_rms_pct]))) * 1.08,
+        float(np.nanmax(np.concatenate(lower_series))) * 1.08,
     )
     svg.extend(
         _panel_svg(
-            x_series=[radius_smooth, radius_smooth, radius_smooth, radius_smooth, radius_smooth],
-            y_series=[harm2_pct, harm3_pct, dist_model_pct, dist_fit_pct, lr_diff_over_sum_rms_pct],
-            classes=["fit1", "fit5", "fit2", "fit4", "fit3"],
+            x_series=lower_x_series,
+            y_series=lower_series,
+            classes=lower_classes,
             label="% Harmonic distortion",
             xlabel="Radius (mm)",
             left=MARGIN_LEFT,
@@ -146,12 +164,7 @@ def render_compile_validation_svg(
             left=SVG_WIDTH - 250,
             top=lower_top + 10,
             width=220,
-            entries=[
-                ("fit1", f"<2nd>={float(np.nanmean(harm2_pct)):.4g}%"),
-                ("fit5", f"<3rd>={float(np.nanmean(harm3_pct)):.4g}%"),
-                ("fit2", f"Dist.Param({result.measurement.cut_velocity_m_per_s * 100.0:.3g}cm/s)"),
-                ("fit4", "Dist.Fit"),
-            ],
+            entries=legend_entries,
         )
     )
 

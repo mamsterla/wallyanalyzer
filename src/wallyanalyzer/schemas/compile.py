@@ -13,6 +13,8 @@ from .metadata import CartridgeRecord, SystemRecord
 class CompileConfig:
     smoothing_rotations: int = 16
     lag_outlier_sigma: float = 4.0
+    lag_fit_reject_sigma_multiplier: float = 1.0
+    lag_fit_reject_max_fraction: float = 1.0
     stylus_fit_max_iter: int = 300
     distortion_fit_max_iter: int = 300
 

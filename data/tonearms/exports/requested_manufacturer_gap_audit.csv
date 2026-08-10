@@ -1,0 +1,9 @@
+requested_name,canonical_name,manufacturer_in_db,current_db_model_count,target_model_count,manufacturer_type,coverage_focus,priority_tier,queue_status,search_terms
+Vertere Acoustics,Vertere Acoustics,1,3,3,boutique-upgrade,cottage-boutique-arms,secondary,hydrated,Vertere Acoustics tonearm geometry SG-1 PTA Groove Runner overhang effective length
+Michell,Michell,1,3,3,boutique-upgrade,cottage-boutique-arms,secondary,hydrated,Michell tonearm geometry TecnoArm A TecnoArm 2 effective length overhang
+Dynavector,Dynavector,1,1,1,standalone-upgrade,upgrade-tonearms,secondary,hydrated,Dynavector tonearm DV-501 DV-505 DV-507 geometry effective length overhang
+Audio Technica,Audio-Technica,1,6,6,standalone-upgrade,upgrade-tonearms,secondary,hydrated,Audio-Technica tonearm AT-1001 AT-1005II AT-1007 AT-1009 AT-1100 AT-1120 AT-1501 AT-1503 geometry
+J. Sikora,J.Sikora,1,1,1,turntable-combo,high-end-turntable-combos,secondary,hydrated,J.Sikora J. Sikora tonearm KV12 VTA geometry effective length overhang
+Fidelity Research,Fidelity Research,1,5,5,standalone-upgrade,upgrade-tonearms,secondary,hydrated,Fidelity Research tonearm FR-12 FR-14 FR-24 FR-34 FR-54 FR-64 FR-66S FR-66fx geometry
+Glanz,Glanz,1,11,11,boutique-upgrade,cottage-boutique-arms,secondary,hydrated,Glanz tonearm geometry MH-94S MH-104S MH-124S effective length overhang
+Pear Audio,Pear Audio,1,2,3,boutique-upgrade,cottage-boutique-arms,secondary,hydrated-partial,Pear Audio tonearm geometry Cornet tonearm effective length overhang

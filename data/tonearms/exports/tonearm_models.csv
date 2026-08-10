@@ -1,0 +1,349 @@
+tonearm_model_id,manufacturer,model_name,normalized_model_name,display_name,notes,created_at
+65,ADC,ALT-1,alt-1,ADC ALT-1,,2026-06-16T15:53:09+00:00
+64,ADC,LMF-1 & LMF-2,lmf-1-lmf-2,ADC LMF-1 & LMF-2,,2026-06-16T15:53:09+00:00
+187,AMG,12JT,12jt,AMG 12JT,,2026-06-16T16:50:17+00:00
+186,AMG,9W2,9w2,AMG 9W2,,2026-06-16T16:50:17+00:00
+278,Acoustic Signature,TA-5000 NEO,ta-5000-neo,Acoustic Signature TA-5000 NEO,Official Acoustic Signature TA-5000 NEO 9-inch representation.,2026-06-17T02:07:06+00:00
+280,Acoustic Signature,TA-7000 NEO 12-inch,ta-7000-neo-12-inch,Acoustic Signature TA-7000 NEO 12-inch,Official Acoustic Signature TA-7000 NEO 12-inch representation.,2026-06-17T02:07:06+00:00
+279,Acoustic Signature,TA-7000 NEO 9-inch,ta-7000-neo-9-inch,Acoustic Signature TA-7000 NEO 9-inch,Official Acoustic Signature TA-7000 NEO 9-inch representation.,2026-06-17T02:07:06+00:00
+268,Acoustic Solid,WTB 213,wtb-213,Acoustic Solid WTB 213,Exact seeded Acoustic Solid target represented from dealer page with published geometry and construction details.,2026-06-17T00:03:37+00:00
+267,Acoustic Solid,WTB 313 12-inch,wtb-313-12-inch,Acoustic Solid WTB 313 12-inch,"User-supplied dealer listing. Not one of current seeded WTB 213 / WTB 370 targets, but useful exact Acoustic Solid model coverage.",2026-06-17T00:00:32+00:00
+269,Acoustic Solid,WTB 370,wtb-370,Acoustic Solid WTB 370,Exact seeded Acoustic Solid target represented from dealer package page; geometry still not explicit on retrieved sources.,2026-06-17T00:03:37+00:00
+284,Acoustical Systems,AQUILAR Reference 10-inch,aquilar-reference-10-inch,Acoustical Systems AQUILAR Reference 10-inch,Official Acoustical Systems AQUILAR 10-inch reference tonearm representation.,2026-06-17T02:25:27+00:00
+281,Acoustical Systems,AXIOM Reference 12-inch,axiom-reference-12-inch,Acoustical Systems AXIOM Reference 12-inch,Official Acoustical Systems AXIOM 12-inch reference tonearm representation.,2026-06-17T02:07:06+00:00
+299,Air Tangent,2B,2b,Air Tangent 2B,Exact Air Tangent 2B target represented from strongest exact-model archival page currently surfaced.,2026-06-18T03:20:02+00:00
+300,Air Tangent,Model 2002,model-2002,Air Tangent Model 2002,Exact Air Tangent Model 2002 represented from archived official manufacturer homepage.,2026-06-18T03:35:30+00:00
+301,Air Tangent,Reference,reference,Air Tangent Reference,Exact Air Tangent Reference represented from archived official manufacturer homepage.,2026-06-18T03:40:15+00:00
+296,Alphason,HR-100MCS,hr-100mcs,Alphason HR-100MCS,Exact Alphason silver-wired variant target from mirrored manual-library support.,2026-06-18T03:14:16+00:00
+295,Alphason,HR-100S,hr-100s,Alphason HR-100S,Exact Alphason reference tonearm target from official history support.,2026-06-18T03:14:16+00:00
+66,Alphason,Opal/Delta/Xenon/HR100S,opal-delta-xenon-hr100s,Alphason Opal/Delta/Xenon/HR100S,,2026-06-16T15:53:09+00:00
+1,Audio Craft,AC-30/300/3000/3300,ac-30-300-3000-3300,Audio Craft AC-30/300/3000/3300,,2026-06-16T15:53:09+00:00
+2,Audio Craft,AC-400/4000/4400,ac-400-4000-4400,Audio Craft AC-400/4000/4400,,2026-06-16T15:53:09+00:00
+264,Audio Creative,Groovemaster 4,groovemaster-4,Audio Creative Groovemaster 4,Current Audio Creative Groovemaster 4 tonearm represented from detailed review coverage.,2026-06-16T23:55:13+00:00
+265,Audio Note,Arm One/II,arm-one-ii,Audio Note Arm One/II,Official descriptive hydration from manufacturer page; geometry values not published on retrieved page.,2026-06-16T23:58:47+00:00
+266,Audio Note,Arm Three/II,arm-three-ii,Audio Note Arm Three/II,Official descriptive hydration from manufacturer page; geometry values not published on retrieved page.,2026-06-16T23:58:47+00:00
+348,Audio Origami,PU7,pu7,Audio Origami PU7,Workbook PU7 follow-up using current official PU7 GTS page.,2026-06-18T07:59:15+00:00
+8,Audio-Technica,AT-1001/1005II/1007/1009,at-1001-1005ii-1007-1009,Audio-Technica AT-1001/1005II/1007/1009,,2026-06-16T15:53:09+00:00
+255,Audio-Technica,AT-1005 II,at-1005-ii,Audio-Technica AT-1005 II,Exact historic Audio-Technica tonearm model represented from hifi-wiki scanned specification image.,2026-06-16T23:31:00+00:00
+256,Audio-Technica,AT-1007,at-1007,Audio-Technica AT-1007,Exact historic Audio-Technica tonearm model represented from hifi-wiki scanned specification image.,2026-06-16T23:31:00+00:00
+257,Audio-Technica,AT-1009,at-1009,Audio-Technica AT-1009,Exact historic Audio-Technica tonearm model represented from hifi-wiki scanned specification image.,2026-06-16T23:31:00+00:00
+258,Audio-Technica,AT-1100,at-1100,Audio-Technica AT-1100,Exact historic Audio-Technica tonearm model represented from hifi-wiki scanned specification image.,2026-06-16T23:31:00+00:00
+7,Audio-Technica,AT-1100/1010/1120,at-1100-1010-1120,Audio-Technica AT-1100/1010/1120,,2026-06-16T15:53:09+00:00
+259,Audio-Technica,AT-1501,at-1501,Audio-Technica AT-1501,Historic Audio-Technica AT-1500-series tonearm represented from hifi-wiki references and scanned advertisement.,2026-06-16T23:33:46+00:00
+3,Audio-Technica,AT-1501II,at-1501ii,Audio-Technica AT-1501II,,2026-06-16T15:53:09+00:00
+4,Audio-Technica,"AT-1501III, IV",at-1501iii-iv,"Audio-Technica AT-1501III, IV",,2026-06-16T15:53:09+00:00
+260,Audio-Technica,AT-1503,at-1503,Audio-Technica AT-1503,Historic Audio-Technica AT-1500-series tonearm represented from hifi-wiki references and scanned advertisement.,2026-06-16T23:33:46+00:00
+5,Audio-Technica,AT-1503II,at-1503ii,Audio-Technica AT-1503II,,2026-06-16T15:53:09+00:00
+6,Audio-Technica,"AT-1503III, IV, IIIa",at-1503iii-iv-iiia,"Audio-Technica AT-1503III, IV, IIIa",,2026-06-16T15:53:09+00:00
+67,AudioQuest,PT-6/7/8/9,pt-6-7-8-9,AudioQuest PT-6/7/8/9,,2026-06-16T15:53:09+00:00
+194,Audiomods,Series Six 10.5-inch,series-six-10-5-inch,Audiomods Series Six 10.5-inch,610 version 10.5 inch arm.,2026-06-16T16:50:17+00:00
+193,Audiomods,Series Six 9-inch Linn,series-six-9-inch-linn,Audiomods Series Six 9-inch Linn,609 version 9 inch arm with Linn fitting.,2026-06-16T16:50:17+00:00
+192,Audiomods,Series Six 9-inch Rega,series-six-9-inch-rega,Audiomods Series Six 9-inch Rega,609 version 9 inch arm with Rega fitting.,2026-06-16T16:50:17+00:00
+349,Avid,Nexus,nexus,Avid Nexus,Workbook Nexus follow-up from official AVID tonearm page.,2026-06-18T07:59:15+00:00
+9,Azden,PU-402 (SYNTEC S-220),pu-402-syntec-s-220,Azden PU-402 (SYNTEC S-220),,2026-06-16T15:53:09+00:00
+10,Azden,PU-547 & PU-550,pu-547-pu-550,Azden PU-547 & PU-550,,2026-06-16T15:53:09+00:00
+11,Azden,PU-549,pu-549,Azden PU-549,,2026-06-16T15:53:09+00:00
+195,Basis Audio,Vector 4,vector-4,Basis Audio Vector 4,Current Vector family tonearm.,2026-06-16T16:50:17+00:00
+68,Belcanto,"Unipivot 10""",unipivot-10,"Belcanto Unipivot 10""",,2026-06-16T15:53:09+00:00
+69,Belcanto,"Unipivot 12""",unipivot-12,"Belcanto Unipivot 12""",,2026-06-16T15:53:09+00:00
+70,Breuer,Type 5A,type-5a,Breuer Type 5A,,2026-06-16T15:53:09+00:00
+71,Breuer,Type 6A,type-6a,Breuer Type 6A,,2026-06-16T15:53:09+00:00
+72,Breuer,Type 7 & 8,type-7-8,Breuer Type 7 & 8,contains uncertainty markers,2026-06-16T15:53:09+00:00
+73,Brinkmann,10.5,10-5,Brinkmann 10.5,,2026-06-16T15:53:09+00:00
+317,Clearaudio,Clarify,clarify,Clearaudio Clarify,Workbook exact-model follow-up using official family support plus exact dealer-model page.,2026-06-18T07:02:59+00:00
+320,Clearaudio,Concept,concept,Clearaudio Concept,Workbook exact-model follow-up for Clearaudio Concept tonearm.,2026-06-18T07:13:18+00:00
+321,Clearaudio,Magnify,magnify,Clearaudio Magnify,Workbook exact-model follow-up for Clearaudio Magnify using exact dealer specs plus official family support.,2026-06-18T07:13:18+00:00
+322,Clearaudio,Satisfy Kardan,satisfy-kardan,Clearaudio Satisfy Kardan,Workbook exact-model follow-up for Clearaudio Satisfy Kardan using exact dealer specs plus official distributor family support.,2026-06-18T07:13:18+00:00
+318,Clearaudio,Tracer,tracer,Clearaudio Tracer,Workbook exact-model follow-up using official family support plus exact dealer-model page.,2026-06-18T07:02:59+00:00
+277,Clearaudio,Tracer Black Carbon Fiber,tracer-black-carbon-fiber,Clearaudio Tracer Black Carbon Fiber,Official Clearaudio Tracer target hydration from manufacturer product page.,2026-06-17T02:00:12+00:00
+323,Clearaudio,"Unify 10""",unify-10,"Clearaudio Unify 10""",Workbook exact-model follow-up for Clearaudio Unify using exact dealer specs plus official family support.,2026-06-18T07:13:18+00:00
+324,Clearaudio,"Unify 12""",unify-12,"Clearaudio Unify 12""",Workbook exact-model follow-up for Clearaudio Unify using exact dealer specs plus official family support.,2026-06-18T07:13:18+00:00
+325,Clearaudio,"Unify 14""",unify-14,"Clearaudio Unify 14""",Workbook exact-model follow-up for Clearaudio Unify using exact dealer specs plus official family support.,2026-06-18T07:13:18+00:00
+74,Clearaudio,"Unify 9""",unify-9,"Clearaudio Unify 9""",,2026-06-16T15:53:09+00:00
+327,Clearaudio,"Universal 12""",universal-12,"Clearaudio Universal 12""",Workbook exact-model follow-up for Clearaudio Universal tonearm.,2026-06-18T07:13:18+00:00
+326,Clearaudio,"Universal 9""",universal-9,"Clearaudio Universal 9""",Workbook exact-model follow-up for Clearaudio Universal tonearm.,2026-06-18T07:13:18+00:00
+319,Clearaudio,Verify,verify,Clearaudio Verify,Workbook exact-model follow-up using official family support plus exact dealer-model page.,2026-06-18T07:02:59+00:00
+75,Decca,International & Professional for transcription 12-16inches and SP record as well?,international-professional-for-transcription-12-16inches-and-sp-record-as-well,Decca International & Professional for transcription 12-16inches and SP record as well?,effective_length_raw=228.6 (9inch); overhang_raw=15.875 (0.625inch),2026-06-16T15:53:09+00:00
+13,Denon,DA-302/304/308/1000,da-302-304-308-1000,Denon DA-302/304/308/1000,,2026-06-16T15:53:09+00:00
+12,Denon,DA-303/305/307/309/401,da-303-305-307-309-401,Denon DA-303/305/307/309/401,,2026-06-16T15:53:09+00:00
+226,Dr. Feickert,Straight-10,straight-10,Dr. Feickert Straight-10,Dr. Feickert branded 10 inch gimbal-bearing radial tonearm.,2026-06-16T21:11:25+00:00
+262,Durand,Talea,talea,Durand Talea,Official Durand tonearm entry from manufacturer product page.,2026-06-16T23:54:40+00:00
+263,Durand,Tosca,tosca,Durand Tosca,Official Durand tonearm entry from manufacturer product page.,2026-06-16T23:54:40+00:00
+14,Dynavector,DV-501/505/507,dv-501-505-507,Dynavector DV-501/505/507,,2026-06-16T15:53:09+00:00
+282,EMT,909-HI,909-hi,EMT 909-HI,Official EMT 909-HI representation from EMT manual and datasheet.,2026-06-17T02:07:06+00:00
+283,EMT,912,912,EMT 912,Official EMT 912 representation from EMT manual and datasheet.,2026-06-17T02:07:06+00:00
+77,EMT,929 (it is questionable that RF229/RMA229 made by Ortofon for EMT 930 turntable had exactly same geometry as EMT 929),929-it-is-questionable-that-rf229-rma229-made-by-ortofon-for-emt-930-turntable-had-exactly-same-geometry-as-emt-929,EMT 929 (it is questionable that RF229/RMA229 made by Ortofon for EMT 930 turntable had exactly same geometry as EMT 929),,2026-06-16T15:53:09+00:00
+76,Empire,980 & 990,980-990,Empire 980 & 990,effective_length_raw=228.6 (9inch); overhang_raw=17.5? (manual indicates 5/8inch=15.875mm); contains uncertainty markers,2026-06-16T15:53:09+00:00
+16,Excel,ES-1000 & Pro S1TA,es-1000-pro-s1ta,Excel ES-1000 & Pro S1TA,,2026-06-16T15:53:09+00:00
+15,Excel,ES-801,es-801,Excel ES-801,,2026-06-16T15:53:09+00:00
+17,Fidelity Research,FR-12,fr-12,Fidelity Research FR-12,,2026-06-16T15:53:09+00:00
+19,Fidelity Research,FR-14/FR-24/FR-54/FR-64,fr-14-fr-24-fr-54-fr-64,Fidelity Research FR-14/FR-24/FR-54/FR-64,,2026-06-16T15:53:09+00:00
+18,Fidelity Research,FR-34,fr-34,Fidelity Research FR-34,,2026-06-16T15:53:09+00:00
+253,Fidelity Research,FR-64S,fr-64s,Fidelity Research FR-64S,Exact Fidelity Research FR-64S 10-inch tonearm represented from manual-derived review data plus FR-60-series manual mirror.,2026-06-16T23:28:15+00:00
+254,Fidelity Research,FR-64fx,fr-64fx,Fidelity Research FR-64fx,Exact Fidelity Research FR-64fx tonearm represented from FR-60-series manual mirror.,2026-06-16T23:28:15+00:00
+261,Fidelity Research,FR-66,fr-66,Fidelity Research FR-66,Exact Fidelity Research FR-66 tonearm represented from hifi-wiki model list plus FR-60-series manual mirror template data.,2026-06-16T23:41:30+00:00
+20,Fidelity Research,FR-66S,fr-66s,Fidelity Research FR-66S,,2026-06-16T15:53:09+00:00
+21,Fidelity Research,FR-66fx,fr-66fx,Fidelity Research FR-66fx,,2026-06-16T15:53:09+00:00
+237,Glanz,MH-1000S,mh-1000s,Glanz MH-1000S,Current 10-inch Glanz S Type tonearm.,2026-06-16T22:56:11+00:00
+241,Glanz,MH-104S,mh-104s,Glanz MH-104S,Legacy 10-inch Glanz tonearm.,2026-06-16T22:56:11+00:00
+244,Glanz,MH-10B,mh-10b,Glanz MH-10B,Current 10-inch Glanz B Type tonearm.,2026-06-16T22:56:11+00:00
+246,Glanz,MH-10Bt,mh-10bt,Glanz MH-10Bt,Current 10-inch Glanz Bt Type tonearm.,2026-06-16T22:56:11+00:00
+238,Glanz,MH-1200S,mh-1200s,Glanz MH-1200S,Current 12-inch Glanz S Type tonearm.,2026-06-16T22:56:11+00:00
+242,Glanz,MH-124S,mh-124s,Glanz MH-124S,Legacy 12-inch Glanz tonearm.,2026-06-16T22:56:11+00:00
+239,Glanz,MH-12SUS (MH-124S Premium),mh-12sus-mh-124s-premium,Glanz MH-12SUS (MH-124S Premium),Current Glanz premium 12-inch tonearm.,2026-06-16T22:56:11+00:00
+236,Glanz,MH-900S,mh-900s,Glanz MH-900S,Current 9-inch Glanz S Type tonearm.,2026-06-16T22:56:11+00:00
+240,Glanz,MH-94S,mh-94s,Glanz MH-94S,Legacy 9-inch Glanz tonearm.,2026-06-16T22:56:11+00:00
+243,Glanz,MH-9B,mh-9b,Glanz MH-9B,Current 9-inch Glanz B Type tonearm.,2026-06-16T22:56:11+00:00
+245,Glanz,MH-9Bt,mh-9bt,Glanz MH-9Bt,Current 9-inch Glanz Bt Type tonearm.,2026-06-16T22:56:11+00:00
+204,Gold Note,B-5.2,b-5-2,Gold Note B-5.2,Current 9 inch Gold Note ball-bearing tonearm.,2026-06-16T16:59:56+00:00
+205,Gold Note,B-7 Ceramic,b-7-ceramic,Gold Note B-7 Ceramic,Flagship 9 inch Gold Note tonearm with titanium wand and ceramic bearings.,2026-06-16T16:59:56+00:00
+298,Goldmund,T3F,t3f,Goldmund T3F,Exact Goldmund linear-tracking tonearm target from mirrored library support.,2026-06-18T03:14:16+00:00
+297,Goldmund,T5,t5,Goldmund T5,Exact Goldmund linear-tracking tonearm target from mirrored manual support.,2026-06-18T03:14:16+00:00
+22,Grace,G-540F/640P/704/707/714/727/945,g-540f-640p-704-707-714-727-945,Grace G-540F/640P/704/707/714/727/945,,2026-06-16T15:53:09+00:00
+23,Grace,G-565F/660P/860F/860FB/960,g-565f-660p-860f-860fb-960,Grace G-565F/660P/860F/860FB/960,,2026-06-16T15:53:09+00:00
+78,Graham,"Model 1.5t (US Patent 4686664: ""for purposes of explanation only, one arm has the following dimensions: effective length 235 mm, offset angle of 23.5 degree and overhang of 17.638 mm."" ) Baerwald ""1"" or Loefgren ""2"" overhang can be selectable.",model-1-5t-us-patent-4686664-for-purposes-of-explanation-only-one-arm-has-the-following-dimensions-effective-length-235-mm-offset-angle-of-23-5-degree-and-overhang-of-17-638-mm-baerwald-1-or-loefgren-2-overhang-can-be-selectable,"Graham Model 1.5t (US Patent 4686664: ""for purposes of explanation only, one arm has the following dimensions: effective length 235 mm, offset angle of 23.5 degree and overhang of 17.638 mm."" ) Baerwald ""1"" or Loefgren ""2"" overhang can be selectable.",effective_length_raw=235=Baerwald,2026-06-16T15:53:09+00:00
+136,Graham,Phantom Elite 10-inch,phantom-elite-10-inch,Graham Phantom Elite 10-inch,,2026-06-16T16:35:49+00:00
+137,Graham,Phantom Elite 12-inch,phantom-elite-12-inch,Graham Phantom Elite 12-inch,,2026-06-16T16:35:49+00:00
+135,Graham,Phantom Elite 9-inch,phantom-elite-9-inch,Graham Phantom Elite 9-inch,,2026-06-16T16:35:49+00:00
+133,Graham,Phantom III 10-inch,phantom-iii-10-inch,Graham Phantom III 10-inch,,2026-06-16T16:35:49+00:00
+134,Graham,Phantom III 12-inch,phantom-iii-12-inch,Graham Phantom III 12-inch,,2026-06-16T16:35:49+00:00
+132,Graham,Phantom III 9-inch,phantom-iii-9-inch,Graham Phantom III 9-inch,,2026-06-16T16:35:49+00:00
+190,Graham,Phantom III SE 10-inch,phantom-iii-se-10-inch,Graham Phantom III SE 10-inch,,2026-06-16T16:50:17+00:00
+191,Graham,Phantom III SE 12-inch,phantom-iii-se-12-inch,Graham Phantom III SE 12-inch,,2026-06-16T16:50:17+00:00
+189,Graham,Phantom III SE 9-inch,phantom-iii-se-9-inch,Graham Phantom III SE 9-inch,,2026-06-16T16:50:17+00:00
+24,Guya,STO-140 (Arm distance:237mm),sto-140-arm-distance-237mm,Guya STO-140 (Arm distance:237mm),offset_angle_raw=20 as per leaflet,2026-06-16T15:53:09+00:00
+79,Hadcock,GH228,gh228,Hadcock GH228,,2026-06-16T15:53:09+00:00
+80,Hadcock,GH242 Special Edition,gh242-special-edition,Hadcock GH242 Special Edition,,2026-06-16T15:53:09+00:00
+82,Helius,Aureus & Scorpio,aureus-scorpio,Helius Aureus & Scorpio,contains uncertainty markers,2026-06-16T15:53:09+00:00
+81,Helius,Orion,orion,Helius Orion,contains uncertainty markers,2026-06-16T15:53:09+00:00
+26,Ikeda,IT-345 & IT-245,it-345-it-245,Ikeda IT-345 & IT-245,,2026-06-16T15:53:09+00:00
+25,Ikeda,IT-407,it-407,Ikeda IT-407,,2026-06-16T15:53:09+00:00
+83,Immedia,RPM-2,rpm-2,Immedia RPM-2,,2026-06-16T15:53:09+00:00
+84,Infinity,Black Widow,black-widow,Infinity Black Widow,,2026-06-16T15:53:09+00:00
+247,J.Sikora,KV12 VTA,kv12-vta,J.Sikora KV12 VTA,Official J.Sikora KV12 Kevlar unipivot tonearm.,2026-06-16T23:05:58+00:00
+328,Jelco,SA 200,sa-200,Jelco SA 200,Workbook exact-model follow-up using exact secondary model references plus official Jelco family support.,2026-06-18T07:14:49+00:00
+307,Jelco,SA 250,sa-250,Jelco SA 250,Workbook exact-model follow-up for Jelco short S-shape arm.,2026-06-18T06:55:13+00:00
+329,Jelco,SA 250BV,sa-250bv,Jelco SA 250BV,Workbook exact-model follow-up using exact secondary model references plus official Jelco family support.,2026-06-18T07:14:49+00:00
+308,Jelco,SA 250ST,sa-250st,Jelco SA 250ST,Workbook exact-model follow-up for Jelco straight arm.,2026-06-18T06:55:13+00:00
+330,Jelco,SA 50,sa-50,Jelco SA 50,Workbook exact-model follow-up using exact secondary model references plus official Jelco family support.,2026-06-18T07:14:49+00:00
+331,Jelco,SA 50ST,sa-50st,Jelco SA 50ST,Workbook exact-model follow-up using exact secondary model references plus official Jelco family support.,2026-06-18T07:14:49+00:00
+309,Jelco,SA 750D,sa-750d,Jelco SA 750D,Workbook exact-model follow-up for Jelco oil-damped short S-shape arm.,2026-06-18T06:55:13+00:00
+310,Jelco,SA 750DB,sa-750db,Jelco SA 750DB,Workbook exact-model follow-up for black-finish Jelco SA-750DB variant.,2026-06-18T06:55:13+00:00
+311,Jelco,SA 750E,sa-750e,Jelco SA 750E,Workbook exact-model follow-up for 10-inch Jelco oil-damped arm.,2026-06-18T06:55:13+00:00
+312,Jelco,SA 750L,sa-750l,Jelco SA 750L,Workbook exact-model follow-up for 12-inch Jelco oil-damped arm.,2026-06-18T06:55:13+00:00
+27,Jelco,SA-250 & SA-750D (S-shape wand),sa-250-sa-750d-s-shape-wand,Jelco SA-250 & SA-750D (S-shape wand),,2026-06-16T15:53:09+00:00
+28,Jelco,SA-250st (Straight wand),sa-250st-straight-wand,Jelco SA-250st (Straight wand),,2026-06-16T15:53:09+00:00
+29,Jelco,SA-750LB (S-shape wand),sa-750lb-s-shape-wand,Jelco SA-750LB (S-shape wand),,2026-06-16T15:53:09+00:00
+314,Jelco,TK 850L,tk-850l,Jelco TK 850L,Workbook exact-model follow-up for Jelco knife-edge long arm.,2026-06-18T07:02:19+00:00
+313,Jelco,TK 850S,tk-850s,Jelco TK 850S,Workbook exact-model follow-up for Jelco knife-edge short arm.,2026-06-18T07:02:19+00:00
+316,Jelco,TK 950L,tk-950l,Jelco TK 950L,Workbook exact-model follow-up for Jelco dynamic-balance long arm.,2026-06-18T07:02:19+00:00
+315,Jelco,TK 950S,tk-950s,Jelco TK 950S,Workbook exact-model follow-up for Jelco dynamic-balance short arm.,2026-06-18T07:02:19+00:00
+86,Keith Monks,M9BA Laboratory Arm MKIII,m9ba-laboratory-arm-mkiii,Keith Monks M9BA Laboratory Arm MKIII,,2026-06-16T15:53:09+00:00
+185,Korf,TA-SF11R,ta-sf11r,Korf TA-SF11R,Pivoting 11 inch gimbal tonearm with removable headshell.,2026-06-16T16:50:17+00:00
+184,Korf,TA-SF9,ta-sf9,Korf TA-SF9,Pivoting 9 inch gimbal tonearm with fixed headshell.,2026-06-16T16:50:17+00:00
+291,Korf,TA-SF9R,ta-sf9r,Korf TA-SF9R,Official Korf removable-headshell 9-inch target from current lineup.,2026-06-18T03:03:17+00:00
+273,Koshin,GST-1,gst-1,Koshin GST-1,Exact Koshin target represented from dealer archive page and community discussion.,2026-06-17T00:27:42+00:00
+272,Koshin,GST-801,gst-801,Koshin GST-801,Exact Koshin target represented from community archival discussion with setup geometry and operating notes.,2026-06-17T00:27:42+00:00
+138,Kuzma,4Point 11-inch,4point-11-inch,Kuzma 4Point 11-inch,,2026-06-16T16:35:49+00:00
+203,Kuzma,4Point 14-inch,4point-14-inch,Kuzma 4Point 14-inch,Long 14 inch 4Point variant requiring 12 inch mounting position.,2026-06-16T16:54:38+00:00
+202,Kuzma,4Point 9-inch,4point-9-inch,Kuzma 4Point 9-inch,Shorter 4Point variant.,2026-06-16T16:54:38+00:00
+163,Kuzma,Air Line 7-inch,air-line-7-inch,Kuzma Air Line 7-inch,,2026-06-16T16:41:04+00:00
+289,Kuzma,Safir 9,safir-9,Kuzma Safir 9,Official Kuzma flagship sapphire-tonearm target from current lineup.,2026-06-18T01:37:40+00:00
+87,Kuzma,Stogi,stogi,Kuzma Stogi,,2026-06-16T15:53:09+00:00
+216,Kuzma,Stogi Ref 313,stogi-ref-313,Kuzma Stogi Ref 313,Exact 12 inch Stogi Ref variant.,2026-06-16T17:54:38+00:00
+165,Kuzma,Stogi Ref 313 VTA,stogi-ref-313-vta,Kuzma Stogi Ref 313 VTA,,2026-06-16T16:41:04+00:00
+164,Kuzma,Stogi Ref 9-inch,stogi-ref-9-inch,Kuzma Stogi Ref 9-inch,,2026-06-16T16:41:04+00:00
+221,Kuzma,Stogi S 12-inch,stogi-s-12-inch,Kuzma Stogi S 12-inch,Official product-name row: Stogi S 12.,2026-06-16T20:35:20+00:00
+222,Kuzma,Stogi S 12-inch VTA,stogi-s-12-inch-vta,Kuzma Stogi S 12-inch VTA,Official product-name row: Stogi S 12VTA.,2026-06-16T20:35:20+00:00
+139,Kuzma,Stogi S 9-inch,stogi-s-9-inch,Kuzma Stogi S 9-inch,,2026-06-16T16:35:49+00:00
+88,Linn,Akito/Basik/Ittok/Ekos,akito-basik-ittok-ekos,Linn Akito/Basik/Ittok/Ekos,,2026-06-16T15:53:09+00:00
+276,Linn,Ekos SE,ekos-se,Linn Ekos SE,Official Linn Ekos SE tonearm representation from manufacturer documentation.,2026-06-17T00:51:16+00:00
+89,Logic,datum S,datum-s,Logic datum S,,2026-06-16T15:53:09+00:00
+30,Lustre,GST-1,gst-1,Lustre GST-1,contains uncertainty markers,2026-06-16T15:53:09+00:00
+31,Lustre,GST-801,gst-801,Lustre GST-801,contains uncertainty markers,2026-06-16T15:53:09+00:00
+90,Magnepan,Unitrac-1,unitrac-1,Magnepan Unitrac-1,,2026-06-16T15:53:09+00:00
+92,Manticore,Magician 12inch,magician-12inch,Manticore Magician 12inch,,2026-06-16T15:53:09+00:00
+91,Manticore,Musician/Magician,musician-magician,Manticore Musician/Magician,,2026-06-16T15:53:09+00:00
+94,Mayware,Formula 4 MK III/IV/V,formula-4-mk-iii-iv-v,Mayware Formula 4 MK III/IV/V,overhang_raw=around 17; offset_angle_raw=around 23.5,2026-06-16T15:53:09+00:00
+93,Mayware,Formula 4 Model PL S4/D,formula-4-model-pl-s4-d,Mayware Formula 4 Model PL S4/D,,2026-06-16T15:53:09+00:00
+233,Michell,T2 Tonearm,t2-tonearm,Michell T2 Tonearm,Current Michell entry-level tonearm.,2026-06-16T22:56:11+00:00
+234,Michell,T8 Tonearm,t8-tonearm,Michell T8 Tonearm,Current Michell audiophile tonearm.,2026-06-16T22:56:11+00:00
+235,Michell,TecnoArm 2,tecnoarm-2,Michell TecnoArm 2,Current Michell reference-class tonearm.,2026-06-16T22:56:11+00:00
+32,Micro,MA-202,ma-202,Micro MA-202,,2026-06-16T15:53:09+00:00
+33,Micro,MA-303,ma-303,Micro MA-303,,2026-06-16T15:53:09+00:00
+35,Micro,"MA-505, MA-707, MAX-237, CF-1(dynamic)",ma-505-ma-707-max-237-cf-1-dynamic,"Micro MA-505, MA-707, MAX-237, CF-1(dynamic)",,2026-06-16T15:53:09+00:00
+34,Micro,"MA-701, CF-2 (static)",ma-701-cf-2-static,"Micro MA-701, CF-2 (static)",,2026-06-16T15:53:09+00:00
+36,Micro,MAX-282 & MA-505L,max-282-ma-505l,Micro MAX-282 & MA-505L,,2026-06-16T15:53:09+00:00
+270,Micro Seiki,MA-505,ma-505,Micro Seiki MA-505,Exact historic Micro Seiki tonearm represented from scanned operating manual mirror.,2026-06-17T00:11:05+00:00
+271,Micro Seiki,MA-707,ma-707,Micro Seiki MA-707,Exact historic Micro Seiki tonearm represented from scanned operating manual mirror.,2026-06-17T00:11:05+00:00
+95,Mission,774 Original,774-original,Mission 774 Original,contains uncertainty markers,2026-06-16T15:53:09+00:00
+96,Moerch,DP-6 & UP-4,dp-6-up-4,Moerch DP-6 & UP-4,,2026-06-16T15:53:09+00:00
+169,Moerch,DP-6 12-inch,dp-6-12-inch,Moerch DP-6 12-inch,,2026-06-16T16:41:04+00:00
+151,Moerch,DP-6 9-inch,dp-6-9-inch,Moerch DP-6 9-inch,,2026-06-16T16:38:05+00:00
+170,Moerch,DP-8 12-inch,dp-8-12-inch,Moerch DP-8 12-inch,,2026-06-16T16:41:04+00:00
+152,Moerch,DP-8 9-inch,dp-8-9-inch,Moerch DP-8 9-inch,,2026-06-16T16:38:05+00:00
+220,Moerch,UP-4 12-inch,up-4-12-inch,Moerch UP-4 12-inch,UP-4 12 inch variant using shared official geometry.,2026-06-16T20:33:51+00:00
+219,Moerch,UP-4 9-inch,up-4-9-inch,Moerch UP-4 9-inch,UP-4 9 inch variant using shared official geometry.,2026-06-16T20:33:51+00:00
+232,Music Hall,MMF-1.3,mmf-1-3,Music Hall MMF-1.3,Entry Music Hall turntable package.,2026-06-16T21:14:07+00:00
+231,Music Hall,MMF-2.3,mmf-2-3,Music Hall MMF-2.3,Entry Music Hall turntable package.,2026-06-16T21:14:07+00:00
+230,Music Hall,MMF-3.3,mmf-3-3,Music Hall MMF-3.3,Dual-plinth Music Hall turntable package.,2026-06-16T21:14:07+00:00
+229,Music Hall,MMF-5.3,mmf-5-3,Music Hall MMF-5.3,Dual-plinth Music Hall turntable package.,2026-06-16T21:14:07+00:00
+228,Music Hall,MMF-7.3,mmf-7-3,Music Hall MMF-7.3,Dual-plinth Music Hall turntable package.,2026-06-16T21:14:07+00:00
+227,Music Hall,MMF-9.3,mmf-9-3,Music Hall MMF-9.3,Triple-plinth Music Hall turntable package.,2026-06-16T21:14:07+00:00
+97,Naim,Aro,aro,Naim Aro,,2026-06-16T15:53:09+00:00
+98,Odyssey,RP1-XG & RP1 Gold,rp1-xg-rp1-gold,Odyssey RP1-XG & RP1 Gold,,2026-06-16T15:53:09+00:00
+341,Origin Live,"10""",10,"Origin Live 10""",Workbook target is a generic Origin Live arm-length option.,2026-06-18T07:50:53+00:00
+342,Origin Live,"12""",12,"Origin Live 12""",Workbook target is a generic Origin Live arm-length option.,2026-06-18T07:50:53+00:00
+339,Origin Live,"9""",9,"Origin Live 9""",Workbook target is a generic Origin Live arm-length option.,2026-06-18T07:50:53+00:00
+340,Origin Live,"9.5""",9-5,"Origin Live 9.5""",Workbook target is a generic Origin Live arm-length option.,2026-06-18T07:50:53+00:00
+332,Origin Live,Agile,agile,Origin Live Agile,Workbook exact-model follow-up from official Origin Live pages.,2026-06-18T07:50:32+00:00
+144,Origin Live,Alliance,alliance,Origin Live Alliance,,2026-06-16T16:35:49+00:00
+338,Origin Live,Conquerer,conquerer,Origin Live Conquerer,Workbook target spelling variant of official Origin Live Conqueror model.,2026-06-18T07:50:53+00:00
+335,Origin Live,Conqueror,conqueror,Origin Live Conqueror,Workbook exact-model follow-up from official Origin Live pages.,2026-06-18T07:50:32+00:00
+333,Origin Live,Encounter,encounter,Origin Live Encounter,Workbook exact-model follow-up from official Origin Live pages.,2026-06-18T07:50:32+00:00
+336,Origin Live,Enterprise,enterprise,Origin Live Enterprise,Workbook exact-model follow-up from official Origin Live pages.,2026-06-18T07:50:32+00:00
+334,Origin Live,Illustrious,illustrious,Origin Live Illustrious,Workbook exact-model follow-up from official Origin Live pages.,2026-06-18T07:50:32+00:00
+145,Origin Live,Onyx,onyx,Origin Live Onyx,,2026-06-16T16:35:49+00:00
+337,Origin Live,Renown,renown,Origin Live Renown,Workbook exact-model follow-up from official Origin Live pages.,2026-06-18T07:50:32+00:00
+146,Origin Live,Silver,silver,Origin Live Silver,,2026-06-16T16:35:49+00:00
+147,Origin Live,Zephyr,zephyr,Origin Live Zephyr,,2026-06-16T16:35:49+00:00
+206,Ortofon,AS-212R,as-212r,Ortofon AS-212R,Current 9 inch Reference tonearm.,2026-06-16T16:59:56+00:00
+207,Ortofon,AS-309R,as-309r,Ortofon AS-309R,Current 12 inch Reference tonearm.,2026-06-16T16:59:56+00:00
+99,Ortofon,RMG-212 & RS-212,rmg-212-rs-212,Ortofon RMG-212 & RS-212,,2026-06-16T15:53:09+00:00
+100,Ortofon,RMG-309,rmg-309,Ortofon RMG-309,,2026-06-16T15:53:09+00:00
+208,Ortofon,RS-212D,rs-212d,Ortofon RS-212D,Current 9 inch dynamic-balance tonearm.,2026-06-16T16:59:56+00:00
+209,Ortofon,RS-309D,rs-309d,Ortofon RS-309D,Current 12 inch dynamic-balance tonearm.,2026-06-16T16:59:56+00:00
+101,Ortofon,SMG-212/SKG-212/AS-212,smg-212-skg-212-as-212,Ortofon SMG-212/SKG-212/AS-212,,2026-06-16T15:53:09+00:00
+127,Ortofon,TA-110,ta-110,Ortofon TA-110,,2026-06-16T15:59:52+00:00
+251,Pear Audio,Cornet 1,cornet-1,Pear Audio Cornet 1,Official Pear Audio Cornet 1 unipivot tonearm.,2026-06-16T23:05:58+00:00
+252,Pear Audio,Cornet 2,cornet-2,Pear Audio Cornet 2,Official Pear Audio Cornet 2 unipivot tonearm family entry.,2026-06-16T23:05:58+00:00
+294,Pear Audio,Cornet 3,cornet-3,Pear Audio Cornet 3,Official Pear Audio long-arm target from current lineup support.,2026-06-18T03:08:59+00:00
+37,Pioneer,PA-100,pa-100,Pioneer PA-100,contains uncertainty markers,2026-06-16T15:53:09+00:00
+38,Pioneer,PA-1000,pa-1000,Pioneer PA-1000,,2026-06-16T15:53:09+00:00
+159,Pro-Ject,10cc Evolution,10cc-evolution,Pro-Ject 10cc Evolution,,2026-06-16T16:38:05+00:00
+160,Pro-Ject,12cc Evolution,12cc-evolution,Pro-Ject 12cc Evolution,,2026-06-16T16:38:05+00:00
+158,Pro-Ject,9cc Evolution,9cc-evolution,Pro-Ject 9cc Evolution,,2026-06-16T16:38:05+00:00
+39,RS-Lab,Alternative alignment (underhang),alternative-alignment-underhang,RS-Lab Alternative alignment (underhang),contains uncertainty markers,2026-06-16T15:53:09+00:00
+343,Rabco,SL-8,sl-8,Rabco SL-8,User-requested Rabco linear-tracker follow-up.,2026-06-18T07:51:09+00:00
+344,Rabco,SL-8E,sl-8e,Rabco SL-8E,User-requested Rabco linear-tracker follow-up.,2026-06-18T07:51:09+00:00
+167,Reed,1H 10.5-inch,1h-10-5-inch,Reed 1H 10.5-inch,,2026-06-16T16:41:04+00:00
+168,Reed,1H 12-inch,1h-12-inch,Reed 1H 12-inch,,2026-06-16T16:41:04+00:00
+166,Reed,1H 9.5-inch,1h-9-5-inch,Reed 1H 9.5-inch,,2026-06-16T16:41:04+00:00
+149,Reed,3P 10.5-inch,3p-10-5-inch,Reed 3P 10.5-inch,,2026-06-16T16:38:05+00:00
+150,Reed,3P 12-inch,3p-12-inch,Reed 3P 12-inch,,2026-06-16T16:38:05+00:00
+148,Reed,3P 9.5-inch,3p-9-5-inch,Reed 3P 9.5-inch,,2026-06-16T16:38:05+00:00
+306,Rega,RB2000,rb2000,Rega RB2000,Workbook gap exact Rega tonearm target from manufacturer manual mirror.,2026-06-18T06:37:24+00:00
+302,Rega,RB220,rb220,Rega RB220,Workbook gap exact Rega tonearm target from official product page.,2026-06-18T06:37:24+00:00
+161,Rega,RB250,rb250,Rega RB250,Split from grouped legacy row pending finer model-specific source verification.,2026-06-16T16:41:04+00:00
+102,Rega,RB250 & RB300,rb250-rb300,Rega RB250 & RB300,,2026-06-16T15:53:09+00:00
+162,Rega,RB300,rb300,Rega RB300,Split from grouped legacy row pending finer model-specific source verification.,2026-06-16T16:41:04+00:00
+304,Rega,RB3000,rb3000,Rega RB3000,Workbook gap exact Rega tonearm target from official product page.,2026-06-18T06:37:24+00:00
+131,Rega,RB330,rb330,Rega RB330,,2026-06-16T16:35:49+00:00
+305,Rega,RB700,rb700,Rega RB700,Workbook gap legacy Rega tonearm target from official timeline support.,2026-06-18T06:37:24+00:00
+303,Rega,RB880,rb880,Rega RB880,Workbook gap exact Rega tonearm target from official product page.,2026-06-18T06:37:24+00:00
+103,Roksan,Artemiz/Tabriz,artemiz-tabriz,Roksan Artemiz/Tabriz,,2026-06-16T15:53:09+00:00
+175,SAT,LM-09,lm-09,SAT LM-09,,2026-06-16T16:44:31+00:00
+176,SAT,LM-12,lm-12,SAT LM-12,,2026-06-16T16:44:31+00:00
+106,SME,3009 II imp & imp/S2: (later=S/N 439606 or above),3009-ii-imp-imp-s2-later-s-n-439606-or-above,SME 3009 II imp & imp/S2: (later=S/N 439606 or above),,2026-06-16T15:53:09+00:00
+105,SME,3009 Series II improved with non-detachable shell and imp/S2 with detachable shell: (early=Serial Number less than 439606). Don't mix up previous Series II with imp/S2. See pdf arranged by SME for the identification of specific models IMO: S2 was named after the lightweight shell type S-2.,3009-series-ii-improved-with-non-detachable-shell-and-imp-s2-with-detachable-shell-early-serial-number-less-than-439606-don-t-mix-up-previous-series-ii-with-imp-s2-see-pdf-arranged-by-sme-for-the-identification-of-specific-models-imo-s2-was-named-after-the-lightweight-shell-type-s-2,SME 3009 Series II improved with non-detachable shell and imp/S2 with detachable shell: (early=Serial Number less than 439606). Don't mix up previous Series II with imp/S2. See pdf arranged by SME for the identification of specific models IMO: S2 was named after the lightweight shell type S-2.,,2026-06-16T15:53:09+00:00
+107,SME,3009III &3009IIIS (original/smaller shell),3009iii-3009iiis-original-smaller-shell,SME 3009III &3009IIIS (original/smaller shell),,2026-06-16T15:53:09+00:00
+108,SME,3009III &3009IIIS with modified wand (larger shell),3009iii-3009iiis-with-modified-wand-larger-shell,SME 3009III &3009IIIS with modified wand (larger shell),,2026-06-16T15:53:09+00:00
+109,SME,3009R,3009r,SME 3009R,,2026-06-16T15:53:09+00:00
+110,SME,3010R,3010r,SME 3010R,,2026-06-16T15:53:09+00:00
+111,SME,3012R,3012r,SME 3012R,,2026-06-16T15:53:09+00:00
+113,SME,309,309,SME 309,,2026-06-16T15:53:09+00:00
+114,SME,310,310,SME 310,,2026-06-16T15:53:09+00:00
+115,SME,312,312,SME 312,,2026-06-16T15:53:09+00:00
+117,SME,M2-10,m2-10,SME M2-10,,2026-06-16T15:53:09+00:00
+118,SME,M2-12,m2-12,SME M2-12,,2026-06-16T15:53:09+00:00
+116,SME,M2-9,m2-9,SME M2-9,,2026-06-16T15:53:09+00:00
+130,SME,Series V,series-v,SME Series V,,2026-06-16T15:59:52+00:00
+112,SME,V/IV,v-iv,SME V/IV,,2026-06-16T15:53:09+00:00
+119,SUMIKO,MMT/FT-3/FT-4,mmt-ft-3-ft-4,SUMIKO MMT/FT-3/FT-4,,2026-06-16T15:53:09+00:00
+129,SUMIKO,Premier FT-3,premier-ft-3,Sumiko Premier FT-3,,2026-06-16T15:59:52+00:00
+40,Saec,"WE-308 (circa 1971), WE-308N(1975) & WE-308SX (1982) IMO: ""Small overhang can moderate inside force."" Its effective null point around 61 is based on LP's inmost recorded radius.",we-308-circa-1971-we-308n-1975-we-308sx-1982-imo-small-overhang-can-moderate-inside-force-its-effective-null-point-around-61-is-based-on-lp-s-inmost-recorded-radius,"Saec WE-308 (circa 1971), WE-308N(1975) & WE-308SX (1982) IMO: ""Small overhang can moderate inside force."" Its effective null point around 61 is based on LP's inmost recorded radius.",,2026-06-16T15:53:09+00:00
+41,Saec,WE-308L(circa 1978),we-308l-circa-1978,Saec WE-308L(circa 1978),,2026-06-16T15:53:09+00:00
+274,Saec,WE-308SX,we-308sx,Saec WE-308SX,Exact Saec target represented from archival discussion with explicit factory geometry plus model-line context.,2026-06-17T00:27:42+00:00
+43,Saec,WE-317(1982),we-317-1982,Saec WE-317(1982),,2026-06-16T15:53:09+00:00
+275,Saec,WE-407/23,we-407-23,Saec WE-407/23,Exact SAEC target represented from archival product page plus historical geometry table.,2026-06-17T00:36:59+00:00
+42,Saec,"WE-407/23(1980), WE-317S & WE-4700(2019) English manual for WE-407/23 & WE-317S uploaded at Vinyl Engine indicated Effective Length 221, which is mistranslation of Arm Distance. Similar case as Sound ST-14. WE-407/TM for Micro (BL-99V/SX-777FV etc with armbase 1200 series). Micro Armbase 1200 series had off-center mounting hole for adjustment of arm distance/overhang. WE-407/GT (around 1986) for Yamaha GT-2000 series (Heavy Turntables around 1982). GT had different geometry. GT-2000's standard arm distance was 248mm. SAEC's tradition: they don't care much about alignment while their mechanical precision work is superb.",we-407-23-1980-we-317s-we-4700-2019-english-manual-for-we-407-23-we-317s-uploaded-at-vinyl-engine-indicated-effective-length-221-which-is-mistranslation-of-arm-distance-similar-case-as-sound-st-14-we-407-tm-for-micro-bl-99v-sx-777fv-etc-with-armbase-1200-series-micro-armbase-1200-series-had-off-center-mounting-hole-for-adjustment-of-arm-distance-overhang-we-407-gt-around-1986-for-yamaha-gt-2000-series-heavy-turntables-around-1982-gt-had-different-geometry-gt-2000-s-standard-arm-distance-was-248mm-saec-s-tradition-they-don-t-care-much-about-alignment-while-their-mechanical-precision-work-is-superb,"Saec WE-407/23(1980), WE-317S & WE-4700(2019) English manual for WE-407/23 & WE-317S uploaded at Vinyl Engine indicated Effective Length 221, which is mistranslation of Arm Distance. Similar case as Sound ST-14. WE-407/TM for Micro (BL-99V/SX-777FV etc with armbase 1200 series). Micro Armbase 1200 series had off-center mounting hole for adjustment of arm distance/overhang. WE-407/GT (around 1986) for Yamaha GT-2000 series (Heavy Turntables around 1982). GT had different geometry. GT-2000's standard arm distance was 248mm. SAEC's tradition: they don't care much about alignment while their mechanical precision work is superb.",effective_length_raw=The front end of shell to arm pivot is indicated as 233mm. Then the stylus point should be located just under the front-end of shell. Modification after modification towards the end of analogue era is unreliable. Only interesting for a person of unusual tastes who would like something special (curiosity). I do not meddle in this kind of MESS anymore.; offset_angle_raw=18.8 (18 as per manual),2026-06-16T15:53:09+00:00
+44,Saec,WE-506/30(1978),we-506-30-1978,Saec WE-506/30(1978),,2026-06-16T15:53:09+00:00
+45,Saec,WE-8000/ST(circa 1984),we-8000-st-circa-1984,Saec WE-8000/ST(circa 1984),,2026-06-16T15:53:09+00:00
+46,Satin,AR-1/1M/1S,ar-1-1m-1s,Satin AR-1/1M/1S,,2026-06-16T15:53:09+00:00
+286,Schick,Schick 10.5-inch Tonearm,schick-10-5-inch-tonearm,Schick Schick 10.5-inch Tonearm,Official Thomas Schick 10.5-inch tonearm representation from FAQ plus family product page support.,2026-06-17T02:25:27+00:00
+285,Schick,Schick 12-inch Tonearm,schick-12-inch-tonearm,Schick Schick 12-inch Tonearm,Official Thomas Schick 12-inch tonearm representation.,2026-06-17T02:25:27+00:00
+200,Schroeder,CB 9-inch,cb-9-inch,Schroeder CB 9-inch,CB captive-bearing 9 inch variant.,2026-06-16T16:54:38+00:00
+201,Schroeder,CB-L 12-inch,cb-l-12-inch,Schroeder CB-L 12-inch,CB-L captive-bearing 12 inch variant.,2026-06-16T16:54:38+00:00
+225,Schroeder,DPS,dps,Schroeder DPS,Official manual gives mounting and alignment guidance for the DPS arm.,2026-06-16T20:54:24+00:00
+224,Schroeder,Model 2,model-2,Schroeder Model 2,Official manual gives mounting and alignment guidance for the No.2 / Model 2.,2026-06-16T20:54:24+00:00
+104,Schroeder,Model 2 and Model DPS,model-2-and-model-dps,Schroeder Model 2 and Model DPS,,2026-06-16T15:53:09+00:00
+188,Schroeder,Reference,reference,Schroeder Reference,Official page gives mounting geometry guidance more than full spec table.,2026-06-16T16:50:17+00:00
+49,Sony,PUA-1600S,pua-1600s,Sony PUA-1600S,,2026-06-16T15:53:09+00:00
+47,Sony,PUA-237 & PUA-1500S,pua-237-pua-1500s,Sony PUA-237 & PUA-1500S,,2026-06-16T15:53:09+00:00
+48,Sony,PUA-286 & PUA-1500L,pua-286-pua-1500l,Sony PUA-286 & PUA-1500L,,2026-06-16T15:53:09+00:00
+50,Sony,PUA-7,pua-7,Sony PUA-7,,2026-06-16T15:53:09+00:00
+51,Sony,PUA-9,pua-9,Sony PUA-9,,2026-06-16T15:53:09+00:00
+128,Sorane,SA-1.2,sa-1-2,Sorane SA-1.2,,2026-06-16T15:59:52+00:00
+293,Sorane,TA-1,ta-1,Sorane TA-1,Official Sorane conventional gimbal-bearing arm target from current manual.,2026-06-18T03:04:28+00:00
+52,Sound,ST-14 with slide base & ST-14S(standard) without slide base (same geometry as Guya STO-140). Distance 237 was wrongly quoted as effective length. Similar misleading description is repeated in Japan due to language and preference (bad practice) of indicating mounting distance for exchanging arms. For example: Catalogs from 1980s quoted 227mm for Stax short arms and 300mm for Stax long arms.,st-14-with-slide-base-st-14s-standard-without-slide-base-same-geometry-as-guya-sto-140-distance-237-was-wrongly-quoted-as-effective-length-similar-misleading-description-is-repeated-in-japan-due-to-language-and-preference-bad-practice-of-indicating-mounting-distance-for-exchanging-arms-for-example-catalogs-from-1980s-quoted-227mm-for-stax-short-arms-and-300mm-for-stax-long-arms,Sound ST-14 with slide base & ST-14S(standard) without slide base (same geometry as Guya STO-140). Distance 237 was wrongly quoted as effective length. Similar misleading description is repeated in Japan due to language and preference (bad practice) of indicating mounting distance for exchanging arms. For example: Catalogs from 1980s quoted 227mm for Stax short arms and 300mm for Stax long arms.,"effective_length_raw=251 (237 should be distance). When effective lateral length is 237mm, then error angle +1.5 degree/-1 degree as mentioned in leaflet cannot be obtained.",2026-06-16T15:53:09+00:00
+54,Stax,UA-7/7N/7cfN/9N,ua-7-7n-7cfn-9n,Stax UA-7/7N/7cfN/9N,,2026-06-16T15:53:09+00:00
+55,Stax,UA-70/70N/90N,ua-70-70n-90n,Stax UA-70/70N/90N,,2026-06-16T15:53:09+00:00
+211,Supatrac,Blackbird 10.5-inch,blackbird-10-5-inch,Supatrac Blackbird 10.5-inch,Standard 10.5 inch Blackbird variant.,2026-06-16T17:02:32+00:00
+212,Supatrac,Blackbird 12-inch,blackbird-12-inch,Supatrac Blackbird 12-inch,Standard 12 inch Blackbird variant.,2026-06-16T17:02:33+00:00
+210,Supatrac,Blackbird 9-inch,blackbird-9-inch,Supatrac Blackbird 9-inch,Standard 9 inch Blackbird variant.,2026-06-16T17:02:32+00:00
+142,Supatrac,Blackbird 9.3-inch,blackbird-9-3-inch,Supatrac Blackbird 9.3-inch,,2026-06-16T16:35:49+00:00
+214,Supatrac,Blackbird Farpoint 10.5-inch,blackbird-farpoint-10-5-inch,Supatrac Blackbird Farpoint 10.5-inch,Standard 10.5 inch Blackbird Farpoint variant.,2026-06-16T17:02:33+00:00
+215,Supatrac,Blackbird Farpoint 12-inch,blackbird-farpoint-12-inch,Supatrac Blackbird Farpoint 12-inch,Standard 12 inch Blackbird Farpoint variant.,2026-06-16T17:02:33+00:00
+213,Supatrac,Blackbird Farpoint 9-inch,blackbird-farpoint-9-inch,Supatrac Blackbird Farpoint 9-inch,Standard 9 inch Blackbird Farpoint variant.,2026-06-16T17:02:33+00:00
+143,Supatrac,Blackbird Farpoint 9.3-inch,blackbird-farpoint-9-3-inch,Supatrac Blackbird Farpoint 9.3-inch,,2026-06-16T16:35:49+00:00
+198,Supatrac,Nighthawk 10.5-inch,nighthawk-10-5-inch,Supatrac Nighthawk 10.5-inch,Standard 10.5 inch Nighthawk version.,2026-06-16T16:54:38+00:00
+199,Supatrac,Nighthawk 12-inch,nighthawk-12-inch,Supatrac Nighthawk 12-inch,Standard 12 inch Nighthawk version.,2026-06-16T16:54:38+00:00
+196,Supatrac,Nighthawk 9-inch,nighthawk-9-inch,Supatrac Nighthawk 9-inch,Standard 9 inch Nighthawk version.,2026-06-16T16:54:38+00:00
+197,Supatrac,Nighthawk 9.3-inch,nighthawk-9-3-inch,Supatrac Nighthawk 9.3-inch,Rega/Michell-oriented 9.3 inch Nighthawk version.,2026-06-16T16:54:38+00:00
+53,Supex,6140,6140,Supex 6140,,2026-06-16T15:53:09+00:00
+120,Syrinx,PU-2 with minimum shell sliding on wand/PU-3 with fixed shell,pu-2-with-minimum-shell-sliding-on-wand-pu-3-with-fixed-shell,Syrinx PU-2 with minimum shell sliding on wand/PU-3 with fixed shell,contains uncertainty markers,2026-06-16T15:53:09+00:00
+183,TW-Acustic,Raven 10.5,raven-10-5,TW-Acustic Raven 10.5,,2026-06-16T16:44:31+00:00
+292,TW-Acustic,Raven 12-inch,raven-12-inch,TW-Acustic Raven 12-inch,Official TW-Acustic long Raven target. Queue name uses Raven 12-inch; official page labels the current product Raven 12.9.,2026-06-18T03:03:17+00:00
+181,TechDAS,Air Force 10 10-inch,air-force-10-10-inch,TechDAS Air Force 10 10-inch,Air-bearing tonearm geometry from manufacturer leaflet.,2026-06-16T16:44:31+00:00
+182,TechDAS,Air Force 10 12-inch,air-force-10-12-inch,TechDAS Air Force 10 12-inch,Air-bearing tonearm geometry from manufacturer leaflet.,2026-06-16T16:44:31+00:00
+56,Technics,EPA-100/250/500,epa-100-250-500,Technics EPA-100/250/500,,2026-06-16T15:53:09+00:00
+58,Technics,EPA-101L/101T/102L/102T/121L/121T,epa-101l-101t-102l-102t-121l-121t,Technics EPA-101L/101T/102L/102T/121L/121T,,2026-06-16T15:53:09+00:00
+57,Technics,EPA-101S & EPA-121S,epa-101s-epa-121s,Technics EPA-101S & EPA-121S,,2026-06-16T15:53:09+00:00
+59,Technics,EPA-99 & EPA-110,epa-99-epa-110,Technics EPA-99 & EPA-110,,2026-06-16T15:53:09+00:00
+177,Thales,Simplicity II,simplicity-ii,Thales Simplicity II,Tangential pivoted tonearm with variable offset geometry.,2026-06-16T16:44:31+00:00
+178,Thales,Statement,statement,Thales Statement,Tangential pivoted tonearm with variable offset geometry.,2026-06-16T16:44:31+00:00
+121,Thorens,BTD-12S,btd-12s,Thorens BTD-12S,,2026-06-16T15:53:09+00:00
+122,Thorens,TP16II with TP-62,tp16ii-with-tp-62,Thorens TP16II with TP-62,,2026-06-16T15:53:09+00:00
+123,Thorens,TP16III with TP-63,tp16iii-with-tp-63,Thorens TP16III with TP-63,,2026-06-16T15:53:09+00:00
+140,Tri-Planar,Mk VII,mk-vii,Tri-Planar Mk VII,,2026-06-16T16:35:49+00:00
+124,Tri-Planar,Tri-Planar MKIV Ultimate,tri-planar-mkiv-ultimate,Tri-Planar Tri-Planar MKIV Ultimate,,2026-06-16T15:53:09+00:00
+223,Tri-Planar,U12,u12,Tri-Planar U12,Current 12 inch Tri-Planar flagship tonearm.,2026-06-16T20:54:24+00:00
+141,Tri-Planar,U2 SE,u2-se,Tri-Planar U2 SE,,2026-06-16T16:35:49+00:00
+290,VPI,12-inch FatBoy gimbaled,12-inch-fatboy-gimbaled,VPI 12-inch FatBoy gimbaled,Official VPI target corresponding to the 12-inch FatBoy gimbaled queue row; official page labels it Fatboy Gimbal 12-3D Tonearm.,2026-06-18T01:37:40+00:00
+172,VPI,Fatboy JMW 9 3D,fatboy-jmw-9-3d,VPI Fatboy JMW 9 3D,,2026-06-16T16:41:04+00:00
+156,VPI,JMW-10,jmw-10,VPI JMW-10,,2026-06-16T16:38:05+00:00
+171,VPI,JMW-10 3D,jmw-10-3d,VPI JMW-10 3D,,2026-06-16T16:41:04+00:00
+217,VPI,JMW-10.5,jmw-10-5,VPI JMW-10.5,Legacy JMW-10.5 geometry from secondary analysis.,2026-06-16T19:49:47+00:00
+218,VPI,JMW-10.5i,jmw-10-5i,VPI JMW-10.5i,Legacy rigid-mount JMW-10.5i geometry from secondary analysis plus official model-existence corroboration.,2026-06-16T19:49:47+00:00
+157,VPI,JMW-12 3D,jmw-12-3d,VPI JMW-12 3D,,2026-06-16T16:38:05+00:00
+155,VPI,JMW-9,jmw-9,VPI JMW-9,,2026-06-16T16:38:05+00:00
+250,Vertere Acoustics,Reference Tonearm (Gen III),reference-tonearm-gen-iii,Vertere Acoustics Reference Tonearm (Gen III),Current Vertere flagship reference tonearm.,2026-06-16T23:05:58+00:00
+249,Vertere Acoustics,Super Groove II Pathfinder Tonearm,super-groove-ii-pathfinder-tonearm,Vertere Acoustics Super Groove II Pathfinder Tonearm,Current Vertere SG-II Pathfinder tonearm.,2026-06-16T23:05:58+00:00
+248,Vertere Acoustics,Super Groove Precision Tonearm,super-groove-precision-tonearm,Vertere Acoustics Super Groove Precision Tonearm,Current Vertere Super Groove precision tonearm.,2026-06-16T23:05:58+00:00
+287,ViV Laboratory,Rigid Float HA9,rigid-float-ha9,ViV Laboratory Rigid Float HA9,Strong secondary representation for ViV Laboratory Rigid Float HA9 with consistent underhung geometry across distributor technical pages.,2026-06-17T03:54:19+00:00
+60,Victor (JVC),UA-7045,ua-7045,Victor (JVC) UA-7045,,2026-06-16T15:53:09+00:00
+61,Victor (JVC),UA-7082,ua-7082,Victor (JVC) UA-7082,,2026-06-16T15:53:09+00:00
+346,Wand,10.3in,10-3in,Wand 10.3in,Workbook exact-length Wand follow-up from official homepage.,2026-06-18T07:59:15+00:00
+347,Wand,12in,12in,Wand 12in,Workbook exact-length Wand follow-up from official homepage.,2026-06-18T07:59:15+00:00
+345,Wand,9.5in,9-5in,Wand 9.5in,Workbook exact-length Wand follow-up from official homepage.,2026-06-18T07:59:15+00:00
+288,Wand,Master 12-inch,master-12-inch,Wand Master 12-inch,Official Wand 12-inch Master tonearm representation. Target aligned to current official Plus/Master lineup naming.,2026-06-17T03:54:19+00:00
+179,Well Tempered Lab,LTD 10.5-inch,ltd-10-5-inch,Well Tempered Lab LTD 10.5-inch,Standalone LTD tonearm with fixed headshell geometry.,2026-06-16T16:44:31+00:00
+180,Well Tempered Lab,LTD 16-inch,ltd-16-inch,Well Tempered Lab LTD 16-inch,Integrated long-arm LTD variant used on Royale 400.,2026-06-16T16:44:31+00:00
+173,Wilson Benesch,A.C.T. 0.5,a-c-t-0-5,Wilson Benesch A.C.T. 0.5,,2026-06-16T16:41:04+00:00
+153,Wilson Benesch,A.C.T. 25,a-c-t-25,Wilson Benesch A.C.T. 25,,2026-06-16T16:38:05+00:00
+174,Wilson Benesch,A.C.T. Two,a-c-t-two,Wilson Benesch A.C.T. Two,,2026-06-16T16:41:04+00:00
+125,Wilson Benesch,ACT2& ACT 0.5,act2-act-0-5,Wilson Benesch ACT2& ACT 0.5,,2026-06-16T15:53:09+00:00
+154,Wilson Benesch,Nanotube One,nanotube-one,Wilson Benesch Nanotube One,,2026-06-16T16:38:05+00:00
+62,Yamaha,YSA-1,ysa-1,Yamaha YSA-1,,2026-06-16T15:53:09+00:00
+63,Yamaha,YSA-2 pure straight arm,ysa-2-pure-straight-arm,Yamaha YSA-2 pure straight arm,,2026-06-16T15:53:09+00:00
+126,Zeta,Zeta,zeta,Zeta Zeta,,2026-06-16T15:53:09+00:00

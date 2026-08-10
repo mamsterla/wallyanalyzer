@@ -1,0 +1,467 @@
+===== page_01.png =====
+The home of the turntable
+For more turntable manuals and setup information
+please visit www.vinylengine.com
+
+===== page_02.png =====
+Py Py R uality pick-up components
+ey fidelity-research q
+ee  —————————————eEeEeEeEeEeEeEeEeeEeEeEeEeEeEeEeE—————
+| \
+. - _—
+ao ¥ im
+| el A elet 5! [Pee yrs
+aa JES = PEA iaiees ¥ i et ae
+ed St — Rete tte: 20S a
+Pick-Up Tonearm Bet ye
+ie i ge
+ae ety Ctnetay a 5 E bai ke
+OPERATING INSTRUCTIONS _|_ ,,, SiSOaSeNGc see :
+7 A Fig. 1
+point A Pin \ | | es ‘
+5 <a
+Center S ce i
+spindle i= a
+— ' point B i . \
+‘emplate es Bt)
+nef >a
+ESTABLISHING ARM MOUNTING!
+POSITION
+Use the moun.ing template to decide the 1) As shown in Fig. 1, there must be at
+correct Jocation for mounting the tone arm. least 72mm of space ieft between the
+Mounting position and both nearby
+The reason for having both the A and B edges of the mounting board.
+Points on the template is that the A point is
+to be used when the turntable motor has
+Mot yet been installed. In otner words, if
+you just have a plain mounting board, use Nota: Correct overnang will be ovtainea at
+point A; if a turntable shaft is in place, use any location along tne arc described
+point B by placing the hole over the spindle. by point C. However the fo:'owing
+(Please ignore points “a and “b” on the two add.tionai conditions must aso
+template.) be met.
+
+===== page_03.png =====
+(@)| FR-66S 41mm (Approx. 1% inch) Heignt—\ |
+adjustment) |
+q scale
+\ FR-66 groove | fj
+FR-64S 31mm (Approx. 1%. inch) ;
+FR-64 '
+H Hex screw B
+: of,
+‘ Hex wrench
+1 fy
+i cy \ = ae VA
+= screw A
+MOUNTING THE ARM
+2) To ensure proper operation of the Anti- Drill a hole of the diameter With FR-66S, turn the arm height fine
+Skate Device, the distance from the tip listed for your tone arm. adjustment knob to the highest position so
+of the headshell to the edge of a 30cm that the hex screws A and B are coming up.
+record must be about 11cm as shown in .
+Fig. 2. Since this may mean that the Insert the arm base into the mounting hole Pal coherent a ‘bose and
+head shell touches the dust cover, use and screw on the washer and nut from the tighten hex screw A at the point where it is
+the separate full-size diagram to check bottom, tightening the nut just enough so lined up with the height adjustment scale
+whether this requirement can be met at that the arm base can stil! rotate freely. groove 9!
+the mounting position you have chosen. T ‘ h h ke
+. . wet . * Tighten the screw just enough to keep
+The Anti-Skating Device is designed so a8 the arm pillar from falling. This screw A
+fox tone, Ri d da number serves both to keep the arm pillar from
+Ce tentineters a the duection. oF the falling and to keep it from turning out of
+record edge. This makes it easier to Position.
+achieve correct arm balance.
+2
+Fig. 4 F Fig. § Fig. 8
+FS) inner Groove LS
+YZ SSS
+Sead LSS
+Guide| 5P DIN Plug S =
+i (Audio Cable) SS
+Small
+bars |
+Accessory —— = —
+wim
+INSTALLING THE AUDIO CABLE FIXING THE ARM BASE IN PLACE :
+Instail the audio cable as shown in Fig. 4. In case of FR-66S, use the provided two With FR-66S, you can use tweezers to screw
+small bars into the holes in the arm base in the small accessory pin as shown in Fig. 6
+nut, and tighten the nut firmly in place as $o as to prevent the base from twisting out
+shown in Fig. 5. of position.
+ARM BASE MOUNTING ANGLE A
+ADJUSTMENT When attaching FR64S/66, use the supplied
+hexagonal spanner to tighten the arm base
+As explained in Note 2) above, it is neces- into position. ;
+sary to have distance of 11cm from the hasd CAUTION: When tightening the arm base
+shell to the outer edge of the turntable. poss ve sure not to move the
+ase im its prope: 4
+For this purpose, put the ARM IN THE position” as determined eclion
+ARM REST and TURN THE ARM BASE to .
+find the correct angie,
+* This does not have to be exactly 11cm;
+an approximate measurement is fine.
+
+===== page_04.png =====
+FR-64fx__
+BALANCE THE TONEARM SETTING THE TRACKING FORCE
+ee
+(\E™. 9
+/ =
+j neg ULE,
+id “TSS EC Z5—>
+NaN A
+Set the tracking force scale ring to zero and swing the anti- if
+skating weight shaft up. Slowly rotate the counterweight
+forward or backward until the tonearm remains parallel to the
+surface of the turi.table. Turn the tracking force ring until the appropriate force is indi-
+NOTE: . cated, The ring starts at 0.5 grams and increases in 0.25 gram
+The screw on the counterweight controls the weight’s fit to the steps with each click up to 3.0 grams.
+weight shaft grooves, It is not used to hold the counterweight
+in place after it has.been adjusted. Set the screw to the proper
+setting and jeave it there.
+© Cartridges with a weight between 10 and 32 grams (including)
+the headshell) can be used with the included counterweight.
+When using cartridges such as the Fidelity Research FA-7 and
+Ortofon SPU/GT which weigh about 30 grams, use counter-
+weight W-250 (sold separately) to lower the effective mass of Fa)naeity-researcti
+the tonearm,
+SETTING THE ANTI-SKATING FORCE :
+Line up this side
+}) ae i with the markings.
+| = ct. )
+anes rem | — 7
+iin — t
+tot .
+Ll y ppb
+le Se 2a 258 de
+The anti-skating device of the FR-64fx is designed to apply the * Loosen the anti-skating weight with screwdriver and adjust
+appropriate amount of @ti-skating force when the anti-skating the weight to match the tracking force.
+weight shaft is parallel to the turntable surface with the stylus in .
+the outermost grooves of a 30 cm Afcord,
+© Adjusting the anti-skating device
+Place the stylus in the outermost grooves of a 30 cm record.
+With the tonearm in that position, raise the cueing lever and
+Perform the following adjustments.
+Lower the anti-skating weight shaft to its down (active)
+Position. Loosen the anti-skating device screw and move the
+unit forward and backward to confirm that the thread is in the
+track. Move the snti-skating unit forward or backward until the
+weight shaft is paratlel to the turntable surface. -
+Frritidelity-researctt
+
+===== page_05.png =====
+Slide spacer
+Fig. 7 Fig. 8 a_s
+fal v x
+ofo}e Correct Incorrect
+L+ White ol(Ye R+ Red
+L—Blue R— Green a Large screw fn Ahh
+r .
+ial iP
+Gs Ry V kos x
+sev | |
+, Fig. 9
+7mm a LW 3
+ATTACHING A CARTRIDGE TO CARTRIDGE POSITION
+THE HEADSHELL ADJUSTMENT.
+The metal clips attached to the head shell As shown in Fig. 8, by loosening the large After adjustment, retighten the large screw
+leads are designed for our own cartridges. screw on top of the head shell with & coin in the top of the head shell.
+They may be too wide or too narrow to fit you can slide the cartridge and- spacer Wh a + 1
+other cartridges. if necessary, carefully forward and backward. The distance from ti en retightening the screw, don’t let the
+adjust the clips with tweezers so that a good the front of the head shel! to the stylus tip slide spacer and cartridge twist to one side
+tight connection can be made. should be adjusted so that it is 7mm. or the other. (See Fig. 9)
+After fitting the lead wires onto the car- If this cannot be achieved by sliding the
+tridge terminals, attach the cartridge to the spacer, try attaching the cartridge in a
+slide spacer. The screw length needed may different position (on the spacer) or turning
+vary with different cartridges. Choose the the spacer around.
+length that fits best from among those . R . .
+supplied. If none of these fit, we have distance nal mot eroegare oF Jess in this
+optional screws of other dimensions availa- problems
+ble at your audio dealer. The cartridge may 7
+be attached at two different positions on
+the slide spacer. Choose which one is better
+after reading the following explanation.
+4
+Fig. 10 Fig. 11 Hex “4
+Hex screw
+Do not use xX
+the rubber
+washer. .
+y Adjust to zero
+> CO
+7 () Main weight
+Lock Nut SAA
+| H
+TAKING ZERO BALANCE
+Attach the head shell and cartridge to the Put the main weight onto the arm. Loosen Turn the tracking force control to zero.
+tonearm. the screw before doing this. Then slide the main weight back and force
+Note: When using head shells from other * On the inside of the weight, you can see until zero balance is achieved.
+manufacturers, remove the rubber a black rubber ring. Slide the weight * This adjustment is easier if you rotate
+washer before attaching the head onto the tonearm with this side of the the weight while you slide it.
+shell as shown in Fig. 10. weight first.
+(This is because the locking sleeves Note: Use the larger weight with Tighten the hex screw.
+used in FR-60 series tonearms estab- FR-66/66S. The smalier weight Is Note: If you plan on using several different
+lish a firmer connection than conven- only to be used when the larger cartridges and will need to adjust
+tional type. However the rubber weight will not give zero balance. balance often, only tighten the
+washer would interfere with this im- (For example when using @ head shell weight enough to prevent slipping.
+proved performancs.) from some other manufacturer.)
+* As long ss balance can be taken with the
+larger weight, it should be used since
+effective mass will be smalier.
+5
+
+===== page_06.png =====
+Fig. 12 -~ Fig. 13
+Approx 5mm al <
+=@=n, 2-3em
+uy
+\ ts
+Lateral Na 7
+weight \\\
+Watch the ea
+movement \ \\
+LATERAL BALANCE ADJUSTMENT
+Lateral balance should be performed after Next, as shown in Fig. 13, lift up the front Note: 1) This adjustment must be carried
+completing vertical balarice, of the turntable 2—3cm and watch the way out with the tonearm in the area
+the tonearm moves. (If lateral balance is not where it will not be affected by
+Attach the lateral balance weight as shown F . - a
+in Fig. 12 so that there is Smm betweon the corrects the tonearm will swing to the right the anti-skating control as ex-
+tip of the shaft and the surface of the Oriel Plained earlier.
+weight. . Adjust the fateral balance weight until the 2) The lateral balance device is pro-
+* arm does not swing but stays in one place vided to correct for the sideways
+when the front of the cabinet is lifted. tendency in tonearm movement
+‘ that occurs when the turntable
+Tighten the screw. cabinet is not used on a horizon-
+tal stand. Practically speaking, no
+Problems will occur if the turn-
+table is installed level, Therefore,
+you ordinarily don’t need to pay
+too much attention to this adjust-
+ment.
+6
+Fig, 14 L) Fig. 15 Smaller weignt Fig. 16
+. Larger weight
+| Line up this
+side with the : . +
+Cy _ markings Line up this
+x side with the
+ema \ markings
+| ‘fy
+Adjusting [ >
+point A) J
+/} > 2.5 grm f
+O° . 2 grm 5 grm
+[Y / ‘ | 1.5 grm 4grm
+Y Ape 1 gem 3 grm
+0.5 gem. 2grm
+ANTI-SKATING CONTROL
+TRACKING FORCE ADJUSTMENT ADJUSTMENT
+Turn the tracking force control ring to the Since skating force is mainiy dependent on As shown in Fig. 16, each shaft marking
+desired position. tracking force, the anti-skating control must indicates 1 gram, since the larger weight
+j i i i th Wy 5
+* Thera are click-stops every 0.5 grammes be salctiadl to correspond with the amount weighs twice as much as the smaller one.
+but you can also set the control at any As shownein Fig. 15, each marking on the * Tf you don’t tighten the screw on the
+Position in between, shaft indicates 9.8 grams when ucing the weight too much, it will be easier to read
+smaller weight. 0 just when using various cartridges with
+ght. different amounts of tracking force,
+
+===== page_07.png =====
+Fig. 17 Fig, 18
+a
+/
+]
+sea
+Groove pe L,
+Parallel é Ly
+a Hex
+screw B
+ARM PILLAR HEIGHT ADJUST-
+MENT (FR-64/64S/66}
+When a record is played, the arm should be Apply an appropriate amount of tracking (This tonearm is designed so that correct
+parallel to the record surface as shown in force to the cartridge and place the stylus height adjustment can be performed as long
+Fig. 17. ‘on the record. cout as the distance from the mounting board to
+* The scale on the side of the arm pillar is i ie A ‘ the record surface is between 2.7cm and
+an aid for judging the amount of adjust- After observing the pillar height, return the 6em, If your turntable is lower than this,
+ment. It is graduated in 2mm steps. * remove the base ring and mount the arm
+. Then raise or lower the arm pillar so that base flush with the surface of the mounting
+the tonearm pipe is parallel to the surface of board. This will lower the arm pillar height
+MT Neressacs y the record, by 3mm.)
+> ighten the h 8 hi in Fig, *
+~ VTA Mann q8 len the hex screw B as shown in Fig,
+ADTBISTIA, By Lower
+Oe ROSE Oh AT
+Base
+8
+. Now apply an appropriate amount of track- .
+Fig. 19 ing force to the cartridge and lower the Fig. 20
+stylus on the record, ; ~
+=. 4 After observing the pillar height, return the, rt =———
+arm to armrest.
+{ Then raise the arm pillar by unlocking hex (O]
+BSS {i/ screw A & B $0 that the pillar height is 1 | lo
+Sa TS 5—6mm higher than the final pillar height OORT)
+meeps WD which makes the parallel condition, Tighten on @
+avid the hex screws. . eG
+cK yes
+oO Use Hex wrench Play a record and use the fine adjustment 7
+Fine heigh knob to adjust the arm pillar height so that
+; ine height ki the tonearm pipe is parallel with the record.
+Black plastic adjustment knob * This may be cione while a record is being
+spacer played without causing any problents.
+This arm elevation mechanism makes possi-
+ble quick pillar height adjustment when
+several different cartridges are being used on
+the arm.
+[FR-66S] . , ae PHONO CABLE CONNECTION
+td * Height may be adjusted with this mecha-
+First turn the fine height adjustment knob nism by up to 10mm. In this cable, the white lead is the left
+to raise the height as far as it will go. CAUTION: DO NOT TURN to lower the channel, a the right chennal, and black is
+i i i . t ‘mily to the
+Then set the supplied black plastic spacer fine height adjustment without Proper terminals of your amplifier (ot step-
+under the cueing mechanism as. shown in tightening hex screws A & B, as up transf ‘d di he cartridge
+i the screws will hit the top of the p transformer depending on the cartridg
+fia. 19, joer ten thee A ond 8 and base and it may cause the you use). Connect the ground tine to the
+emporarily reti al A rf hi i the unit.
+Where the bottom of the cusing device damage. ground terminal on the chassis of ni
+comes to rast on the top of the black plastic
+spacer. :
+Note: This procedure is needed to establish
+the lowest point reachable by the
+pillar, Otherwise if the arm were
+lowered with the fine adjustment
+knob, the bottom of the cueing
+mechanism would hit the top of the
+base. Any attenipt to force it beyond
+this point would cause damage.
+9
+
+===== page_08.png =====
+a cenepemeemness canine
+i
+x e '
+B
+i |
+2 =)
+a ¥ |
+im ®& ue io} {
+s 'io mi lp ®
+: iM vv an
+& yI = Gn
+4 ! = <4
+a N ON !
+= 4 8
+* Ss CG #
+4 x ay ®
+€ % a \ ®
+Ss x IN i)
+2 = ev
+tt he
+t Wie 3 ms
+Ry lon
+¥ B
+s c
+* °
+Pad
+Sy
+4
+Ps . :
+4 i
+a |
+s
+«
+a
+?
+s s
+S]
+3. 8 m
+3 i cr
+: t
+=
+#3
++e¢é
+e el- +2
+RYAN Bey MY ao
+Nr SN NI =
+crv gy? VENT #2
+Ax4tB NATE ax G)
+4AyN Mw UD IR bas
+wire (tz -
+S#ee 7a oR m
+SRYS wea z
+elo BAS
+thw RV Uv
+a ee ee r
+Sen ¢aw >
+sR’ ATi =
+hey BY m
+vas £14
+Bev ghy
+Hud FAM
+» | # mw! of
+hue tN
+lr Hees ‘
+gt c 4
+mH ARM {| \
+{Mp
+Sob),
+e e ein Pan ——_] .
+Bal oye grl' eee ,
+Bab lvle ile Sie
+NwRr NV evi ac
+ASMWS TW me MV i
+1° ve l1 # 1M
+N NATNS NII
+Tr c mS
+Bo +r >neu sir Ol te
+* et ON MS Ale b \.
+c HR«aa’ #h a N
+A Mee Hl | ?
+A me SE ld x
+oo t bea + ie 2
+Ss AyG’ o |= +
+“ eee BS =
+x Sul Ajo 2 f
+£ VY IV Nii =
+g Baby 1D 8
+© WER be i
+z e®FaN SY
+A EAN ES #
+= SNN# ¢
+
+===== page_09.png =====
+SPINDLE .
+CENTER
+© , |
+| “A strws
+0.282" ; TIP
+0.284" a
+NULL RADIUS 1 NULL RADIUS 2
+2.6" 4.76"
+
+===== page_10.png =====
+‘ EDGE OF
+RECORD TONEARM
+PIVOT
+CENTER
+<
+(2.6") age \ &
+| ° &
+<
+
+MAXIMUM MINIMUM AS .
+
+GROOVE GROOVE _: aoe
+
+RADIUS RADIUS @ OE
+
+(5.75") (2.375") \“spinote | <2
+- CENTER yoX
+
+rane ,
+ge
+OPTIMAL : .
+NULL RADIUS Z
+(4.76") o .
+5 uP
+gris 5
+i Fig. 1 — Relationship of the lateral
+components of a tonearm.
+. . AUDIO ® January 1980
+

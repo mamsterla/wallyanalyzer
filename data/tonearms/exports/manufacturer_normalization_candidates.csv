@@ -1,0 +1,4 @@
+legacy_name,legacy_manufacturer_id,legacy_normalized_name,canonical_name,canonical_manufacturer_id,canonical_normalized_name,resolution_state,reason
+Schroder,,,Schroeder,77,schroeder,merged,Legacy transliteration variant; current exact-model enrichment uses 'Schroeder'.
+Wheaton/Tri-Planar,,,Tri-Planar,64,tri-planar,merged,Legacy predecessor/company label; current exact-model enrichment uses the active 'Tri-Planar' brand.
+J. Sikora,,,J.Sikora,85,j-sikora,merged,Punctuation variant used in editorial and user-provided references; canonical queue seed uses 'J.Sikora'.

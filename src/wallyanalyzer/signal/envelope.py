@@ -40,6 +40,7 @@ def detect_modulated_region(
     envelope: np.ndarray,
     center_samples: np.ndarray,
     threshold_fraction: float = 0.3,
+    end_threshold_fraction: float | None = None,
     channel_index: int = 0,
     consecutive_blocks: int = 9,
 ) -> EnvelopeResult:
@@ -55,9 +56,10 @@ def detect_modulated_region(
     primary = envelope[:, channel_index]
     level = float(np.median(primary))
     threshold = threshold_fraction * level
+    end_threshold = (threshold_fraction if end_threshold_fraction is None else end_threshold_fraction) * level
 
     start_block = _find_consecutive_run(primary, threshold, consecutive_blocks, from_start=True)
-    end_block = _find_consecutive_run(primary, threshold, consecutive_blocks, from_start=False)
+    end_block = _find_consecutive_run(primary, end_threshold, consecutive_blocks, from_start=False)
 
     if start_block is None or end_block is None:
         raise EnvelopeDetectionError("Could not find modulation start/end from envelope")
@@ -77,6 +79,7 @@ def analyze_period_envelope(
     samples: np.ndarray,
     period_samples: int,
     threshold_fraction: float = 0.3,
+    end_threshold_fraction: float | None = None,
     channel_index: int = 0,
     consecutive_blocks: int = 9,
 ) -> EnvelopeResult:
@@ -85,6 +88,7 @@ def analyze_period_envelope(
         envelope,
         center_samples,
         threshold_fraction=threshold_fraction,
+        end_threshold_fraction=end_threshold_fraction,
         channel_index=channel_index,
         consecutive_blocks=consecutive_blocks,
     )

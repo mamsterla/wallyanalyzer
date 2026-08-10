@@ -17,6 +17,14 @@ def apparent_tracking_error_from_lag_deg(
     return np.degrees(np.arcsin(argument))
 
 
+def lag_from_apparent_tracking_error_s(
+    radius_mm: np.ndarray,
+    apparent_tracking_error_deg: np.ndarray,
+    lr_um: float,
+) -> np.ndarray:
+    return 0.9 * lr_um * np.sin(np.radians(apparent_tracking_error_deg)) / (1000.0 * np.pi * radius_mm)
+
+
 def modeled_apparent_tracking_error_deg(
     radius_mm: np.ndarray,
     effective_length_mm: float,
@@ -72,5 +80,77 @@ def fit_stylus_width_and_yaw(
         objective,
         x0=np.array([lr_guess_um, stylus_yaw_guess_deg], dtype=float),
         step=np.array([max(1.0, 0.05 * abs(lr_guess_um)), 0.25], dtype=float),
+        max_iter=max_iter,
+    )
+
+
+def fit_stylus_width_yaw_and_overhang(
+    radius_mm: np.ndarray,
+    lag_s: np.ndarray,
+    effective_length_mm: float,
+    offset_angle_deg: float,
+    overhang_guess_mm: float,
+    mount_yaw_deg: float,
+    stylus_yaw_guess_deg: float,
+    lr_guess_um: float,
+    rotation_sign: float,
+    max_iter: int = 300,
+) -> OptimizeResult:
+    def objective(params: np.ndarray) -> float:
+        lr_um, stylus_yaw_deg, overhang_mm = params
+        if lr_um <= 0.0:
+            return float("inf")
+        measured = apparent_tracking_error_from_lag_deg(radius_mm, lag_s, lr_um)
+        modeled = modeled_apparent_tracking_error_deg(
+            radius_mm=radius_mm,
+            effective_length_mm=effective_length_mm,
+            offset_angle_deg=offset_angle_deg,
+            overhang_mm=overhang_mm,
+            stylus_yaw_deg=stylus_yaw_deg,
+            mount_yaw_deg=mount_yaw_deg,
+            rotation_sign=rotation_sign,
+        )
+        return float(rms(measured - modeled))
+
+    return nelder_mead(
+        objective,
+        x0=np.array([lr_guess_um, stylus_yaw_guess_deg, overhang_guess_mm], dtype=float),
+        step=np.array([max(1.0, 0.05 * abs(lr_guess_um)), 0.25, 0.25], dtype=float),
+        max_iter=max_iter,
+    )
+
+
+def fit_stylus_width_yaw_and_overhang_from_lag(
+    radius_mm: np.ndarray,
+    lag_s: np.ndarray,
+    effective_length_mm: float,
+    offset_angle_deg: float,
+    overhang_guess_mm: float,
+    mount_yaw_deg: float,
+    stylus_yaw_guess_deg: float,
+    lr_guess_um: float,
+    rotation_sign: float,
+    max_iter: int = 300,
+) -> OptimizeResult:
+    def objective(params: np.ndarray) -> float:
+        lr_um, stylus_yaw_deg, overhang_mm = params
+        if lr_um <= 0.0:
+            return float("inf")
+        modeled_ate = modeled_apparent_tracking_error_deg(
+            radius_mm=radius_mm,
+            effective_length_mm=effective_length_mm,
+            offset_angle_deg=offset_angle_deg,
+            overhang_mm=overhang_mm,
+            stylus_yaw_deg=stylus_yaw_deg,
+            mount_yaw_deg=mount_yaw_deg,
+            rotation_sign=rotation_sign,
+        )
+        modeled_lag = lag_from_apparent_tracking_error_s(radius_mm, modeled_ate, lr_um)
+        return float(rms(lag_s - modeled_lag))
+
+    return nelder_mead(
+        objective,
+        x0=np.array([lr_guess_um, stylus_yaw_guess_deg, overhang_guess_mm], dtype=float),
+        step=np.array([max(1.0, 0.05 * abs(lr_guess_um)), 0.25, 0.25], dtype=float),
         max_iter=max_iter,
     )

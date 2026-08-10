@@ -1,0 +1,39 @@
+manufacturer,model_name,source_count,trust_levels,source_types,has_official_source,has_secondary_source,has_dealer_source,has_review_source,has_manual_mirror_source,relies_on_secondary_only,needs_official_followup
+Acoustic Signature,Invictus NEO,1,official,official_website,1,0,0,0,0,0,0
+Acoustic Signature,Maximus NEO,1,official,official_website,1,0,0,0,0,0,0
+Audio Note,TT-Three,1,official,official_website,1,0,0,0,0,0,0
+Basis Audio,Debut V,2,official,official_website,1,0,0,0,0,0,0
+Brinkmann,Bardo,1,official,official_website,1,0,0,0,0,0,0
+Clearaudio,Innovation,1,official,official_website,1,0,0,0,0,0,0
+Clearaudio,Ovation,1,official,official_website,1,0,0,0,0,0,0
+Denon,DP-3000NE,1,official,official_website,1,0,0,0,0,0,0
+Dr. Feickert,Blackbird,1,official,official_website,1,0,0,0,0,0,0
+Dual,CS 618Q,1,official,official_website,1,0,0,0,0,0,0
+Garrard,301,2,official,official_website,1,0,0,0,0,0,0
+Gold Note,Mediterraneo,1,official,official_website,1,0,0,0,0,0,0
+Goldmund,Reference,1,official,official_website,1,0,0,0,0,0,0
+Kuzma,Stabi R,2,official,official_website,1,0,0,0,0,0,0
+Linn,Selekt LP12,1,official,official_website,1,0,0,0,0,0,0
+Linn,Sondek LP12 Klimax,1,official,official_website,1,0,0,0,0,0,0
+Michell,GyroDec,1,official,official_website,1,0,0,0,0,0,0
+Micro Seiki,SX-8000 II,1,official,official_manual,1,0,0,0,0,0,0
+Nottingham Analogue,Space Deck,1,official,official_manual,1,0,0,0,0,0,0
+Oracle,Delphi MKVI,1,official,official_website,1,0,0,0,0,0,0
+Pear Audio,Kid Thomas,1,official,official_website,1,0,0,0,0,0,0
+Pioneer,PLX-1000,1,official,official_website,1,0,0,0,0,0,0
+Pro-Ject,Debut PRO S Balanced,1,official,official_website,1,0,0,0,0,0,0
+Pro-Ject,Xtension 12 Evolution,1,official,official_website,1,0,0,0,0,0,0
+Rega,Planar 10,1,official,official_website,1,0,0,0,0,0,0
+Rega,Planar 8,1,official,official_website,1,0,0,0,0,0,0
+SME,Model 15,1,official,official_website,1,0,0,0,0,0,0
+SME,Model 20/3,1,official,official_website,1,0,0,0,0,0,0
+Sony,PS-LX310BT,1,official,official_website,1,0,0,0,0,0,0
+TW-Acustic,Raven LS,1,official,official_website,1,0,0,0,0,0,0
+Technics,SL-1200G,1,official,official_website,1,0,0,0,0,0,0
+Technics,SP-10R,1,official,official_website,1,0,0,0,0,0,0
+Thorens,TD 124 DD,1,official,official_website,1,0,0,0,0,0,0
+Thorens,TD 1600,1,official,official_website,1,0,0,0,0,0,0
+VPI,Avenger,1,official,official_website,1,0,0,0,0,0,0
+VPI,Prime 21,1,official,official_website,1,0,0,0,0,0,0
+Well Tempered Lab,Amadeus,1,official,official_website,1,0,0,0,0,0,0
+Yamaha,GT-5000,1,official,official_website,1,0,0,0,0,0,0

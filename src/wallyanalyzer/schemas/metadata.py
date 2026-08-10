@@ -64,6 +64,7 @@ class MeasureSineConfig:
     rotation_period_s: float = 1.8
     cut_velocity_m_per_s: float = 0.06
     envelope_threshold_fraction: float = 0.3
+    envelope_end_threshold_fraction: float = 0.5
     noise_reject_rms_multiplier: float = 2.0
     lag_outlier_abs_s: float = 1.5e-5
     highpass_window_base: int = 500

@@ -1,0 +1,23 @@
+stereophile_grade,stereophile_manufacturer,stereophile_model,mapped_manufacturer,mapped_model,manufacturer_in_db,model_in_db,target_in_queue,status
+A+,Acoustic Signature,TA-7000 NEO 9-inch,Acoustic Signature,TA-7000 NEO 9-inch,0,0,1,queued-followup
+A+,Acoustic Signature,TA-7000 NEO 12-inch,Acoustic Signature,TA-7000 NEO 12-inch,0,0,1,queued-followup
+A+,Kuzma,Safir 9,Kuzma,Safir 9,1,0,1,queued-followup
+A,Acoustic Signature,TA-5000 NEO,Acoustic Signature,TA-5000 NEO,0,0,1,queued-followup
+A,Acoustical Systems,AXIOM Reference 10-inch,Acoustical Systems,AXIOM Reference 10-inch,0,0,1,queued-followup
+A,Acoustical Systems,AXIOM Reference 12-inch,Acoustical Systems,AXIOM Reference 12-inch,0,0,1,queued-followup
+A,AMG,9W2,AMG,9W2,1,1,1,covered-in-db
+A,EMT,909-HI,EMT,909-HI,1,0,1,queued-followup
+A,EMT,912,EMT,912,1,0,1,queued-followup
+A,J.Sikora,KV12 VTA,J.Sikora,KV12 VTA,0,0,1,queued-followup
+A,Korf Audio,TA-SF9,Korf,TA-SF9,1,1,1,covered-in-db
+A,Korf Audio,TA-SF9R,Korf,TA-SF9R,1,0,1,queued-followup
+A,Linn,Ekos SE,Linn,Ekos SE,1,0,1,queued-followup
+A,Schick,10.5-inch Tonearm,Schick,Schick 10.5-inch Tonearm,0,0,1,queued-followup
+A,Schick,12-inch Tonearm,Schick,Schick 12-inch Tonearm,0,0,1,queued-followup
+A,Sorane,SA-1.2,Sorane,SA-1.2,1,1,1,covered-in-db
+A,TW-Acustic,12-inch Raven,TW-Acustic,Raven 12-inch,1,0,1,queued-followup
+A,ViV Laboratory,Rigid Float HA9,ViV Laboratory,Rigid Float HA9,0,0,1,queued-followup
+A,VPI,12-inch FatBoy gimbaled tonearm,VPI,12-inch FatBoy gimbaled,1,0,1,queued-followup
+A,Wand,Master Lite 12-inch,Wand,Master Lite 12-inch,0,0,1,queued-followup
+B,Clearaudio,Tracer Black Carbon Fiber,Clearaudio,Tracer Black Carbon Fiber,1,0,1,queued-followup
+B,Rega,RB330,Rega,RB330,1,1,1,covered-in-db

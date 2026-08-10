@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "wallyanalyzer"
+version = "0.1.0"
+description = "Python port of Matlab Wally analyzer algorithms"
+requires-python = ">=3.11"
+dependencies = [
+  "numpy>=1.26",
+]
+
+[project.scripts]
+wally-measure = "wallyanalyzer.tools.run_measurement_validation:main"
+wally-compile = "wallyanalyzer.tools.run_compile_validation:main"
+wally-render-png = "wallyanalyzer.tools.render_svg_pngs:main"
+wally-build-tonearms = "wallyanalyzer.tools.build_tonearm_database:main"
+wally-enrich-tonearms = "wallyanalyzer.tools.enrich_tonearm_database:main"
+wally-sync-tonearm-research = "wallyanalyzer.tools.sync_tonearm_research_queue:main"
+wally-normalize-tonearm-manufacturers = "wallyanalyzer.tools.normalize_tonearm_manufacturers:main"
+wally-import-tonearm-workbook-gaps = "wallyanalyzer.tools.import_tonearm_workbook_gaps:main"
+wally-build-turntables = "wallyanalyzer.tools.build_turntable_database:main"
+wally-enrich-turntables = "wallyanalyzer.tools.enrich_turntable_database:main"
+wally-sync-turntable-research = "wallyanalyzer.tools.sync_turntable_research_queue:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

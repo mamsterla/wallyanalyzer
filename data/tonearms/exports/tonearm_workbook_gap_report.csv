@@ -1,0 +1,223 @@
+source_manufacturer,canonical_manufacturer,model_name,effective_length_raw,effective_length_source,mounting_distance_raw,mounting_distance_source,workbook_notes,action,reason
+Acoustic Signature,Acoustic Signature,"12"" arms",308.8,website,295.6,manufacturer spec doc.,multiple arms same dimensions,skipped,already_in_research_targets
+Acoustic Signature,Acoustic Signature,"9"" arms",239.3,website,222,manufacturer spec doc.,multiple arms same dimensions,skipped,already_in_research_targets
+Acoustical Systems,Acoustical Systems,"Axiom 12""",300,,,,,skipped,already_in_research_targets
+Acoustical Systems,Acoustical Systems,Titan Grand Complication,,,,,,skipped,already_in_research_targets
+Acoustical Systems,Acoustical Systems,Aquilar 10,,,,,,skipped,already_in_research_targets
+AMG,AMG,12J2 & 12JT,305,manual,291.4,manual,"agreed, but their eff len is Leofgren",skipped,already_in_research_targets
+AMG,AMG,9W2 & 9WT,229,website,211,website,agreed,skipped,already_in_research_targets
+Audio Origami,Audio Origami,PU7,229,Audio Origami Customer,210.427,Audio Origami Customer,Agreed,skipped,already_in_tonearm_models
+B&O,B&O,"ST/p 12""",322,calculated,310,B&O website,,skipped,already_in_research_targets
+Basis,Basis Audio,Vector 4,239.3,email from Alex at Basis,221.7,calculated,Joe Fagan measured PS at 223mm on his Basis table/tonearm,skipped,already_in_tonearm_models
+Breuer Dynamic,Breuer,7,248,MY CALCULATION,231.36,MY CALCULATION,My calcs,skipped,already_in_research_targets
+Breuer Dynamic,Breuer,"5A, B & C",222,Breuer brochure,208,Breuer brochure,Disagree!!!,skipped,already_in_research_targets
+Breuer Dynamic,Breuer,6A,262,Breuer brochure,244.8,Breuer brochure,Disagree!!!,skipped,already_in_research_targets
+Brinkmann,Brinkmann,10,258,Brinkmann website,243,Brinkmann website,DO NOT AGREE,skipped,already_in_research_targets
+Brinkmann,Brinkmann,10.5,259.8,Brinkmann website,244,Brinkmann website,DO NOT AGREE,skipped,already_in_tonearm_models
+Brinkmann,Brinkmann,12,NEED!,Brinkmann website,291,Brinkmann website,DO NOT AGREE,skipped,already_in_research_targets
+Brinkmann,Brinkmann,12.1,305,Brinkmann website,292,Brinkmann website,Do not agree. He is probably trying to get to Loefgren and errs due to rounding error by ~0.2mm,skipped,already_in_research_targets
+Clearaudio,Clearaudio,Clarify,239.3,Clearaudio website,222,Clearaudio website,"Agreed, but their claimed offset angle of 25.54 is way off from 22.99",skipped,already_in_tonearm_models
+Clearaudio,Clearaudio,Concept,239.3,Musical Surroundings website,222,Musical Surroundings website,,skipped,already_in_tonearm_models
+Clearaudio,Clearaudio,Magnify,239.3,Clearaudio website,222,Clearaudio website,"Agreed, but their claimed offset angle of 25.54 is way off from 22.99",skipped,already_in_tonearm_models
+Clearaudio,Clearaudio,Satisfy Kardan,239.3,Clearaudio website,222,Clearaudio website,"Agreed, but their claimed offset angle of 25.54 is way off from 22.99",skipped,already_in_tonearm_models
+Clearaudio,Clearaudio,Tracer,unavailable,,unavailable,,,skipped,already_in_tonearm_models
+Clearaudio,Clearaudio,"Unify 10""",265.5,Clearaudio website,249.97,Clearaudio website,agreed,skipped,already_in_tonearm_models
+Clearaudio,Clearaudio,"Unify 12""",317,Clearaudio website,304,Clearaudio website,agreed,skipped,already_in_tonearm_models
+Clearaudio,Clearaudio,"Unify 14""",NEED!,Clearaudio website,327,Clearaudio website,close enough NEED ARC ON WT,skipped,already_in_tonearm_models
+Clearaudio,Clearaudio,"Unify 9""",239.3,Clearaudio website,222,Clearaudio website,"Agreed, but their claimed offset angle of 25.54 is way off from 22.99",skipped,already_in_tonearm_models
+Clearaudio,Clearaudio,"Universal 12""",308.8,Clearaudio website,295,Clearaudio website,close enough,skipped,already_in_tonearm_models
+Clearaudio,Clearaudio,"Universal 9""",239.3,Clearaudio website,222,Clearaudio website,"Agreed, but their claimed offset angle of 25.54 is way off from 22.99",skipped,already_in_tonearm_models
+Clearaudio,Clearaudio,Verify,239.3,Clearaudio website,222,Clearaudio website,"Agreed, but their claimed offset angle of 25.54 is way off from 22.99",skipped,already_in_tonearm_models
+DaVinci,DaVinci,Virtu,308.8,DaVinci Website,295.6,DaVinci Website,agreed,skipped,already_in_research_targets
+Dual,Dual,721,222,Dual manual,,calculated,,skipped,filtered_non_tonearm_row
+Durand,Durand,Kairos,263,Durand website,247.37,Durand website,agreed,skipped,already_in_research_targets
+Durand,Durand,Talea,263,Durand website,247.37,Durand website,agreed,skipped,already_in_tonearm_models
+Durand,Durand,Telos,305,Durand website,291.63,Durand website,agreed,skipped,already_in_research_targets
+Durand,Durand,Tosca,263,Durand website,247.37,Durand website,agreed,skipped,already_in_tonearm_models
+Dynavector,Dynavector,DV-507Mkii,240,Dynavector Website,226,Dynavector Website,I will not support JIS standards. P2S should be 223.8mm,skipped,already_in_research_targets
+Dynavector,Dynavector,DV-505,240,Dynavector Website,226,Dynavector Website,I will not support JIS standards. P2S should be 223.8mm,skipped,already_in_research_targets
+Dynavector,Dynavector,DV-505,240,Dynavector Website,226,Dynavector Website,I will not support JIS standards. P2S should be 223.8mm,skipped,duplicate_in_workbook
+Funk Firm,Funk Firm,F5 II,239.3,Funk Firm website,222,Funk Firm website,Agreed,skipped,already_in_research_targets
+Funk Firm,Funk Firm,"F5 12""",,,,Funk Firm website,,skipped,already_in_research_targets
+Funk Firm,Funk Firm,FXR-2,,,,,,skipped,already_in_research_targets
+Funk Firm,Funk Firm,FX3,239.3,Funk Firm website,222.9,Funk Firm website,Do NOT agree,skipped,already_in_research_targets
+Funk Firm,Funk Firm,FX3D,239.3,Funk Firm website,222.9,Funk Firm website,Do NOT agree,skipped,already_in_research_targets
+Funk Firm,Funk Firm,F7,,,,,,skipped,already_in_research_targets
+Funk Firm,Funk Firm,FX1200,,,,,,skipped,already_in_research_targets
+Glanz,Glanz,MH-9B,229,Glanz website,214,Glanz website,"I do NOT agree with Glanz numbers. They are using 15mm overhang for both 9"" and 10"" arms",skipped,already_in_tonearm_models
+Glanz,Glanz,MH-10B,254,Glanz website,239,Glanz website,"I do NOT agree with Glanz numbers. They are using 15mm overhang for both 9"" and 10"" arms",skipped,already_in_tonearm_models
+Graham,Graham,1.5,235,Wally,,,,skipped,already_in_research_targets
+Graham,Graham,"10"" arm wand",247,various web postings,,,saw this at Ron Resnick's place in his Graham manual,skipped,filtered_non_tonearm_row
+Graham,Graham,2.x,235,Sterophile review,217.35,calculated,,skipped,already_in_research_targets
+Graham,Graham,"Phantom 12""",308.8,,296.x,,Saw diagram from Graham at Jacob Hielbrunn's,skipped,already_in_research_targets
+Groovemaster,Groovemaster,"9""",245,Groovemaster website,229,Groovemaster website,Need arc! Agreed - but better to make a 247mm as I've seen a number of arms needing this,skipped,already_in_research_targets
+Groovemaster,Groovemaster,"10""",NEED!,Groovemaster website,254,Groovemaster website,Need arc! Agreed,skipped,already_in_research_targets
+Groovemaster,Groovemaster,"12""",317,Groovemaster website,304.8,Groovemaster website,agreed,skipped,already_in_research_targets
+Helius,Helius,"Omega 10""",254,Omega (according to Damon Best),236,Omega (according to Damon Best),Non-standard! Assumes innermost groove at 65.5,skipped,already_in_research_targets
+Ikeda,Ikeda,IT-407ss,308.8,Ikeda website,295,Woodsong audio website,Do NOT agree. Uses Japanese geometry,skipped,already_in_research_targets
+Ikeda,Ikeda,IT-407 CR-1,308.8,Ikeda website,295,Woodsong audio website,Do NOT agree. Uses Japanese geometry,skipped,already_in_research_targets
+Ikeda,Ikeda,IT-345 CR-1,247,Ikeda website,230,Woodsong audio website,Do NOT agree. Uses Japanese geometry. 248mm eff len arc would work too,skipped,already_in_research_targets
+Immedia,Immedia,RPM-2,254,Immedia manual,237,Immedia manual,This geometry assumes innermost groove at 62.5mm,skipped,already_in_tonearm_models
+Jakuts,Jakuts,9.5,240,jakuts website,223,jakuts website,,skipped,already_in_research_targets
+Jakuts,Jakuts,10.5,267,jakuts website,251.6,jakuts website,,skipped,already_in_research_targets
+Jakuts,Jakuts,12,308.8,jakuts website,295.6,jakuts website,,skipped,already_in_research_targets
+Jelco,Jelco,SA 200,239.3,Jelco manual,222,Jelco manual,Jelco seems to assume Innermost at 54mm!,skipped,already_in_tonearm_models
+Jelco,Jelco,SA 250,229,VinylEngine.com,214,VinylEngine.com,Jelco seems to assume Innermost at 52mm!,skipped,already_in_tonearm_models
+Jelco,Jelco,SA 250BV,267,VinylEngine.com,251,VinylEngine.com,Jelco seems to assume Innermost at 59mm!,skipped,already_in_tonearm_models
+Jelco,Jelco,SA 250ST,229,VinylEngine.com,210,VinylEngine.com,This geometry is close enough. I calculate P-S at 209.77mm,skipped,already_in_tonearm_models
+Jelco,Jelco,SA 50,239.3,VinylEngine.com,222,VinylEngine.com,Jelco seems to assume Innermost at 54mm!,skipped,already_in_tonearm_models
+Jelco,Jelco,SA 50ST,229,VinylEngine.com,210,VinylEngine.com,This geometry is close enough. I calculate P-S at 209.77mm,skipped,already_in_tonearm_models
+Jelco,Jelco,SA 750D,229,Jelco manual,214,Jelco manual,Jelco seems to assume Innermost at 52mm!,skipped,already_in_tonearm_models
+Jelco,Jelco,SA 750DB,229,Jelco manual,214,Jelco manual,Jelco seems to assume Innermost at 52mm!,skipped,already_in_tonearm_models
+Jelco,Jelco,SA 750E,258,Jelco manual,240,Jelco manual,Jelco seems to assume Innermost at 57mm!,skipped,already_in_tonearm_models
+Jelco,Jelco,SA 750L,305,Jelco manual,290,Jelco manual,Jelco seems to assume Innermost at 66mm!,skipped,already_in_tonearm_models
+Jelco,Jelco,TK 850L,305,Multiple online resources,290,Multiple online resources,Not far off (0.47mm). Almost agreed.,skipped,already_in_tonearm_models
+Jelco,Jelco,TK 850S,232,Multiple online resources,214,Multiple online resources,Not far off (0.12mm). Agreed.,skipped,already_in_tonearm_models
+Jelco,Jelco,TK 950L,305,Multiple online resources,290,Multiple online resources,Not far off (0.47mm). Almost agreed.,skipped,already_in_tonearm_models
+Jelco,Jelco,TK 950S,232,Multiple online resources,214,Multiple online resources,Not far off (0.12mm). Agreed.,skipped,already_in_tonearm_models
+Korf Audio,Korf,TA-SF9 & TA-SF9R,231,Korf website,214,Korf website,He uses Stevenson,skipped,already_in_research_targets
+Korf Audio,Korf,TA-SF11R,280,Korf website,265,Korf website,He uses Stevenson,skipped,already_in_tonearm_models
+Korf Audio,Korf,TA-AF9,231,Korf website,214,Korf website,He uses Stevenson,skipped,already_in_research_targets
+Korf Audio,Korf,TA-AF10,247,Korf website,230,Korf website,He uses Stevenson,skipped,already_in_research_targets
+Kronos,Kronos,Kronoscope RS,305,website,292,website,Do not agree. I think he has rounding errors and trying to use Loefgren,skipped,already_in_research_targets
+Kronos,Kronos,Discovery RS,305,website,292,website,Do not agree. I think he has rounding errors and trying to use Loefgren,skipped,already_in_research_targets
+Kronos,Kronos,Black Beauty,308.8,website,294.8,website,Need arc! Agreed,skipped,already_in_research_targets
+Kronos,Kronos,Helena,267,website,251.3,website,agreed,skipped,already_in_research_targets
+Kuzma,Kuzma,4 Point,280,Kuzma website,264,Kuzma website,I calculate a 265.37mm PS dimension (Baerwald). Assuming 264mm P>S the EffLen is 278.7,skipped,already_in_research_targets
+Kuzma,Kuzma,4 Point 14,353,Kuzma website,341.51,Kuzma website,,skipped,already_in_research_targets
+Kuzma,Kuzma,4 Point 9,229,Kuzma website,212,Kuzma website,I calculate a 210.86mm PS dimension,skipped,already_in_research_targets
+Kuzma,Kuzma,Stogi & Stogi Ref,229,Kuzma website,212,Kuzma website,I calculate a 210.86mm PS dimension (Baerwald),skipped,already_in_research_targets
+Kuzma,Kuzma,Stogi Ref 313 & 313 VTA,313,Kuzma website,300,Kuzma website,,skipped,already_in_research_targets
+Kuzma,Kuzma,Stogi S,229,Kuzma website,212,Kuzma website,I calculate a 210.86mm PS dimension,skipped,already_in_research_targets
+Kuzma,Kuzma,Stogi S12 & S12 VTA,305,Kuzma website,291,Kuzma website,Loefgren PS dimension,skipped,already_in_research_targets
+Linn,Linn,Akito,229,https://docs.linn.co.uk/wiki/images/3/3b/Akito_info.pdf,211,https://docs.linn.co.uk/wiki/images/3/3b/Akito_info.pdf,210.86mm PS calculated,skipped,already_in_research_targets
+Linn,Linn,Basik,230,https://docs.linn.co.uk/wiki/images/7/72/Basik_arm_info.PDF,212,https://docs.linn.co.uk/wiki/images/7/72/Basik_arm_info.PDF,,skipped,already_in_research_targets
+Linn,Linn,Ekos,229,manual on vinylengine,210.86,calculated,,skipped,already_in_research_targets
+Linn,Linn,Ittok LVII,229,https://docs.linn.co.uk/wiki/images/3/36/Ittok_info.pdf,210.86,calculated,,skipped,already_in_research_targets
+Luxman/SAEC,Saec,PD-191A turntable,NEED!,Luxman website,240,Luxman website,agreed,skipped,filtered_non_tonearm_row
+Micro Seiki,Micro Seiki,MA202,239.3,VinylEngine.com,222,VinylEngine.com,WRONG calcs by Micro Seiki,skipped,already_in_research_targets
+Micro Seiki,Micro Seiki,MA505,239.3,VinylEngine.com,222,VinylEngine.com,WRONG calcs by Micro Seiki,skipped,already_in_research_targets
+Mitchell,Michell,T2,239.3,calculated,222,Michell website,Michell says 237mm eff len! DISAGREE! HAVE USER MEASURE P-S,skipped,already_in_research_targets
+Mitchell,Michell,T3,239.3,calculated,222,Michell website,Michell says 237mm eff len! DISAGREE! HAVE USER MEASURE P-S,skipped,already_in_research_targets
+Mitchell,Michell,Technoarm 2,239.3,calculated,222,Michell website,Michell says 237mm eff len! DISAGREE! HAVE USER MEASURE P-S,skipped,already_in_research_targets
+Mørch,Moerch,DP-6/DP-8/UP-4,230,Moerch website,212,Moerch website,agreed,skipped,already_in_research_targets
+Mørch,Moerch,"DP-6/DP-8/UP-4 12""",307.4,Moerch website,294.1,Moerch website,agreed,skipped,already_in_research_targets
+Music Hall,Music Hall,2.5,218.5,website,199.41,calculated,,skipped,filtered_non_tonearm_row
+Music Hall,Music Hall,3.3,218.5,manual,199.41,calculated,,skipped,filtered_non_tonearm_row
+Music Hall,Music Hall,5.3,230,website,211.95,calculated,,skipped,filtered_non_tonearm_row
+Music Hall,Music Hall,7.3,230,website,211.95,calculated,,skipped,filtered_non_tonearm_row
+Naim,Naim,Aro,230,Previously owned,211.95,calculated,,skipped,already_in_tonearm_models
+Nottingham,Nottingham Analogue,"Ace Anna 10""",239.3,calculated,222,Nottingham website,Have user check P>S distance. Nottingham figures not agreeing with mine.,skipped,already_in_research_targets
+Nottingham,Nottingham Analogue,"Ace Anna 12""",308.8,calculated,294,Nottingham website,Have user check P>S distance. Nottingham figures not agreeing with mine.,skipped,already_in_research_targets
+Nottingham,Nottingham Analogue,"Ace Space 10""",239.3,calculated,222,Nottingham website,Have user check P>S distance. Nottingham figures not agreeing with mine.,skipped,already_in_research_targets
+Nottingham,Nottingham Analogue,"Ace Space 12""",308.8,calculated,294,Nottingham website,Have user check P>S distance. Nottingham figures not agreeing with mine.,skipped,already_in_research_targets
+Nottingham,Nottingham Analogue,Innerspace,239.3,calculated,222,Nottingham website,Have user check P>S distance. Nottingham figures not agreeing with mine.,skipped,already_in_research_targets
+Origin Live,Origin Live,Alliance,237,Origin Live website,219.76,Origin Live website,agreed,skipped,already_in_tonearm_models
+Origin Live,Origin Live,Onyx,237,Origin Live website,219.76,Origin Live website,agreed,skipped,already_in_tonearm_models
+Origin Live,Origin Live,Silver,237,Origin Live website,219.76,Origin Live website,agreed,skipped,already_in_tonearm_models
+Origin Live,Origin Live,Zephyr,237,Origin Live website,219.76,Origin Live website,agreed,skipped,already_in_tonearm_models
+Origin Live,Origin Live,Encounter,237,Origin Live website,219.76,Origin Live website,agreed,skipped,already_in_tonearm_models
+Origin Live,Origin Live,Illustrious,237,Origin Live website,219.76,Origin Live website,agreed,skipped,already_in_tonearm_models
+Origin Live,Origin Live,Conquerer,237,Origin Live website,219.76,Origin Live website,agreed,skipped,already_in_tonearm_models
+Origin Live,Origin Live,Enterprise,237,Origin Live website,219.76,Origin Live website,agreed,skipped,already_in_tonearm_models
+Origin Live,Origin Live,Agile,237,Origin Live website,219.76,Origin Live website,agreed,skipped,already_in_tonearm_models
+Origin Live,Origin Live,Renown,237,Origin Live website,219.76,Origin Live website,agreed,skipped,already_in_tonearm_models
+Origin Live,Origin Live,"9""",229,Origin Live website,,,,skipped,already_in_tonearm_models
+Origin Live,Origin Live,"9.5""",239.3,Origin Live website,,,,skipped,already_in_tonearm_models
+Origin Live,Origin Live,"10""",254,Origin Live website,,,,skipped,already_in_tonearm_models
+Origin Live,Origin Live,"12""",308.8,Origin Live website,,,,skipped,already_in_tonearm_models
+Ortofon,Ortofon,"RS-309D 12""",NEED!,Ortofon website,314,Ortofon website,"Need arc! Eff. Len. Should be 326.5mm. See explanation in document ""Ortofon Japanese alignment"" in files.",skipped,already_in_research_targets
+Ortofon,Ortofon,AS-212S,235,Ortofon website,,Ortofon website,Ortofon uses Japanese alignment with only ONE null point! Use 235mm,skipped,already_in_research_targets
+Ortofon,Ortofon,"AS-212R 9""",232,Ortofon website,214,Ortofon website,agreed,skipped,already_in_research_targets
+Ortofon,Ortofon,"AS-309R 12""",NEED!,Ortofon website,311,Ortofon website,agreed,skipped,already_in_research_targets
+Ortofon,Ortofon,AS-309S,NEED!,Ortofon website,314,Ortofon website,"Need arc! Eff. Len. Should be 326.5mm. See explanation in document ""Ortofon Japanese alignment"" in files.",skipped,already_in_research_targets
+Ortofon,Ortofon,RS-212D,235,Ortofon website,,Ortofon website,Ortofon uses Japanese alignment with only ONE null point! Use 235mm,skipped,already_in_tonearm_models
+Pear Audio,Pear Audio,Blue Cornet,239.3,Pear Audio website,222,Pear Audio website,Pretty close,skipped,already_in_research_targets
+Pete Riggle,Pete Riggle,Woody Universal,229,vtaf.com website,,,,skipped,already_in_research_targets
+Pete Riggle,Pete Riggle,Woody Universal,240,vtaf.com website,,,,skipped,duplicate_in_workbook
+Pete Riggle,Pete Riggle,Woody Universal,254,vtaf.com website,,,,skipped,duplicate_in_workbook
+Pete Riggle,Pete Riggle,Woody Universal,308.8,vtaf.com website,,,,skipped,duplicate_in_workbook
+Pete Riggle,Pete Riggle,Woody Universal,356,vtaf.com website,,,,skipped,duplicate_in_workbook
+Pete Riggle,Pete Riggle,Woody SPU,325,vtaf.com website,,,,skipped,already_in_research_targets
+Primary Control,Primary Control,FCL,301.1,Kenneth Ng - Singapore client,287.55,,,skipped,already_in_research_targets
+Primary Control,Primary Control,Gravity,315,client report from manual,300,client report from manual,,skipped,already_in_research_targets
+Primary Control,Primary Control,Reference,,,,,,skipped,already_in_research_targets
+Primary Control,Primary Control,Arrow,,,,,,skipped,already_in_research_targets
+Project,Pro-Ject,Carbon Debut,218.5,Project website,,,,skipped,filtered_non_tonearm_row
+Project,Pro-Ject,RPM Carbon 10,254,Project website,,,,skipped,filtered_non_tonearm_row
+Project,Pro-Ject,Signature 10,254,Project website,,,,skipped,filtered_non_tonearm_row
+Project,Pro-Ject,Xtension 10 Evolution,254,Project website,,,,skipped,filtered_non_tonearm_row
+Project,Pro-Ject,Xtension 9 Evolution,230,Project website,,,,skipped,filtered_non_tonearm_row
+Project,Pro-Ject,Xtension 12 Evolution,305,Project website,,,,skipped,filtered_non_tonearm_row
+Reed,Reed,"1X 10.5""",267,Reed website,251.6,Reed website,,skipped,already_in_research_targets
+Reed,Reed,"1X 12""",308.8,Reed website,295.6,Reed website,Use 308.8 trace,skipped,already_in_research_targets
+Reed,Reed,"2G 10.5""",267,Reed website,251.6,Reed website,,skipped,already_in_research_targets
+Reed,Reed,"2G 12""",308.8,Reed website,295.6,Reed website,Use 308.8 trace,skipped,already_in_research_targets
+Reed,Reed,"2G 9""",240,Reed website,223,Reed website,,skipped,already_in_research_targets
+Reed,Reed,"3P 10.5""",267,Reed website,251.6,Reed website,,skipped,already_in_research_targets
+Reed,Reed,"3P 12""",308.8,Reed website,295.6,Reed website,Use 308.8 trace,skipped,already_in_research_targets
+Reed,Reed,"3P 9""",240,Reed website,223,Reed website,,skipped,already_in_research_targets
+Rega,Rega,RB3000,239.3,Fremer over phone 9/14/21,222,Fremer over phone 9/14/21,Rega trying to use Stevenson???,skipped,already_in_tonearm_models
+Rega,Rega,RB2000,239.3,calculated,222,rega website,,skipped,already_in_tonearm_models
+Rega,Rega,RB220,239.3,calculated,222,rega website,,skipped,already_in_tonearm_models
+Rega,Rega,RB330,239.3,calculated,222,rega website,,skipped,already_in_tonearm_models
+Rega,Rega,RB880,239.3,calculated,222,rega website,,skipped,already_in_tonearm_models
+Rega,Rega,RB700,239.3,calculated,222,VinylEngine.com,,skipped,already_in_tonearm_models
+SAT,SAT,CF1 09,SAT 235,SAT website,212.2,SAT website,SAT USES ALTERNATIVE INNERMOST AND OUTERMOST GROOVES. P>S FIGURES ARE REFLECTIVE OF THOSE. Consider including SAT arc AND standard B & L arcs,skipped,already_in_research_targets
+SAT,SAT,CF1 12,SAT 297.6,SAT website,280,SAT website,SAT USES ALTERNATIVE INNERMOST AND OUTERMOST GROOVES. P>S FIGURES ARE REFLECTIVE OF THOSE. Consider including SAT arc AND standard B & L arcs,skipped,already_in_research_targets
+SAT,SAT,LM 09,SAT 235,SAT website,212.2,SAT website,SAT USES ALTERNATIVE INNERMOST AND OUTERMOST GROOVES. P>S FIGURES ARE REFLECTIVE OF THOSE. Consider including SAT arc AND standard B & L arcs,skipped,already_in_tonearm_models
+SAT,SAT,LM 12,SAT 297.6,SAT website,280,SAT website,SAT USES ALTERNATIVE INNERMOST AND OUTERMOST GROOVES. P>S FIGURES ARE REFLECTIVE OF THOSE. Consider including SAT arc AND standard B & L arcs,skipped,already_in_tonearm_models
+Schick,Schick,"12""",317,Schick Website,304.75,Schick Website,close enough,skipped,already_in_research_targets
+Schick,Schick,"10.5""",284.4,calculated,270,Schick Website,,skipped,already_in_research_targets
+Schick,Schick,"9""",245,Schick Website,229,Schick Website,Need arc! Agreed - but better to make a 247mm as I've seen a number of arms needing this,skipped,already_in_research_targets
+Schroeder,Schroeder,CB,239.3,Schroeder website,222,Schroeder website,,skipped,already_in_research_targets
+Schroeder,Schroeder,CB-L,282,Schroeder website,267.5,Schroeder website,,skipped,already_in_research_targets
+Schroeder,Schroeder,Model B,282,Schroeder website,267.5,Schroeder website,,skipped,already_in_research_targets
+Schroeder,Schroeder,No. 2,239.3,Schroeder website,222,Schroeder website,,skipped,already_in_research_targets
+Schroeder,Schroeder,Reference,305,Email from Frank Schroeder,,,Contact Frank Schroeder,skipped,already_in_tonearm_models
+SME,SME,3009-R,233.15,http://www.vinyl-lebt.de/SME/Technical/SME_3009Rrueck.jpg,215.4,http://www.vinyl-lebt.de/SME/Technical/SME_3009Rrueck.jpg,,skipped,already_in_research_targets
+SME,SME,3010-R,239.3,http://www.vinyl-lebt.de/SME/Technical/SME_3009Rrueck.jpg,222.06,calculated,,skipped,already_in_research_targets
+SME,SME,3012-R,308.8,http://www.vinyl-lebt.de/SME/Technical/SME_3009Rrueck.jpg,295.6,http://www.vinyl-lebt.de/SME/Technical/SME_3009Rrueck.jpg,,skipped,already_in_research_targets
+SME,SME,Model 309,233.15,calculated,215.35,SME website,,skipped,already_in_research_targets
+SME,SME,Model 310,239.3,SME website,222,SME website,Check these dims on calculation sheet. Could be Loefgren? They don't agree with Rega dims of same PS Len,skipped,already_in_research_targets
+SME,SME,Model 312 S,308.8,SME website,295.6,SME website,,skipped,already_in_research_targets
+SME,SME,Series 3,233.15,http://www.vinyl-lebt.de/SME/Technical/SME_3009Rrueck.jpg,215.4,http://www.vinyl-lebt.de/SME/Technical/SME_3009Rrueck.jpg,,skipped,already_in_research_targets
+SME,SME,Series IV,233.15,SME website,215.35,SME website,,skipped,already_in_research_targets
+SME,SME,Series M2-10,239.3,SME website,222,SME website,,skipped,already_in_research_targets
+SME,SME,Series M2-12 & M2-12R,308.8,SME website,295.6,SME website,,skipped,already_in_research_targets
+SME,SME,Series M2-9 & M2-9R,233.15,SME website,215.4,SME website,,skipped,already_in_research_targets
+SME,SME,Series V,233.15,SME website,215.35,SME website,,skipped,already_in_tonearm_models
+SME,SME,Series V-12,308.8,SME website,295.6,SME website,,skipped,already_in_research_targets
+SME,SME,Series V-12,308.8,SME website,295.6,SME website,,skipped,duplicate_in_workbook
+Sorane,Sorane,ZA12,322,Sorane website,310,Sorane website,Need arc! 1mm off NEED THIS ONE for Sandeep!!!!,skipped,already_in_research_targets
+Sorane,Sorane,SA1-2,240,Sorane website,223,Sorane website,SHOULD be at 240-241mm eff len arc,skipped,already_in_research_targets
+Sorane,Sorane,TA1L,322,Sorane website,310,Sorane website,Need arc! 1mm off NEED THIS ONE for Sandeep!!!!,skipped,already_in_research_targets
+Spiral Groove,Spiral Groove,Centroid,254,calculated,236,Larry Deniston measurement,,skipped,already_in_research_targets
+Technics,Technics,SL-1000R,254,Technics website,237.78,calculated,BEWARE: Technics geometry is suspicious. Have user measure P>S distance. Technics website says PS distance is 239. This assumes inner groove of 57mm,skipped,filtered_non_tonearm_row
+Technics,Technics,SL-1200G,230,Technics website,211.95,calculated,BEWARE: Technics geometry is suspicious. Have user measure P>S distance. Website says overhang is 15mm. It is actually 18.05mm,skipped,filtered_non_tonearm_row
+Technics,Technics,SL-1200GR,230,Technics website,211.95,calculated,BEWARE: Technics geometry is suspicious. Have user measure P>S distance. Website says overhang is 15mm. It is actually 18.05mm 11/9/20 update: Guy from Speakerworld(?) in Buffalo called. Said PS distance was 215mm. I told him to aim for 233.15mm arc,skipped,filtered_non_tonearm_row
+Technics,Technics,SL-1210GR,230,Technics website,211.95,calculated,BEWARE: Technics geometry is suspicious. Have user measure P>S distance. Website says overhang is 15mm. It is actually 18.05mm,skipped,filtered_non_tonearm_row
+Technics,Technics,SL-1500C,230,Technics website,211.95,calculated,BEWARE: Technics geometry is suspicious. Have user measure P>S distance. Website says overhang is 15mm. It is actually 18.05mm,skipped,filtered_non_tonearm_row
+The Wand,Wand,9.5in,240,The Wand website,222,The Wand website,agreed,skipped,already_in_tonearm_models
+The Wand,Wand,10.3in,262,The Wand website,246,The Wand website,Need arc! Agreed,skipped,already_in_tonearm_models
+The Wand,Wand,12in,308.8,The Wand website,295,The Wand website,agreed,skipped,already_in_tonearm_models
+Triplanar,Tri-Planar,Mk. VII,250,Triplanar website,233.5,Triplanar website,Agreed,skipped,already_in_tonearm_models
+Triplanar,Tri-Planar,U-12,308.8,Triplanar website,295.6,Triplanar website,Agreed,skipped,already_in_research_targets
+TW Acustic,TW Acustic,Raven 10.5,267,TW Acustic website,251.2,TW Acustic website,Agreed,skipped,already_in_tonearm_models
+Vertere,Vertere Acoustics,SG-1,240,Vertere website,222.5,Vertere website,agreed,skipped,filtered_non_tonearm_row
+VPI,VPI,Fatboy,313,VPI website,300,VPI website,agreed,skipped,already_in_research_targets
+VPI,VPI,Fatboy on HW40,300,My calculation,287,Source: Anton Wootliff; HW-40 approx PS dimension,Anton measured 296mm from pivot to middle of headshell screw slots PLUS stylus run of 7-8mm. Consider adding a 300mm arc instead as we need something further away,skipped,already_in_research_targets
+VPI,VPI,JMW 10,273,VPI website,258,VPI website,Loefgren PS dimension. It's 273mm at Baerwald,skipped,already_in_tonearm_models
+VPI,VPI,JMW 10 3D,273,VPI website,258,VPI website,Loefgren PS dimension. It's 273mm at Baerwald,skipped,already_in_tonearm_models
+VPI,VPI,JMW 10.5,265.5,https://www.vinylengine.com/vpi-tonearm-geometry.shtml,250,https://www.vinylengine.com/vpi-tonearm-geometry.shtml,,skipped,already_in_tonearm_models
+VPI,VPI,JMW 10.5i,276.8,https://www.vinylengine.com/vpi-tonearm-geometry.shtml,262,https://www.vinylengine.com/vpi-tonearm-geometry.shtml,,skipped,already_in_tonearm_models
+VPI,VPI,JMW 12 3D,313,VPI website,300,VPI website,agreed,skipped,already_in_tonearm_models
+VPI,VPI,JMW 12 3DR,313,VPI website,300,VPI website,agreed,skipped,already_in_research_targets
+VPI,VPI,JMW 9,240,VPI website,223,VPI website,Loefgren PS dimension,skipped,already_in_tonearm_models
+VPI,VPI,Player,240,VPI website,223,VPI website,Loefgren PS dimension,skipped,filtered_non_tonearm_row
+Avid,Avid,Acutus,233.15,Avid website,216,Avid website,Avid is rounding,skipped,filtered_non_tonearm_row
+Avid,Avid,Nexus,233.15,Avid website,216,Avid website,Avid is rounding,skipped,already_in_tonearm_models
+Thorens,Thorens,"TP92 9""",233.15,Thorens website,215,Thorens website,,skipped,already_in_research_targets
+Thorens,Thorens,"TP92 10""",254,Thorens website,237.8,Thorens website,,skipped,already_in_research_targets
+Thorens,Thorens,"TP92 12""",305,Thorens website,291.4,Thorens website,,skipped,already_in_research_targets
+Thorens,Thorens,TP160,233.15,Thorens website,215,Thorens website,,skipped,already_in_research_targets

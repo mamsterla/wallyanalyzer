@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional
 
 import numpy as np
@@ -45,3 +45,7 @@ class MeasurementResult:
     valid_mask: np.ndarray
     processing_time_s: float
     diagnostics: dict
+    lag_difference_db: np.ndarray = field(default_factory=lambda: np.empty((0, 2), dtype=float))
+    power_noise: np.ndarray = field(default_factory=lambda: np.empty((0, 4), dtype=float))
+    harmonic_lr_difference_ratio: np.ndarray = field(default_factory=lambda: np.empty(0, dtype=float))
+    phase_delta_rad: np.ndarray = field(default_factory=lambda: np.empty((0, 0), dtype=float))

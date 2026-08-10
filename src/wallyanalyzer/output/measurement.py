@@ -58,9 +58,17 @@ def save_measurement_result(result: MeasurementResult, output_dir: str | Path) -
         fundamental_freq_hz=result.fundamental_freq_hz,
         harmonic_amplitude=result.harmonic_amplitude,
         lr_diff_over_sum_rms_ratio=result.lr_diff_over_sum_rms_ratio,
+        lag_difference_db=result.lag_difference_db,
+        power_noise=result.power_noise,
+        harmonic_lr_difference_ratio=result.harmonic_lr_difference_ratio,
+        phase_delta_rad=result.phase_delta_rad,
         valid_mask=result.valid_mask,
     )
 
+    noise_left_ratio_pct = 100.0 * result.power_noise[:, 2] / result.power_noise[:, 0] if result.power_noise.size else np.empty(0, dtype=float)
+    noise_right_ratio_pct = 100.0 * result.power_noise[:, 3] / result.power_noise[:, 1] if result.power_noise.size else np.empty(0, dtype=float)
+    noise_left_excess_ratio_pct = _noise_excess_ratio_pct(result.power_noise[:, 2], result.power_noise[:, 0]) if result.power_noise.size else np.empty(0, dtype=float)
+    noise_right_excess_ratio_pct = _noise_excess_ratio_pct(result.power_noise[:, 3], result.power_noise[:, 1]) if result.power_noise.size else np.empty(0, dtype=float)
     summary = {
         "file_stem": result.file_stem,
         "segment_count": int(len(result.segment_start_samples)),
@@ -70,6 +78,13 @@ def save_measurement_result(result: MeasurementResult, output_dir: str | Path) -
         "mean_frequency_right_hz": _safe_nanmean(result.fundamental_freq_hz[:, 1]),
         "mean_abs_lag_us": _safe_nanmean(np.abs(result.lag_s) * 1e6),
         "mean_lr_diff_over_sum_rms_pct": _safe_nanmean(result.lr_diff_over_sum_rms_ratio * 100.0),
+        "mean_lag_diff_db_raw": _safe_nanmean(result.lag_difference_db[:, 0]) if result.lag_difference_db.size else None,
+        "mean_lag_diff_db_delagged": _safe_nanmean(result.lag_difference_db[:, 1]) if result.lag_difference_db.size else None,
+        "mean_harmonic_lr_difference_ratio_pct": _safe_nanmean(result.harmonic_lr_difference_ratio * 100.0) if result.harmonic_lr_difference_ratio.size else None,
+        "mean_noise_left_ratio_pct_raw": _safe_nanmean(noise_left_ratio_pct),
+        "mean_noise_right_ratio_pct_raw": _safe_nanmean(noise_right_ratio_pct),
+        "mean_noise_left_excess_ratio_pct": _safe_nanmean(noise_left_excess_ratio_pct),
+        "mean_noise_right_excess_ratio_pct": _safe_nanmean(noise_right_excess_ratio_pct),
         "pitch_estimate": result.pitch_estimate,
         "processing_time_s": result.processing_time_s,
     }
@@ -91,9 +106,17 @@ def _write_segments_csv(result: MeasurementResult, path: Path) -> None:
     harmonic_ratio_3 = result.harmonic_amplitude[:, 2] / result.harmonic_amplitude[:, 0]
     radius_mm = np.linspace(result.outer_radius_mm, result.inner_radius_mm, len(result.segment_start_samples))
 
+    noise_left_ratio_pct_raw = 100.0 * result.power_noise[:, 2] / result.power_noise[:, 0] if result.power_noise.size else np.full(len(result.segment_start_samples), np.nan, dtype=float)
+    noise_right_ratio_pct_raw = 100.0 * result.power_noise[:, 3] / result.power_noise[:, 1] if result.power_noise.size else np.full(len(result.segment_start_samples), np.nan, dtype=float)
+    noise_left_excess_ratio_pct = _noise_excess_ratio_pct(result.power_noise[:, 2], result.power_noise[:, 0]) if result.power_noise.size else np.full(len(result.segment_start_samples), np.nan, dtype=float)
+    noise_right_excess_ratio_pct = _noise_excess_ratio_pct(result.power_noise[:, 3], result.power_noise[:, 1]) if result.power_noise.size else np.full(len(result.segment_start_samples), np.nan, dtype=float)
+
     header = (
         "segment_index,segment_start_sample,segment_midpoint_sample,radius_mm,is_valid,"
-        "lag_s,freq_left_hz,freq_right_hz,harm1,harm2,harm3,harm2_ratio,harm3_ratio,lr_diff_over_sum_rms_ratio\n"
+        "lag_s,freq_left_hz,freq_right_hz,harm1,harm2,harm3,harm2_ratio,harm3_ratio,"
+        "lr_diff_over_sum_rms_ratio,harmonic_lr_difference_ratio,lag_diff_db_raw,lag_diff_db_delagged,"
+        "power_left,power_right,noise_left,noise_right,noise_left_ratio_pct_raw,noise_right_ratio_pct_raw,"
+        "noise_left_excess_ratio_pct,noise_right_excess_ratio_pct\n"
     )
     with path.open("w", encoding="utf-8") as handle:
         handle.write(header)
@@ -113,6 +136,17 @@ def _write_segments_csv(result: MeasurementResult, path: Path) -> None:
                 _fmt(harmonic_ratio_2[i]),
                 _fmt(harmonic_ratio_3[i]),
                 _fmt(result.lr_diff_over_sum_rms_ratio[i]),
+                _fmt(result.harmonic_lr_difference_ratio[i]) if result.harmonic_lr_difference_ratio.size else "nan",
+                _fmt(result.lag_difference_db[i, 0]) if result.lag_difference_db.size else "nan",
+                _fmt(result.lag_difference_db[i, 1]) if result.lag_difference_db.size else "nan",
+                _fmt(result.power_noise[i, 0]) if result.power_noise.size else "nan",
+                _fmt(result.power_noise[i, 1]) if result.power_noise.size else "nan",
+                _fmt(result.power_noise[i, 2]) if result.power_noise.size else "nan",
+                _fmt(result.power_noise[i, 3]) if result.power_noise.size else "nan",
+                _fmt(noise_left_ratio_pct_raw[i]),
+                _fmt(noise_right_ratio_pct_raw[i]),
+                _fmt(noise_left_excess_ratio_pct[i]),
+                _fmt(noise_right_excess_ratio_pct[i]),
             ]
             handle.write(",".join(map(str, row)) + "\n")
 
@@ -128,6 +162,14 @@ def _safe_nanmean(values: np.ndarray) -> float | None:
     if valid.size == 0:
         return None
     return float(np.nanmean(values))
+
+
+def _noise_excess_ratio_pct(noise_power: np.ndarray, total_power: np.ndarray) -> np.ndarray:
+    noise_power = np.asarray(noise_power, dtype=float)
+    total_power = np.asarray(total_power, dtype=float)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        ratio = 100.0 * np.maximum(0.0, 2.0 * noise_power / total_power - 1.0)
+    return ratio
 
 
 def _to_jsonable(value):

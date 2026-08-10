@@ -1,0 +1,349 @@
+manufacturer,model_name,source_count,trust_levels,source_types,has_official_source,has_secondary_source,has_dealer_source,has_review_source,has_manual_mirror_source,relies_on_secondary_only,needs_official_followup
+ADC,ALT-1,2,"secondary,official","secondary_table,manual_mirror",1,1,0,0,1,0,0
+ADC,LMF-1 & LMF-2,3,"secondary,official","secondary_table,official_brochure",1,1,0,0,0,0,0
+AMG,12JT,1,official,official_page,1,0,0,0,0,0,0
+AMG,9W2,1,official,official_page,1,0,0,0,0,0,0
+Acoustic Signature,TA-5000 NEO,1,official,official_page,1,0,0,0,0,0,0
+Acoustic Signature,TA-7000 NEO 12-inch,1,official,official_page,1,0,0,0,0,0,0
+Acoustic Signature,TA-7000 NEO 9-inch,1,official,official_page,1,0,0,0,0,0,0
+Acoustic Solid,WTB 213,2,"secondary,official","dealer_page,official_page",1,1,1,0,0,0,0
+Acoustic Solid,WTB 313 12-inch,2,"secondary,official","dealer_page,official_page",1,1,1,0,0,0,0
+Acoustic Solid,WTB 370,5,"secondary,official","dealer_page,official_page",1,1,1,0,0,0,0
+Acoustical Systems,AQUILAR Reference 10-inch,2,official,"official_page,official_pdf",1,0,0,0,0,0,0
+Acoustical Systems,AXIOM Reference 12-inch,2,official,official_page,1,0,0,0,0,0,0
+Air Tangent,2B,3,"secondary,official","dealer_page,review,official_website",1,1,1,1,0,0,0
+Air Tangent,Model 2002,2,"official,secondary","official_website,review",1,1,0,1,0,0,0
+Air Tangent,Reference,2,"official,secondary","official_website,review",1,1,0,1,0,0,0
+Alphason,HR-100MCS,1,official,manual_mirror,1,0,0,0,1,0,0
+Alphason,HR-100S,2,official,"manual_mirror,official_page",1,0,0,0,1,0,0
+Alphason,Opal/Delta/Xenon/HR100S,3,"secondary,official","secondary_table,official_page,manual_mirror",1,1,0,0,1,0,0
+Audio Craft,AC-30/300/3000/3300,4,"secondary,official","secondary_table,official_brochure,manual_mirror",1,1,0,0,1,0,0
+Audio Craft,AC-400/4000/4400,4,"secondary,official","secondary_table,official_brochure,manual_mirror",1,1,0,0,1,0,0
+Audio Creative,Groovemaster 4,2,"secondary,official","review,official_page",1,1,0,1,0,0,0
+Audio Note,Arm One/II,1,official,official_page,1,0,0,0,0,0,0
+Audio Note,Arm Three/II,1,official,official_page,1,0,0,0,0,0,0
+Audio Origami,PU7,1,official,official_page,1,0,0,0,0,0,0
+Audio-Technica,AT-1001/1005II/1007/1009,5,"secondary,official","secondary_reference,secondary_table,official_brochure",1,1,0,0,0,0,0
+Audio-Technica,AT-1005 II,2,"secondary,official","secondary_reference,official_brochure",1,1,0,0,0,0,0
+Audio-Technica,AT-1007,2,"secondary,official","secondary_reference,official_brochure",1,1,0,0,0,0,0
+Audio-Technica,AT-1009,2,"secondary,official","secondary_reference,official_brochure",1,1,0,0,0,0,0
+Audio-Technica,AT-1100,2,"secondary,official","secondary_reference,official_brochure",1,1,0,0,0,0,0
+Audio-Technica,AT-1100/1010/1120,5,"secondary,official","secondary_reference,secondary_table,official_brochure,manual_mirror",1,1,0,0,1,0,0
+Audio-Technica,AT-1501,3,"secondary,official","secondary_reference,official_brochure",1,1,0,0,0,0,0
+Audio-Technica,AT-1501II,2,"secondary,official","secondary_table,official_brochure",1,1,0,0,0,0,0
+Audio-Technica,"AT-1501III, IV",2,"secondary,official","secondary_table,official_brochure",1,1,0,0,0,0,0
+Audio-Technica,AT-1503,3,"secondary,official","secondary_reference,official_brochure",1,1,0,0,0,0,0
+Audio-Technica,AT-1503II,2,"secondary,official","secondary_table,official_brochure",1,1,0,0,0,0,0
+Audio-Technica,"AT-1503III, IV, IIIa",2,"secondary,official","secondary_table,official_page",1,1,0,0,0,0,0
+AudioQuest,PT-6/7/8/9,4,"secondary,official","secondary_table,manual_mirror",1,1,0,0,1,0,0
+Audiomods,Series Six 10.5-inch,1,official,official_pdf,1,0,0,0,0,0,0
+Audiomods,Series Six 9-inch Linn,1,official,official_pdf,1,0,0,0,0,0,0
+Audiomods,Series Six 9-inch Rega,1,official,official_pdf,1,0,0,0,0,0,0
+Avid,Nexus,1,official,official_page,1,0,0,0,0,0,0
+Azden,PU-402 (SYNTEC S-220),3,"secondary,official","secondary_table,manual_mirror",1,1,0,0,1,0,0
+Azden,PU-547 & PU-550,2,"secondary,official","secondary_table,manual_mirror",1,1,0,0,1,0,0
+Azden,PU-549,2,"secondary,official","secondary_table,manual_mirror",1,1,0,0,1,0,0
+Basis Audio,Vector 4,1,official,official_page,1,0,0,0,0,0,0
+Belcanto,"Unipivot 10""",2,"secondary,official","secondary_table,manual_mirror",1,1,0,0,1,0,0
+Belcanto,"Unipivot 12""",2,"secondary,official","secondary_table,manual_mirror",1,1,0,0,1,0,0
+Breuer,Type 5A,3,"secondary,official","secondary_table,manual_mirror,secondary_reference",1,1,0,0,1,0,0
+Breuer,Type 6A,3,"secondary,official","secondary_table,manual_mirror,secondary_reference",1,1,0,0,1,0,0
+Breuer,Type 7 & 8,3,"secondary,official","secondary_table,manual_mirror,secondary_reference",1,1,0,0,1,0,0
+Brinkmann,10.5,2,"official,secondary","official_page,secondary_table",1,1,0,0,0,0,0
+Clearaudio,Clarify,3,"secondary,official","dealer_page,official_page",1,1,1,0,0,0,0
+Clearaudio,Concept,1,official,official_distributor_page,1,0,0,0,0,0,0
+Clearaudio,Magnify,2,"secondary,official","dealer_page,official_page",1,1,1,0,0,0,0
+Clearaudio,Satisfy Kardan,2,"secondary,official","dealer_page,official_distributor_page",1,1,1,0,0,0,0
+Clearaudio,Tracer,2,"official,secondary","official_page,dealer_page",1,1,1,0,0,0,0
+Clearaudio,Tracer Black Carbon Fiber,1,official,official_page,1,0,0,0,0,0,0
+Clearaudio,"Unify 10""",2,"secondary,official","dealer_page,official_page",1,1,1,0,0,0,0
+Clearaudio,"Unify 12""",2,"secondary,official","dealer_page,official_page",1,1,1,0,0,0,0
+Clearaudio,"Unify 14""",2,"secondary,official","dealer_page,official_page",1,1,1,0,0,0,0
+Clearaudio,"Unify 9""",2,"official,secondary","official_page,secondary_table",1,1,0,0,0,0,0
+Clearaudio,"Universal 12""",1,official,official_distributor_page,1,0,0,0,0,0,0
+Clearaudio,"Universal 9""",1,official,official_distributor_page,1,0,0,0,0,0,0
+Clearaudio,Verify,2,"secondary,official","dealer_page,official_page",1,1,1,0,0,0,0
+Decca,International & Professional for transcription 12-16inches and SP record as well?,2,"secondary,official","secondary_table,official_brochure",1,1,0,0,0,0,0
+Denon,DA-302/304/308/1000,4,"secondary,official","secondary_table,official_brochure",1,1,0,0,0,0,0
+Denon,DA-303/305/307/309/401,6,"secondary,official","secondary_table,official_brochure",1,1,0,0,0,0,0
+Dr. Feickert,Straight-10,3,"secondary,official","review,dealer_page,official_page",1,1,1,1,0,0,0
+Durand,Talea,1,official,official_page,1,0,0,0,0,0,0
+Durand,Tosca,1,official,official_page,1,0,0,0,0,0,0
+Dynavector,DV-501/505/507,2,"official,secondary","official_page,secondary_table",1,1,0,0,0,0,0
+EMT,909-HI,2,official,official_pdf,1,0,0,0,0,0,0
+EMT,912,2,official,official_pdf,1,0,0,0,0,0,0
+EMT,929 (it is questionable that RF229/RMA229 made by Ortofon for EMT 930 turntable had exactly same geometry as EMT 929),3,"secondary,official","manual_mirror,official_page,secondary_table",1,1,0,0,1,0,0
+Empire,980 & 990,2,"secondary,official","secondary_table,manual_mirror",1,1,0,0,1,0,0
+Excel,ES-1000 & Pro S1TA,2,"secondary,official","secondary_table,manual_mirror",1,1,0,0,1,0,0
+Excel,ES-801,3,"secondary,official","secondary_table,manual_mirror,official_brochure",1,1,0,0,1,0,0
+Fidelity Research,FR-12,3,"secondary,official","secondary_table,secondary_reference,official_brochure",1,1,0,0,0,0,0
+Fidelity Research,FR-14/FR-24/FR-54/FR-64,6,"secondary,official","review,secondary_table,official_brochure",1,1,0,1,0,0,0
+Fidelity Research,FR-34,3,"secondary,official","secondary_table,secondary_reference,official_brochure",1,1,0,0,0,0,0
+Fidelity Research,FR-64S,3,"secondary,official","review,manual_mirror,official_brochure",1,1,0,1,1,0,0
+Fidelity Research,FR-64fx,2,"secondary,official",manual_mirror,1,1,0,0,1,0,0
+Fidelity Research,FR-66,3,"secondary,official","manual_mirror,secondary_reference,official_brochure",1,1,0,0,1,0,0
+Fidelity Research,FR-66S,3,"secondary,official","manual_mirror,secondary_table,official_brochure",1,1,0,0,1,0,0
+Fidelity Research,FR-66fx,3,"secondary,official","manual_mirror,secondary_table,official_brochure",1,1,0,0,1,0,0
+Glanz,MH-1000S,1,official,official_page,1,0,0,0,0,0,0
+Glanz,MH-104S,1,official,official_page,1,0,0,0,0,0,0
+Glanz,MH-10B,1,official,official_page,1,0,0,0,0,0,0
+Glanz,MH-10Bt,1,official,official_page,1,0,0,0,0,0,0
+Glanz,MH-1200S,1,official,official_page,1,0,0,0,0,0,0
+Glanz,MH-124S,1,official,official_page,1,0,0,0,0,0,0
+Glanz,MH-12SUS (MH-124S Premium),1,official,official_page,1,0,0,0,0,0,0
+Glanz,MH-900S,1,official,official_page,1,0,0,0,0,0,0
+Glanz,MH-94S,1,official,official_page,1,0,0,0,0,0,0
+Glanz,MH-9B,1,official,official_page,1,0,0,0,0,0,0
+Glanz,MH-9Bt,1,official,official_page,1,0,0,0,0,0,0
+Gold Note,B-5.2,1,official,official_page,1,0,0,0,0,0,0
+Gold Note,B-7 Ceramic,1,official,official_page,1,0,0,0,0,0,0
+Goldmund,T3F,2,official,"manual_mirror,official_page",1,0,0,0,1,0,0
+Goldmund,T5,1,official,manual_mirror,1,0,0,0,1,0,0
+Grace,G-540F/640P/704/707/714/727/945,5,"secondary,official","secondary_table,manual_mirror,official_brochure",1,1,0,0,1,0,0
+Grace,G-565F/660P/860F/860FB/960,4,"secondary,official","secondary_table,manual_mirror,official_brochure",1,1,0,0,1,0,0
+Graham,"Model 1.5t (US Patent 4686664: ""for purposes of explanation only, one arm has the following dimensions: effective length 235 mm, offset angle of 23.5 degree and overhang of 17.638 mm."" ) Baerwald ""1"" or Loefgren ""2"" overhang can be selectable.",2,"secondary,official","secondary_table,manual_mirror",1,1,0,0,1,0,0
+Graham,Phantom Elite 10-inch,1,official,official_pdf,1,0,0,0,0,0,0
+Graham,Phantom Elite 12-inch,1,official,official_pdf,1,0,0,0,0,0,0
+Graham,Phantom Elite 9-inch,1,official,official_pdf,1,0,0,0,0,0,0
+Graham,Phantom III 10-inch,1,official,official_page,1,0,0,0,0,0,0
+Graham,Phantom III 12-inch,1,official,official_page,1,0,0,0,0,0,0
+Graham,Phantom III 9-inch,1,official,official_page,1,0,0,0,0,0,0
+Graham,Phantom III SE 10-inch,1,official,official_page,1,0,0,0,0,0,0
+Graham,Phantom III SE 12-inch,1,official,official_page,1,0,0,0,0,0,0
+Graham,Phantom III SE 9-inch,1,official,official_page,1,0,0,0,0,0,0
+Guya,STO-140 (Arm distance:237mm),3,"secondary,official","secondary_table,official_brochure,dealer_page",1,1,1,0,0,0,0
+Hadcock,GH228,2,"secondary,official","secondary_table,manual_mirror",1,1,0,0,1,0,0
+Hadcock,GH242 Special Edition,3,"secondary,official","secondary_table,manual_mirror,dealer_page",1,1,1,0,1,0,0
+Helius,Aureus & Scorpio,2,"secondary,official","secondary_table,manual_mirror",1,1,0,0,1,0,0
+Helius,Orion,2,"secondary,official","secondary_table,manual_mirror",1,1,0,0,1,0,0
+Ikeda,IT-345 & IT-245,2,"secondary,official","secondary_table,official_brochure",1,1,0,0,0,0,0
+Ikeda,IT-407,2,"secondary,official","secondary_table,official_brochure",1,1,0,0,0,0,0
+Immedia,RPM-2,2,"secondary,official","secondary_table,manual_mirror",1,1,0,0,1,0,0
+Infinity,Black Widow,2,"secondary,official","secondary_table,manual_mirror",1,1,0,0,1,0,0
+J.Sikora,KV12 VTA,1,official,official_page,1,0,0,0,0,0,0
+Jelco,SA 200,3,"secondary,official","secondary_manual_index,official_distributor_page,secondary_reference_page",1,1,0,0,0,0,0
+Jelco,SA 250,1,official,official_distributor_page,1,0,0,0,0,0,0
+Jelco,SA 250BV,2,"secondary,official","secondary_manual_index,official_distributor_page",1,1,0,0,0,0,0
+Jelco,SA 250ST,1,official,official_distributor_page,1,0,0,0,0,0,0
+Jelco,SA 50,3,"secondary,official","secondary_manual_index,official_distributor_page,secondary_reference_page",1,1,0,0,0,0,0
+Jelco,SA 50ST,3,"secondary,official","secondary_manual_index,official_distributor_page,secondary_reference_page",1,1,0,0,0,0,0
+Jelco,SA 750D,1,official,official_distributor_page,1,0,0,0,0,0,0
+Jelco,SA 750DB,1,official,official_distributor_page,1,0,0,0,0,0,0
+Jelco,SA 750E,1,official,official_distributor_page,1,0,0,0,0,0,0
+Jelco,SA 750L,1,official,official_distributor_page,1,0,0,0,0,0,0
+Jelco,SA-250 & SA-750D (S-shape wand),3,"secondary,official","secondary_table,official_distributor_page,official_manual",1,1,0,0,0,0,0
+Jelco,SA-250st (Straight wand),2,"secondary,official","secondary_table,official_distributor_page",1,1,0,0,0,0,0
+Jelco,SA-750LB (S-shape wand),2,"official,secondary","official_manual,secondary_table",1,1,0,0,0,0,0
+Jelco,TK 850L,2,"secondary,official","dealer_page,official_distributor_page",1,1,1,0,0,0,0
+Jelco,TK 850S,2,"secondary,official","dealer_page,official_distributor_page",1,1,1,0,0,0,0
+Jelco,TK 950L,2,"secondary,official","dealer_page,official_distributor_page",1,1,1,0,0,0,0
+Jelco,TK 950S,2,"secondary,official","dealer_page,official_distributor_page",1,1,1,0,0,0,0
+Keith Monks,M9BA Laboratory Arm MKIII,2,"secondary,official","secondary_table,manual_mirror",1,1,0,0,1,0,0
+Korf,TA-SF11R,1,official,official_page,1,0,0,0,0,0,0
+Korf,TA-SF9,1,official,official_page,1,0,0,0,0,0,0
+Korf,TA-SF9R,1,official,official_page,1,0,0,0,0,0,0
+Koshin,GST-1,3,"secondary,official","secondary_reference,dealer_page,manual_mirror",1,1,1,0,1,0,0
+Koshin,GST-801,5,"secondary,official","secondary_reference,manual_mirror,official_brochure",1,1,0,0,1,0,0
+Kuzma,4Point 11-inch,1,official,official_pdf,1,0,0,0,0,0,0
+Kuzma,4Point 14-inch,1,official,official_pdf,1,0,0,0,0,0,0
+Kuzma,4Point 9-inch,1,official,official_page,1,0,0,0,0,0,0
+Kuzma,Air Line 7-inch,3,official,official_page,1,0,0,0,0,0,0
+Kuzma,Safir 9,2,official,"official_page,official_brochure",1,0,0,0,0,0,0
+Kuzma,Stogi,2,"official,secondary","official_page,secondary_table",1,1,0,0,0,0,0
+Kuzma,Stogi Ref 313,1,official,official_page,1,0,0,0,0,0,0
+Kuzma,Stogi Ref 313 VTA,2,official,official_page,1,0,0,0,0,0,0
+Kuzma,Stogi Ref 9-inch,2,official,official_page,1,0,0,0,0,0,0
+Kuzma,Stogi S 12-inch,1,official,official_page,1,0,0,0,0,0,0
+Kuzma,Stogi S 12-inch VTA,1,official,official_page,1,0,0,0,0,0,0
+Kuzma,Stogi S 9-inch,3,official,"official_page,official_pdf",1,0,0,0,0,0,0
+Linn,Akito/Basik/Ittok/Ekos,3,"secondary,official","secondary_table,official_page,official_pdf",1,1,0,0,0,0,0
+Linn,Ekos SE,2,official,official_page,1,0,0,0,0,0,0
+Logic,datum S,2,"secondary,official","secondary_table,manual_mirror",1,1,0,0,1,0,0
+Lustre,GST-1,2,"secondary,official","secondary_table,manual_mirror",1,1,0,0,1,0,0
+Lustre,GST-801,3,"secondary,official","secondary_table,manual_mirror,official_brochure",1,1,0,0,1,0,0
+Magnepan,Unitrac-1,2,"secondary,official","secondary_table,manual_mirror",1,1,0,0,1,0,0
+Manticore,Magician 12inch,2,"secondary,official","secondary_table,manual_mirror",1,1,0,0,1,0,0
+Manticore,Musician/Magician,2,"secondary,official","secondary_table,manual_mirror",1,1,0,0,1,0,0
+Mayware,Formula 4 MK III/IV/V,2,"secondary,official","secondary_table,manual_mirror",1,1,0,0,1,0,0
+Mayware,Formula 4 Model PL S4/D,2,"secondary,official","secondary_table,manual_mirror",1,1,0,0,1,0,0
+Michell,T2 Tonearm,1,official,official_page,1,0,0,0,0,0,0
+Michell,T8 Tonearm,1,official,official_page,1,0,0,0,0,0,0
+Michell,TecnoArm 2,1,official,official_page,1,0,0,0,0,0,0
+Micro,MA-202,2,"official,secondary","official_brochure,secondary_table",1,1,0,0,0,0,0
+Micro,MA-303,2,"official,secondary","official_brochure,secondary_table",1,1,0,0,0,0,0
+Micro,"MA-505, MA-707, MAX-237, CF-1(dynamic)",2,"secondary,official","secondary_table,official_brochure",1,1,0,0,0,0,0
+Micro,"MA-701, CF-2 (static)",2,"secondary,official","secondary_table,official_brochure",1,1,0,0,0,0,0
+Micro,MAX-282 & MA-505L,2,"secondary,official","secondary_table,official_brochure",1,1,0,0,0,0,0
+Micro Seiki,MA-505,2,"secondary,official",manual_mirror,1,1,0,0,1,0,0
+Micro Seiki,MA-707,2,"secondary,official",manual_mirror,1,1,0,0,1,0,0
+Mission,774 Original,2,"secondary,official","secondary_table,official_brochure",1,1,0,0,0,0,0
+Moerch,DP-6 & UP-4,2,"secondary,official","secondary_table,official_page",1,1,0,0,0,0,0
+Moerch,DP-6 12-inch,1,official,official_page,1,0,0,0,0,0,0
+Moerch,DP-6 9-inch,1,official,official_page,1,0,0,0,0,0,0
+Moerch,DP-8 12-inch,1,official,official_page,1,0,0,0,0,0,0
+Moerch,DP-8 9-inch,1,official,official_page,1,0,0,0,0,0,0
+Moerch,UP-4 12-inch,1,official,official_page,1,0,0,0,0,0,0
+Moerch,UP-4 9-inch,1,official,official_page,1,0,0,0,0,0,0
+Music Hall,MMF-1.3,1,official,official_page,1,0,0,0,0,0,0
+Music Hall,MMF-2.3,1,official,official_page,1,0,0,0,0,0,0
+Music Hall,MMF-3.3,1,official,official_page,1,0,0,0,0,0,0
+Music Hall,MMF-5.3,1,official,official_page,1,0,0,0,0,0,0
+Music Hall,MMF-7.3,1,official,official_page,1,0,0,0,0,0,0
+Music Hall,MMF-9.3,1,official,official_page,1,0,0,0,0,0,0
+Naim,Aro,2,"secondary,official","secondary_table,manual_mirror",1,1,0,0,1,0,0
+Odyssey,RP1-XG & RP1 Gold,3,"secondary,official","secondary_table,official_page",1,1,0,0,0,0,0
+Origin Live,"10""",1,official,official_page,1,0,0,0,0,0,0
+Origin Live,"12""",1,official,official_page,1,0,0,0,0,0,0
+Origin Live,"9""",1,official,official_page,1,0,0,0,0,0,0
+Origin Live,"9.5""",1,official,official_page,1,0,0,0,0,0,0
+Origin Live,Agile,2,official,official_page,1,0,0,0,0,0,0
+Origin Live,Alliance,1,official,official_page,1,0,0,0,0,0,0
+Origin Live,Conquerer,2,official,official_page,1,0,0,0,0,0,0
+Origin Live,Conqueror,2,official,official_page,1,0,0,0,0,0,0
+Origin Live,Encounter,2,official,official_page,1,0,0,0,0,0,0
+Origin Live,Enterprise,2,official,official_page,1,0,0,0,0,0,0
+Origin Live,Illustrious,2,official,official_page,1,0,0,0,0,0,0
+Origin Live,Onyx,1,official,official_page,1,0,0,0,0,0,0
+Origin Live,Renown,2,official,official_page,1,0,0,0,0,0,0
+Origin Live,Silver,1,official,official_page,1,0,0,0,0,0,0
+Origin Live,Zephyr,1,official,official_page,1,0,0,0,0,0,0
+Ortofon,AS-212R,1,official,official_pdf,1,0,0,0,0,0,0
+Ortofon,AS-309R,1,official,official_pdf,1,0,0,0,0,0,0
+Ortofon,RMG-212 & RS-212,3,"secondary,official","secondary_table,official_pdf,official_page",1,1,0,0,0,0,0
+Ortofon,RMG-309,2,"secondary,official","secondary_table,official_page",1,1,0,0,0,0,0
+Ortofon,RS-212D,1,official,official_page,1,0,0,0,0,0,0
+Ortofon,RS-309D,1,official,official_page,1,0,0,0,0,0,0
+Ortofon,SMG-212/SKG-212/AS-212,3,"official,secondary","official_page,secondary_table,official_pdf",1,1,0,0,0,0,0
+Ortofon,TA-110,2,"secondary,official","manual_mirror,official_page",1,1,0,0,1,0,0
+Pear Audio,Cornet 1,1,official,official_page,1,0,0,0,0,0,0
+Pear Audio,Cornet 2,1,official,official_page,1,0,0,0,0,0,0
+Pear Audio,Cornet 3,2,official,official_page,1,0,0,0,0,0,0
+Pioneer,PA-100,2,"secondary,official","secondary_table,official_brochure",1,1,0,0,0,0,0
+Pioneer,PA-1000,3,"secondary,official","secondary_table,official_brochure,manual_mirror",1,1,0,0,1,0,0
+Pro-Ject,10cc Evolution,1,official,official_pdf,1,0,0,0,0,0,0
+Pro-Ject,12cc Evolution,1,official,official_pdf,1,0,0,0,0,0,0
+Pro-Ject,9cc Evolution,1,official,official_pdf,1,0,0,0,0,0,0
+RS-Lab,Alternative alignment (underhang),2,"secondary,official","secondary_table,manual_mirror",1,1,0,0,1,0,0
+Rabco,SL-8,2,"secondary,official","secondary_reference_page,official_manual",1,1,0,0,0,0,0
+Rabco,SL-8E,2,"secondary,official","secondary_reference_page,official_manual",1,1,0,0,0,0,0
+Reed,1H 10.5-inch,1,official,official_page,1,0,0,0,0,0,0
+Reed,1H 12-inch,1,official,official_page,1,0,0,0,0,0,0
+Reed,1H 9.5-inch,1,official,official_page,1,0,0,0,0,0,0
+Reed,3P 10.5-inch,2,official,official_page,1,0,0,0,0,0,0
+Reed,3P 12-inch,2,official,official_page,1,0,0,0,0,0,0
+Reed,3P 9.5-inch,2,official,official_page,1,0,0,0,0,0,0
+Rega,RB2000,1,official,official_manual,1,0,0,0,0,0,0
+Rega,RB220,1,official,official_page,1,0,0,0,0,0,0
+Rega,RB250,4,"official,secondary","official_page,secondary_table",1,1,0,0,0,0,0
+Rega,RB250 & RB300,4,"official,secondary","official_page,secondary_table",1,1,0,0,0,0,0
+Rega,RB300,4,"official,secondary","official_page,secondary_table",1,1,0,0,0,0,0
+Rega,RB3000,1,official,official_page,1,0,0,0,0,0,0
+Rega,RB330,2,official,"official_pdf,official_page",1,0,0,0,0,0,0
+Rega,RB700,1,official,official_page,1,0,0,0,0,0,0
+Rega,RB880,1,official,official_page,1,0,0,0,0,0,0
+Roksan,Artemiz/Tabriz,3,"secondary,official","secondary_table,official_page",1,1,0,0,0,0,0
+SAT,LM-09,1,official,official_pdf,1,0,0,0,0,0,0
+SAT,LM-12,1,official,official_pdf,1,0,0,0,0,0,0
+SME,3009 II imp & imp/S2: (later=S/N 439606 or above),2,"official,secondary","official_pdf,secondary_table",1,1,0,0,0,0,0
+SME,3009 Series II improved with non-detachable shell and imp/S2 with detachable shell: (early=Serial Number less than 439606). Don't mix up previous Series II with imp/S2. See pdf arranged by SME for the identification of specific models IMO: S2 was named after the lightweight shell type S-2.,3,"official,secondary","official_pdf,secondary_table",1,1,0,0,0,0,0
+SME,3009III &3009IIIS (original/smaller shell),2,"secondary,official","secondary_table,official_pdf",1,1,0,0,0,0,0
+SME,3009III &3009IIIS with modified wand (larger shell),2,"secondary,official","secondary_table,official_pdf",1,1,0,0,0,0,0
+SME,3009R,2,"secondary,official","secondary_table,official_pdf",1,1,0,0,0,0,0
+SME,3010R,2,"secondary,official","secondary_table,official_pdf",1,1,0,0,0,0,0
+SME,3012R,2,"secondary,official","secondary_table,official_pdf",1,1,0,0,0,0,0
+SME,309,2,"official,secondary","official_pdf,secondary_table",1,1,0,0,0,0,0
+SME,310,2,"official,secondary","official_pdf,secondary_table",1,1,0,0,0,0,0
+SME,312,2,"official,secondary","official_pdf,secondary_table",1,1,0,0,0,0,0
+SME,M2-10,2,"official,secondary","official_pdf,secondary_table",1,1,0,0,0,0,0
+SME,M2-12,2,"official,secondary","official_pdf,secondary_table",1,1,0,0,0,0,0
+SME,M2-9,2,"official,secondary","official_pdf,secondary_table",1,1,0,0,0,0,0
+SME,Series V,1,official,official_pdf,1,0,0,0,0,0,0
+SME,V/IV,2,"official,secondary","official_pdf,secondary_table",1,1,0,0,0,0,0
+SUMIKO,MMT/FT-3/FT-4,3,"secondary,official","secondary_table,manual_mirror",1,1,0,0,1,0,0
+SUMIKO,Premier FT-3,2,"secondary,official",manual_mirror,1,1,0,0,1,0,0
+Saec,"WE-308 (circa 1971), WE-308N(1975) & WE-308SX (1982) IMO: ""Small overhang can moderate inside force."" Its effective null point around 61 is based on LP's inmost recorded radius.",4,"secondary,official","secondary_table,official_brochure",1,1,0,0,0,0,0
+Saec,WE-308L(circa 1978),2,"secondary,official","secondary_table,official_brochure",1,1,0,0,0,0,0
+Saec,WE-308SX,2,"secondary,official","secondary_reference,official_brochure",1,1,0,0,0,0,0
+Saec,WE-317(1982),2,"secondary,official","secondary_table,manual_mirror",1,1,0,0,1,0,0
+Saec,WE-407/23,3,"secondary,official","dealer_page,secondary_table,official_brochure",1,1,1,0,0,0,0
+Saec,"WE-407/23(1980), WE-317S & WE-4700(2019) English manual for WE-407/23 & WE-317S uploaded at Vinyl Engine indicated Effective Length 221, which is mistranslation of Arm Distance. Similar case as Sound ST-14. WE-407/TM for Micro (BL-99V/SX-777FV etc with armbase 1200 series). Micro Armbase 1200 series had off-center mounting hole for adjustment of arm distance/overhang. WE-407/GT (around 1986) for Yamaha GT-2000 series (Heavy Turntables around 1982). GT had different geometry. GT-2000's standard arm distance was 248mm. SAEC's tradition: they don't care much about alignment while their mechanical precision work is superb.",4,"secondary,official","secondary_table,official_brochure,manual_mirror",1,1,0,0,1,0,0
+Saec,WE-506/30(1978),3,"secondary,official","secondary_table,official_brochure",1,1,0,0,0,0,0
+Saec,WE-8000/ST(circa 1984),2,"secondary,official","secondary_table,manual_mirror",1,1,0,0,1,0,0
+Satin,AR-1/1M/1S,3,"secondary,official","secondary_table,manual_mirror,secondary_reference",1,1,0,0,1,0,0
+Schick,Schick 10.5-inch Tonearm,3,official,official_page,1,0,0,0,0,0,0
+Schick,Schick 12-inch Tonearm,2,official,official_page,1,0,0,0,0,0,0
+Schroeder,CB 9-inch,2,"secondary,official","dealer_page,official_manual",1,1,1,0,0,0,0
+Schroeder,CB-L 12-inch,2,"secondary,official","dealer_page,official_manual",1,1,1,0,0,0,0
+Schroeder,DPS,1,official,official_manual,1,0,0,0,0,0,0
+Schroeder,Model 2,1,official,official_manual,1,0,0,0,0,0,0
+Schroeder,Model 2 and Model DPS,2,"secondary,official","secondary_table,official_page",1,1,0,0,0,0,0
+Schroeder,Reference,2,official,official_page,1,0,0,0,0,0,0
+Sony,PUA-1600S,2,"official,secondary","official_brochure,secondary_table",1,1,0,0,0,0,0
+Sony,PUA-237 & PUA-1500S,2,"secondary,official","secondary_table,official_brochure",1,1,0,0,0,0,0
+Sony,PUA-286 & PUA-1500L,2,"secondary,official","secondary_table,official_brochure",1,1,0,0,0,0,0
+Sony,PUA-7,2,"official,secondary","official_manual,secondary_table",1,1,0,0,0,0,0
+Sony,PUA-9,2,"official,secondary","official_manual,secondary_table",1,1,0,0,0,0,0
+Sorane,SA-1.2,2,"secondary,official","manual_mirror,official_manual",1,1,0,0,1,0,0
+Sorane,TA-1,1,official,official_manual,1,0,0,0,0,0,0
+Sound,ST-14 with slide base & ST-14S(standard) without slide base (same geometry as Guya STO-140). Distance 237 was wrongly quoted as effective length. Similar misleading description is repeated in Japan due to language and preference (bad practice) of indicating mounting distance for exchanging arms. For example: Catalogs from 1980s quoted 227mm for Stax short arms and 300mm for Stax long arms.,2,"secondary,official","secondary_table,official_brochure",1,1,0,0,0,0,0
+Stax,UA-7/7N/7cfN/9N,3,"secondary,official","secondary_table,official_brochure",1,1,0,0,0,0,0
+Stax,UA-70/70N/90N,3,"secondary,official","secondary_table,manual_mirror,dealer_page",1,1,1,0,1,0,0
+Supatrac,Blackbird 10.5-inch,1,official,official_page,1,0,0,0,0,0,0
+Supatrac,Blackbird 12-inch,1,official,official_page,1,0,0,0,0,0,0
+Supatrac,Blackbird 9-inch,1,official,official_page,1,0,0,0,0,0,0
+Supatrac,Blackbird 9.3-inch,1,official,official_page,1,0,0,0,0,0,0
+Supatrac,Blackbird Farpoint 10.5-inch,1,official,official_pdf,1,0,0,0,0,0,0
+Supatrac,Blackbird Farpoint 12-inch,1,official,official_pdf,1,0,0,0,0,0,0
+Supatrac,Blackbird Farpoint 9-inch,1,official,official_pdf,1,0,0,0,0,0,0
+Supatrac,Blackbird Farpoint 9.3-inch,1,official,official_page,1,0,0,0,0,0,0
+Supatrac,Nighthawk 10.5-inch,1,official,official_page,1,0,0,0,0,0,0
+Supatrac,Nighthawk 12-inch,1,official,official_page,1,0,0,0,0,0,0
+Supatrac,Nighthawk 9-inch,1,official,official_page,1,0,0,0,0,0,0
+Supatrac,Nighthawk 9.3-inch,1,official,official_page,1,0,0,0,0,0,0
+Supex,6140,3,"secondary,official","secondary_table,official_brochure",1,1,0,0,0,0,0
+Syrinx,PU-2 with minimum shell sliding on wand/PU-3 with fixed shell,3,"secondary,official","secondary_table,manual_mirror",1,1,0,0,1,0,0
+TW-Acustic,Raven 10.5,1,official,official_page,1,0,0,0,0,0,0
+TW-Acustic,Raven 12-inch,1,official,official_page,1,0,0,0,0,0,0
+TechDAS,Air Force 10 10-inch,1,official,official_pdf,1,0,0,0,0,0,0
+TechDAS,Air Force 10 12-inch,1,official,official_pdf,1,0,0,0,0,0,0
+Technics,EPA-100/250/500,4,"secondary,official","secondary_table,official_manual",1,1,0,0,0,0,0
+Technics,EPA-101L/101T/102L/102T/121L/121T,3,"secondary,official","secondary_table,official_manual,secondary_index",1,1,0,0,0,0,0
+Technics,EPA-101S & EPA-121S,2,"secondary,official","secondary_table,official_manual",1,1,0,0,0,0,0
+Technics,EPA-99 & EPA-110,2,"secondary,official","secondary_table,official_manual",1,1,0,0,0,0,0
+Thales,Simplicity II,2,official,"official_pdf,official_page",1,0,0,0,0,0,0
+Thales,Statement,1,official,official_page,1,0,0,0,0,0,0
+Thorens,BTD-12S,4,"secondary,official","secondary_table,official_manual",1,1,0,0,0,0,0
+Thorens,TP16II with TP-62,4,"official,secondary","official_manual,secondary_table",1,1,0,0,0,0,0
+Thorens,TP16III with TP-63,2,"official,secondary","official_manual,secondary_table",1,1,0,0,0,0,0
+Tri-Planar,Mk VII,2,official,official_page,1,0,0,0,0,0,0
+Tri-Planar,Tri-Planar MKIV Ultimate,2,"secondary,official","secondary_table,official_page",1,1,0,0,0,0,0
+Tri-Planar,U12,1,official,official_page,1,0,0,0,0,0,0
+Tri-Planar,U2 SE,2,official,official_page,1,0,0,0,0,0,0
+VPI,12-inch FatBoy gimbaled,1,official,official_page,1,0,0,0,0,0,0
+VPI,Fatboy JMW 9 3D,1,official,official_page,1,0,0,0,0,0,0
+VPI,JMW-10,1,official,official_page,1,0,0,0,0,0,0
+VPI,JMW-10 3D,1,official,official_page,1,0,0,0,0,0,0
+VPI,JMW-10.5,3,"secondary,official","secondary_analysis,official_page,official_manual",1,1,0,0,0,0,0
+VPI,JMW-10.5i,2,"official,secondary","official_page,secondary_analysis",1,1,0,0,0,0,0
+VPI,JMW-12 3D,2,official,official_page,1,0,0,0,0,0,0
+VPI,JMW-9,1,official,official_page,1,0,0,0,0,0,0
+Vertere Acoustics,Reference Tonearm (Gen III),1,official,official_page,1,0,0,0,0,0,0
+Vertere Acoustics,Super Groove II Pathfinder Tonearm,1,official,official_page,1,0,0,0,0,0,0
+Vertere Acoustics,Super Groove Precision Tonearm,1,official,official_page,1,0,0,0,0,0,0
+ViV Laboratory,Rigid Float HA9,3,"secondary,official","dealer_page,official_distributor_page",1,1,1,0,0,0,0
+Victor (JVC),UA-7045,3,"secondary,official","secondary_table,official_brochure,manual_mirror",1,1,0,0,1,0,0
+Victor (JVC),UA-7082,3,"secondary,official","secondary_table,official_brochure,manual_mirror",1,1,0,0,1,0,0
+Wand,10.3in,1,official,official_page,1,0,0,0,0,0,0
+Wand,12in,1,official,official_page,1,0,0,0,0,0,0
+Wand,9.5in,1,official,official_page,1,0,0,0,0,0,0
+Wand,Master 12-inch,2,official,"official_pdf,official_page",1,0,0,0,0,0,0
+Well Tempered Lab,LTD 10.5-inch,1,official,official_pdf,1,0,0,0,0,0,0
+Well Tempered Lab,LTD 16-inch,1,official,official_pdf,1,0,0,0,0,0,0
+Wilson Benesch,A.C.T. 0.5,1,official,official_pdf,1,0,0,0,0,0,0
+Wilson Benesch,A.C.T. 25,1,official,official_pdf,1,0,0,0,0,0,0
+Wilson Benesch,A.C.T. Two,1,official,official_pdf,1,0,0,0,0,0,0
+Wilson Benesch,ACT2& ACT 0.5,2,"secondary,official","secondary_table,manual_mirror",1,1,0,0,1,0,0
+Wilson Benesch,Nanotube One,1,official,official_pdf,1,0,0,0,0,0,0
+Yamaha,YSA-1,3,"secondary,official","secondary_table,official_brochure",1,1,0,0,0,0,0
+Yamaha,YSA-2 pure straight arm,3,"secondary,official","secondary_table,official_brochure",1,1,0,0,0,0,0
+Zeta,Zeta,2,"secondary,official","secondary_table,manual_mirror",1,1,0,0,1,0,0

@@ -1,0 +1,30 @@
+manufacturer_id,name,normalized_name,created_at
+12,Acoustic Signature,acoustic-signature,2026-06-18T05:06:21+00:00
+13,Audio Note,audio-note,2026-06-18T05:06:21+00:00
+16,Basis Audio,basis-audio,2026-06-18T05:06:21+00:00
+19,Brinkmann,brinkmann,2026-06-18T05:09:13+00:00
+20,Clearaudio,clearaudio,2026-06-18T05:09:13+00:00
+25,Denon,denon,2026-06-18T05:12:10+00:00
+22,Dr. Feickert,dr-feickert,2026-06-18T05:09:30+00:00
+26,Dual,dual,2026-06-18T05:12:10+00:00
+21,Garrard,garrard,2026-06-18T05:09:13+00:00
+10,Gold Note,gold-note,2026-06-18T05:03:50+00:00
+14,Goldmund,goldmund,2026-06-18T05:06:21+00:00
+5,Kuzma,kuzma,2026-06-18T04:59:48+00:00
+4,Linn,linn,2026-06-18T04:59:48+00:00
+15,Michell,michell,2026-06-18T05:06:21+00:00
+23,Micro Seiki,micro-seiki,2026-06-18T05:09:30+00:00
+29,Nottingham Analogue,nottingham-analogue,2026-06-18T05:12:10+00:00
+6,Oracle,oracle,2026-06-18T05:03:50+00:00
+11,Pear Audio,pear-audio,2026-06-18T05:03:50+00:00
+27,Pioneer,pioneer,2026-06-18T05:12:10+00:00
+7,Pro-Ject,pro-ject,2026-06-18T05:03:50+00:00
+1,Rega,rega,2026-06-18T04:59:48+00:00
+24,SME,sme,2026-06-18T05:09:30+00:00
+28,Sony,sony,2026-06-18T05:12:10+00:00
+17,TW-Acustic,tw-acustic,2026-06-18T05:06:21+00:00
+2,Technics,technics,2026-06-18T04:59:48+00:00
+3,Thorens,thorens,2026-06-18T04:59:48+00:00
+9,VPI,vpi,2026-06-18T05:03:50+00:00
+18,Well Tempered Lab,well-tempered-lab,2026-06-18T05:06:21+00:00
+8,Yamaha,yamaha,2026-06-18T05:03:50+00:00

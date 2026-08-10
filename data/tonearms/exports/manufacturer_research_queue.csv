@@ -1,0 +1,112 @@
+manufacturer_name,canonical_match_name,manufacturer_type,coverage_focus,priority_tier,status,discovery_source,search_terms,notes
+Graham,Graham,standalone-upgrade,upgrade-tonearms,primary,hydrated-partial,user-priority,Graham tonearm Phantom manual effective length pivot to spindle,Primary upgrade-arm coverage target.
+Kuzma,Kuzma,standalone-upgrade,upgrade-tonearms,primary,hydrated-partial,user-priority,Kuzma tonearm 4Point Stogi Air Line manual effective length overhang,Primary upgrade-arm coverage target.
+Origin Live,Origin Live,standalone-upgrade,upgrade-tonearms,primary,hydrated,user-priority,Origin Live tonearm Alliance Onyx Silver Zephyr manual overhang,Primary upgrade-arm coverage target.
+Rega,Rega,standalone-upgrade,upgrade-tonearms,primary,hydrated,user-priority,Rega RB250 RB300 RB330 effective mass mounting distance overhang,Primary upgrade-arm coverage target.
+Supatrac,Supatrac,boutique-upgrade,upgrade-tonearms,primary,hydrated,user-priority,Supatrac Blackbird Nighthawk Farpoint manual effective length overhang,Primary upgrade-arm coverage target.
+Tri-Planar,Tri-Planar,standalone-upgrade,upgrade-tonearms,primary,hydrated-partial,user-priority,Tri-Planar tonearm Mk VII U2 SE U12 manual effective length overhang,Primary upgrade-arm coverage target.
+AMG,AMG,boutique-upgrade,cottage-boutique-arms,secondary,hydrated-partial,user-priority-followup,AMG 9W2 12JT tonearm geometry effective length overhang,High-end German tonearm maker added by user.
+Acoustic Signature,Acoustic Signature,turntable-combo,high-end-turntable-combos,secondary,hydrated-partial,stereophile-2025-followup,Acoustic Signature TA-5000 NEO TA-7000 NEO tonearm geometry effective length overhang,Stereophile 2025 recommended tonearm maker follow-up.
+Acoustic Solid,Acoustic Solid,boutique-upgrade,cottage-boutique-arms,secondary,hydrated,external-list-followup,Acoustic Solid tonearm WTB 213 WTB 370 geometry effective length overhang,Missing from current DB/queue but present in broad external manufacturer list.
+Acoustical Systems,Acoustical Systems,boutique-upgrade,cottage-boutique-arms,secondary,hydrated-partial,stereophile-2025-followup,Acoustical Systems AQUILAR 10 AXIOM 12 reference tonearm geometry effective length overhang,Stereophile 2025 recommended tonearm maker follow-up.
+Air Tangent,Air Tangent,boutique-upgrade,parallel-tracking-arms,secondary,hydrated,external-list-followup,Air Tangent tonearm 2A 2B geometry effective length linear tracker,High-priority missing linear-tracking manufacturer from broad external list.
+Alphason Designs,Alphason,standalone-upgrade,upgrade-tonearms,secondary,hydrated,external-list-followup,Alphason Designs HR-100S HR-100MCS tonearm geometry effective length overhang,High-priority missing classic upgrade-arm maker from broad external list.
+Audio Creative,Audio Creative,boutique-upgrade,cottage-boutique-arms,secondary,hydrated,editorial-followup,Audio Creative Groovemaster 3 4 tonearm geometry effective length mounting distance overhang,Follow-up seeded from The Ear Groovemaster 4 review and current boutique-arm coverage expansion.
+Audio Note,Audio Note,boutique-upgrade,cottage-boutique-arms,secondary,hydrated,external-list-followup,Audio Note Arm One II Arm Three II tonearm geometry effective length overhang,High-priority missing boutique manufacturer from broad external list.
+Audio-Technica,Audio-Technica,standalone-upgrade,upgrade-tonearms,secondary,hydrated,user-manufacturer-followup,Audio-Technica tonearm AT-1001 AT-1005II AT-1007 AT-1009 AT-1100 AT-1120 AT-1501 AT-1503 geometry,User-requested manufacturer follow-up for historic Audio-Technica arm families.
+Audiomods,Audiomods,boutique-upgrade,cottage-boutique-arms,secondary,hydrated,user-example,Audiomods tonearm Series Six manual effective length overhang,Cottage brand example; may take more manual research.
+Basis Audio,Basis Audio,turntable-combo,high-end-turntable-combos,secondary,hydrated,user-priority,Basis Audio Vector tonearm manual effective length overhang,Secondary combo coverage target.
+Clearaudio,Clearaudio,boutique-upgrade,cottage-boutique-arms,secondary,hydrated,stereophile-2025-followup,Clearaudio Tracer Black Carbon Fiber tonearm geometry effective length overhang,Stereophile 2025 recommended tonearm maker follow-up.
+Dr. Feickert,Dr. Feickert,turntable-combo,high-end-turntable-combos,secondary,hydrated,user-priority,Feickert Straight-10 tonearm effective length overhang mounting distance,Secondary combo coverage target.
+Durand,Durand,boutique-upgrade,cottage-boutique-arms,secondary,hydrated-partial,external-list-followup,Durand tonearm Talea Tosca geometry effective length overhang,High-priority missing boutique manufacturer from broad external list.
+Dynavector,Dynavector,standalone-upgrade,upgrade-tonearms,secondary,hydrated-partial,user-manufacturer-followup,Dynavector tonearm DV-501 DV-505 DV-507 geometry effective length overhang,User-requested manufacturer follow-up for legacy and exact arm coverage.
+EMT,EMT,boutique-upgrade,cottage-boutique-arms,secondary,hydrated,stereophile-2025-followup,EMT 909-HI 912 tonearm geometry effective length overhang,Stereophile 2025 recommended tonearm maker follow-up.
+Fidelity Research,Fidelity Research,standalone-upgrade,upgrade-tonearms,secondary,hydrated,user-manufacturer-followup,Fidelity Research tonearm FR-12 FR-14 FR-24 FR-34 FR-54 FR-64 FR-66S FR-66fx geometry,User-requested manufacturer follow-up for classic FR arm families.
+Glanz,Glanz,boutique-upgrade,cottage-boutique-arms,secondary,hydrated,user-manufacturer-followup,Glanz tonearm geometry MH-94S MH-104S MH-124S effective length overhang,User-requested manufacturer follow-up.
+Gold Note,Gold Note,boutique-upgrade,cottage-boutique-arms,secondary,hydrated,user-priority-followup,Gold Note B-5.1 B-7 Ceramic tonearm geometry official,Italian manufacturer added by user.
+Goldmund,Goldmund,standalone-upgrade,upgrade-tonearms,secondary,hydrated,external-list-followup,Goldmund T3F T5 tonearm geometry effective length overhang,High-priority missing historic manufacturer from broad external list.
+J.Sikora,J.Sikora,turntable-combo,high-end-turntable-combos,secondary,hydrated,user-manufacturer-followup,J.Sikora J. Sikora tonearm KV12 VTA geometry effective length overhang,User-requested manufacturer follow-up; normalize punctuation variants to J.Sikora.
+Korf,Korf,boutique-upgrade,cottage-boutique-arms,secondary,hydrated-partial,user-priority-followup,Korf tonearm TA-SF9 TA-SF11R geometry effective length overhang,High-end geometry-focused tonearm maker added by user.
+Koshin,Koshin,standalone-upgrade,upgrade-tonearms,secondary,hydrated,external-list-followup,Koshin GST-801 GST-1 tonearm geometry effective length overhang,High-priority missing Japanese arm maker from broad external list.
+Linn,Linn,standalone-upgrade,upgrade-tonearms,secondary,hydrated-partial,stereophile-2025-followup,Linn Ekos SE tonearm geometry effective length overhang,Stereophile 2025 recommended tonearm maker follow-up.
+Michell,Michell,boutique-upgrade,cottage-boutique-arms,secondary,hydrated-partial,user-manufacturer-followup,Michell tonearm geometry TecnoArm A TecnoArm 2 effective length overhang,User-requested manufacturer follow-up.
+Micro Seiki,Micro Seiki,standalone-upgrade,upgrade-tonearms,secondary,hydrated-partial,external-list-followup,Micro Seiki MA-505 MA-707 MAX-282 tonearm geometry effective length overhang,High-priority missing Japanese arm maker from broad external list.
+Moerch,Moerch,boutique-upgrade,cottage-boutique-arms,secondary,hydrated-partial,user-priority-followup,Moerch Morch tonearm DP-6 DP-8 effective length overhang,User-highlighted boutique upgrade-arm vendor. Normalize Morch/Moerch naming during source intake.
+Music Hall,Music Hall,turntable-combo,high-end-turntable-combos,secondary,hydrated,user-priority,Music Hall turntable tonearm specs manual effective length overhang,Secondary combo coverage target.
+Ortofon,Ortofon,boutique-upgrade,cottage-boutique-arms,secondary,hydrated-partial,user-priority-followup,Ortofon AS-212R AS-309R RS-212D RS-309D tonearm geometry official,Historic and current Ortofon tonearm line added by user.
+Pear Audio,Pear Audio,boutique-upgrade,cottage-boutique-arms,secondary,hydrated-partial,user-manufacturer-followup,Pear Audio tonearm geometry Cornet tonearm effective length overhang,User-requested manufacturer follow-up.
+Pro-Ject,Pro-Ject,turntable-combo,high-end-turntable-combos,secondary,hydrated,user-priority,Pro-Ject tonearm 9cc 10cc 12cc manual effective length overhang,Secondary combo coverage target.
+Rabco,Rabco,parallel-tracker,parallel-tracking-arms,secondary,hydrated,user-manufacturer-followup,Rabco SL-8 SL-8E tonearm manual geometry linear tracker,User-requested linear-tracking manufacturer follow-up.
+Reed,Reed,boutique-upgrade,cottage-boutique-arms,secondary,hydrated-partial,user-priority-followup,Reed tonearm official manual 1H 2A 3P effective length overhang,User-added boutique tonearm vendor.
+SAT,SAT,boutique-upgrade,cottage-boutique-arms,secondary,hydrated-partial,user-priority-followup,SAT LM-09 LM-12 tonearm geometry effective length overhang,Swedish Analog Technologies reference-arm coverage target.
+Saec,Saec,standalone-upgrade,upgrade-tonearms,secondary,hydrated,external-list-followup,SAEC Saec WE-308SX WE-407/23 WE-8000/ST tonearm geometry effective length overhang,Existing DB manufacturer matched from the broad external list but not yet promoted into explicit research queue follow-up.
+Schick,Schick,boutique-upgrade,cottage-boutique-arms,secondary,hydrated-partial,stereophile-2025-followup,Thomas Schick 10.5 12 tonearm geometry effective length overhang,Stereophile 2025 recommended tonearm maker follow-up.
+Schroeder,Schroeder,boutique-upgrade,cottage-boutique-arms,secondary,hydrated-partial,user-priority-followup,Schroeder tonearm Reference CB No.2 DPS geometry mounting distance,High-end boutique tonearm maker added by user.
+Sorane,Sorane,boutique-upgrade,cottage-boutique-arms,secondary,hydrated-partial,stereophile-2025-followup,Sorane SA-1.2 tonearm geometry effective length overhang,Stereophile 2025 recommended tonearm maker follow-up.
+TW-Acustic,TW-Acustic,turntable-combo,high-end-turntable-combos,secondary,hydrated,user-priority,TW-Acustic Raven tonearm manual effective length overhang,Secondary combo coverage target.
+TechDAS,TechDAS,turntable-combo,high-end-turntable-combos,secondary,hydrated,user-priority-followup,TechDAS Air Force 10 tonearm effective length overhang,High-end combo coverage target.
+Thales,Thales,boutique-upgrade,cottage-boutique-arms,secondary,hydrated,user-priority-followup,Thales Statement Simplicity tonearm manual effective length,Boutique reference-arm coverage target.
+VPI,VPI,turntable-combo,high-end-turntable-combos,secondary,hydrated-partial,user-priority,VPI JMW tonearm manual effective length overhang,Secondary combo coverage target.
+Vertere Acoustics,Vertere Acoustics,boutique-upgrade,cottage-boutique-arms,secondary,hydrated,user-manufacturer-followup,Vertere Acoustics tonearm geometry SG-1 PTA Groove Runner overhang effective length,User-requested manufacturer follow-up.
+ViV Laboratory,ViV Laboratory,boutique-upgrade,cottage-boutique-arms,secondary,hydrated,stereophile-2025-followup,ViV Laboratory Rigid Float HA9 tonearm geometry underhung,Stereophile 2025 recommended tonearm maker follow-up.
+Wand,Wand,boutique-upgrade,cottage-boutique-arms,secondary,hydrated,stereophile-2025-followup,Wand Master 12 tonearm geometry effective length overhang,Stereophile 2025 recommended tonearm maker follow-up.
+Well Tempered Lab,Well Tempered Lab,boutique-upgrade,cottage-boutique-arms,secondary,hydrated,user-priority-followup,Well Tempered Lab LTD tonearm manual effective length,Boutique reference-arm coverage target.
+Wilson Benesch,Wilson Benesch,boutique-upgrade,cottage-boutique-arms,secondary,hydrated,user-priority-followup,Wilson Benesch tonearm ACT 0.5 A.C.T. official geometry manual,User-highlighted boutique upgrade-arm vendor.
+ADC,ADC,legacy-import,existing-db,backlog,seeded-from-db,auto-seeded,,Auto-seeded from current manufacturer table.
+Alphason,Alphason,legacy-import,existing-db,backlog,seeded-from-db,auto-seeded,,Auto-seeded from current manufacturer table.
+Audio Craft,Audio Craft,legacy-import,existing-db,backlog,seeded-from-db,auto-seeded,,Auto-seeded from current manufacturer table.
+Audio Origami,Audio Origami,external-reference,workbook-gap-import,backlog,queued,user-workbook:TonearmDatabaseWTv4.xlsx,Audio Origami tonearm effective length pivot to spindle official manual specs,Queued from user workbook import: TonearmDatabaseWTv4.xlsx
+AudioQuest,AudioQuest,legacy-import,existing-db,backlog,seeded-from-db,auto-seeded,,Auto-seeded from current manufacturer table.
+Avid,Avid,external-reference,workbook-gap-import,backlog,queued,user-workbook:TonearmDatabaseWTv4.xlsx,Avid tonearm effective length pivot to spindle official manual specs,Queued from user workbook import: TonearmDatabaseWTv4.xlsx
+Azden,Azden,legacy-import,existing-db,backlog,seeded-from-db,auto-seeded,,Auto-seeded from current manufacturer table.
+B&O,B&O,external-reference,workbook-gap-import,backlog,queued,user-workbook:TonearmDatabaseWTv4.xlsx,B&O tonearm effective length pivot to spindle official manual specs,Queued from user workbook import: TonearmDatabaseWTv4.xlsx
+Belcanto,Belcanto,legacy-import,existing-db,backlog,seeded-from-db,auto-seeded,,Auto-seeded from current manufacturer table.
+Breuer,Breuer,legacy-import,existing-db,backlog,seeded-from-db,auto-seeded,,Auto-seeded from current manufacturer table.
+Brinkmann,Brinkmann,legacy-import,existing-db,backlog,seeded-from-db,auto-seeded,,Auto-seeded from current manufacturer table.
+DaVinci,DaVinci,external-reference,workbook-gap-import,backlog,queued,user-workbook:TonearmDatabaseWTv4.xlsx,DaVinci tonearm effective length pivot to spindle official manual specs,Queued from user workbook import: TonearmDatabaseWTv4.xlsx
+Decca,Decca,legacy-import,existing-db,backlog,seeded-from-db,auto-seeded,,Auto-seeded from current manufacturer table.
+Denon,Denon,legacy-import,existing-db,backlog,seeded-from-db,auto-seeded,,Auto-seeded from current manufacturer table.
+Empire,Empire,legacy-import,existing-db,backlog,seeded-from-db,auto-seeded,,Auto-seeded from current manufacturer table.
+Excel,Excel,legacy-import,existing-db,backlog,seeded-from-db,auto-seeded,,Auto-seeded from current manufacturer table.
+Funk Firm,Funk Firm,external-reference,workbook-gap-import,backlog,queued,user-workbook:TonearmDatabaseWTv4.xlsx,Funk Firm tonearm effective length pivot to spindle official manual specs,Queued from user workbook import: TonearmDatabaseWTv4.xlsx
+Grace,Grace,legacy-import,existing-db,backlog,seeded-from-db,auto-seeded,,Auto-seeded from current manufacturer table.
+Groovemaster,Groovemaster,external-reference,workbook-gap-import,backlog,queued,user-workbook:TonearmDatabaseWTv4.xlsx,Groovemaster tonearm effective length pivot to spindle official manual specs,Queued from user workbook import: TonearmDatabaseWTv4.xlsx
+Guya,Guya,legacy-import,existing-db,backlog,seeded-from-db,auto-seeded,,Auto-seeded from current manufacturer table.
+Hadcock,Hadcock,legacy-import,existing-db,backlog,seeded-from-db,auto-seeded,,Auto-seeded from current manufacturer table.
+Helius,Helius,legacy-import,existing-db,backlog,seeded-from-db,auto-seeded,,Auto-seeded from current manufacturer table.
+Ikeda,Ikeda,legacy-import,existing-db,backlog,seeded-from-db,auto-seeded,,Auto-seeded from current manufacturer table.
+Immedia,Immedia,legacy-import,existing-db,backlog,seeded-from-db,auto-seeded,,Auto-seeded from current manufacturer table.
+Infinity,Infinity,legacy-import,existing-db,backlog,seeded-from-db,auto-seeded,,Auto-seeded from current manufacturer table.
+Jakuts,Jakuts,external-reference,workbook-gap-import,backlog,queued,user-workbook:TonearmDatabaseWTv4.xlsx,Jakuts tonearm effective length pivot to spindle official manual specs,Queued from user workbook import: TonearmDatabaseWTv4.xlsx
+Jelco,Jelco,legacy-import,existing-db,backlog,seeded-from-db,auto-seeded,,Auto-seeded from current manufacturer table.
+Keith Monks,Keith Monks,legacy-import,existing-db,backlog,seeded-from-db,auto-seeded,,Auto-seeded from current manufacturer table.
+Kronos,Kronos,external-reference,workbook-gap-import,backlog,queued,user-workbook:TonearmDatabaseWTv4.xlsx,Kronos tonearm effective length pivot to spindle official manual specs,Queued from user workbook import: TonearmDatabaseWTv4.xlsx
+Logic,Logic,legacy-import,existing-db,backlog,seeded-from-db,auto-seeded,,Auto-seeded from current manufacturer table.
+Lustre,Lustre,legacy-import,existing-db,backlog,seeded-from-db,auto-seeded,,Auto-seeded from current manufacturer table.
+Magnepan,Magnepan,legacy-import,existing-db,backlog,seeded-from-db,auto-seeded,,Auto-seeded from current manufacturer table.
+Manticore,Manticore,legacy-import,existing-db,backlog,seeded-from-db,auto-seeded,,Auto-seeded from current manufacturer table.
+Mayware,Mayware,legacy-import,existing-db,backlog,seeded-from-db,auto-seeded,,Auto-seeded from current manufacturer table.
+Micro,Micro,legacy-import,existing-db,backlog,seeded-from-db,auto-seeded,,Auto-seeded from current manufacturer table.
+Mission,Mission,legacy-import,existing-db,backlog,seeded-from-db,auto-seeded,,Auto-seeded from current manufacturer table.
+Naim,Naim,legacy-import,existing-db,backlog,seeded-from-db,auto-seeded,,Auto-seeded from current manufacturer table.
+Nottingham Analogue,Nottingham Analogue,external-reference,workbook-gap-import,backlog,queued,user-workbook:TonearmDatabaseWTv4.xlsx,Nottingham Analogue tonearm effective length pivot to spindle official manual specs,Queued from user workbook import: TonearmDatabaseWTv4.xlsx
+Odyssey,Odyssey,legacy-import,existing-db,backlog,seeded-from-db,auto-seeded,,Auto-seeded from current manufacturer table.
+Pete Riggle,Pete Riggle,external-reference,workbook-gap-import,backlog,queued,user-workbook:TonearmDatabaseWTv4.xlsx,Pete Riggle tonearm effective length pivot to spindle official manual specs,Queued from user workbook import: TonearmDatabaseWTv4.xlsx
+Pioneer,Pioneer,legacy-import,existing-db,backlog,seeded-from-db,auto-seeded,,Auto-seeded from current manufacturer table.
+Primary Control,Primary Control,external-reference,workbook-gap-import,backlog,queued,user-workbook:TonearmDatabaseWTv4.xlsx,Primary Control tonearm effective length pivot to spindle official manual specs,Queued from user workbook import: TonearmDatabaseWTv4.xlsx
+RS-Lab,RS-Lab,legacy-import,existing-db,backlog,seeded-from-db,auto-seeded,,Auto-seeded from current manufacturer table.
+Roksan,Roksan,legacy-import,existing-db,backlog,seeded-from-db,auto-seeded,,Auto-seeded from current manufacturer table.
+SME,SME,legacy-import,existing-db,backlog,seeded-from-db,auto-seeded,,Auto-seeded from current manufacturer table.
+SUMIKO,SUMIKO,legacy-import,existing-db,backlog,seeded-from-db,auto-seeded,,Auto-seeded from current manufacturer table.
+Satin,Satin,legacy-import,existing-db,backlog,seeded-from-db,auto-seeded,,Auto-seeded from current manufacturer table.
+Sony,Sony,legacy-import,existing-db,backlog,seeded-from-db,auto-seeded,,Auto-seeded from current manufacturer table.
+Sound,Sound,legacy-import,existing-db,backlog,seeded-from-db,auto-seeded,,Auto-seeded from current manufacturer table.
+Spiral Groove,Spiral Groove,external-reference,workbook-gap-import,backlog,queued,user-workbook:TonearmDatabaseWTv4.xlsx,Spiral Groove tonearm effective length pivot to spindle official manual specs,Queued from user workbook import: TonearmDatabaseWTv4.xlsx
+Stax,Stax,legacy-import,existing-db,backlog,seeded-from-db,auto-seeded,,Auto-seeded from current manufacturer table.
+Supex,Supex,legacy-import,existing-db,backlog,seeded-from-db,auto-seeded,,Auto-seeded from current manufacturer table.
+Syrinx,Syrinx,legacy-import,existing-db,backlog,seeded-from-db,auto-seeded,,Auto-seeded from current manufacturer table.
+Technics,Technics,legacy-import,existing-db,backlog,seeded-from-db,auto-seeded,,Auto-seeded from current manufacturer table.
+Thorens,Thorens,legacy-import,existing-db,backlog,seeded-from-db,auto-seeded,,Auto-seeded from current manufacturer table.
+Victor (JVC),Victor (JVC),legacy-import,existing-db,backlog,seeded-from-db,auto-seeded,,Auto-seeded from current manufacturer table.
+Yamaha,Yamaha,legacy-import,existing-db,backlog,seeded-from-db,auto-seeded,,Auto-seeded from current manufacturer table.
+Zeta,Zeta,legacy-import,existing-db,backlog,seeded-from-db,auto-seeded,,Auto-seeded from current manufacturer table.

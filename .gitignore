@@ -1,10 +1,21 @@
-.DS_Store
+# Python
 __pycache__/
 *.py[cod]
 .pytest_cache/
 .mypy_cache/
 .venv/
 venv/
+
+# Node
+node_modules/
+*/node_modules/
+dist/
+coverage/
+cdk.out/
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
 
 # Large local/reference data
 *.wav
@@ -21,5 +32,18 @@ data/outputs/
 *.png
 !data/RTI1P27_graph.png
 
+# Pi runtime artifacts and managed packages
+.pi/*
+!.pi/settings.json
+!.pi/prompts/
+!.pi/prompts/**
+!.pi/build/
+!.pi/build/**
+!.pi/extensions/
+!.pi/extensions/**
+.pi/build/graphify-out/
+.pi-subagents/
+
 # macOS / editor
+.DS_Store
 *.swp

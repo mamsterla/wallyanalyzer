@@ -1,0 +1,32 @@
+{
+  "name": "wally-analyzer-platform",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AWS platform for Wally Analyzer recordings, reports, commerce, and PSIU control.",
+  "workspaces": [
+    "packages/*",
+    "app-ui",
+    "app-server",
+    "infra"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "check": "npm run build --workspace=@wally/contracts && npm run check --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "dev:ui": "npm run dev --workspace=@wally/app-ui",
+    "dev:server": "npm run dev --workspace=@wally/app-server",
+    "synth": "npm run synth --workspace=@wally/infra",
+    "deploy:staging": "npm run deploy:staging --workspace=@wally/infra",
+    "deploy:production": "npm run deploy:production --workspace=@wally/infra",
+    "docker:up": "docker compose up --build",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f"
+  },
+  "devDependencies": {
+    "prettier": "^3.5.3",
+    "typescript": "^5.8.3"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

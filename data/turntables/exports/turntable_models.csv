@@ -1,0 +1,39 @@
+turntable_model_id,manufacturer,model_name,normalized_model_name,display_name,notes,created_at
+12,Acoustic Signature,Invictus NEO,invictus-neo,Invictus NEO,Reference Acoustic Signature turntable target.,2026-06-18T05:06:21+00:00
+38,Acoustic Signature,Maximus NEO,maximus-neo,Maximus NEO,Compact Acoustic Signature NEO-series target.,2026-06-18T05:14:34+00:00
+13,Audio Note,TT-Three,tt-three,TT-Three,Current Audio Note turntable target.,2026-06-18T05:06:21+00:00
+16,Basis Audio,Debut V,debut-v,Debut V,Seed target Debut V represented by Basis official Debut Mark 5 wording.,2026-06-18T05:06:21+00:00
+19,Brinkmann,Bardo,bardo,Bardo,Brinkmann direct-drive turntable target.,2026-06-18T05:09:13+00:00
+20,Clearaudio,Innovation,innovation,Innovation,Clearaudio reference-line turntable target.,2026-06-18T05:09:13+00:00
+36,Clearaudio,Ovation,ovation,Ovation,Clearaudio performance-line turntable target.,2026-06-18T05:14:34+00:00
+25,Denon,DP-3000NE,dp-3000ne,DP-3000NE,Current Denon flagship direct-drive turntable target.,2026-06-18T05:12:10+00:00
+22,Dr. Feickert,Blackbird,blackbird,Blackbird,Dr. Feickert classic high-end turntable target.,2026-06-18T05:09:30+00:00
+26,Dual,CS 618Q,cs-618q,CS 618Q,Current Dual direct-drive turntable target.,2026-06-18T05:12:10+00:00
+21,Garrard,301,301,301,Historic Garrard transcription-turntable target represented by current official 301 revival page plus heritage support.,2026-06-18T05:09:13+00:00
+10,Gold Note,Mediterraneo,mediterraneo,Mediterraneo,Current Gold Note flagship-style target.,2026-06-18T05:03:50+00:00
+14,Goldmund,Reference,reference,Reference,Historical Goldmund flagship turntable target.,2026-06-18T05:06:21+00:00
+5,Kuzma,Stabi R,stabi-r,Stabi R,Flagship Kuzma turntable target.,2026-06-18T04:59:48+00:00
+35,Linn,Selekt LP12,selekt-lp12,Selekt LP12,Upper-mid Linn LP12 package target.,2026-06-18T05:14:34+00:00
+4,Linn,Sondek LP12 Klimax,sondek-lp12-klimax,Sondek LP12 Klimax,Flagship Linn LP12 target represented using Linn’s current turntables page naming and lineup summary.,2026-06-18T04:59:48+00:00
+15,Michell,GyroDec,gyrodec,GyroDec,Seeded GyroDec target represented by Michell’s current official Gyro product page.,2026-06-18T05:06:21+00:00
+23,Micro Seiki,SX-8000 II,sx-8000-ii,SX-8000 II,Historic Micro Seiki flagship air-bearing target.,2026-06-18T05:09:30+00:00
+29,Nottingham Analogue,Space Deck,space-deck,Space Deck,Classic Nottingham Analogue suspended turntable target.,2026-06-18T05:12:10+00:00
+6,Oracle,Delphi MKVI,delphi-mkvi,Delphi MKVI,Seed target hydrated from official Oracle MkVI page.,2026-06-18T05:03:50+00:00
+11,Pear Audio,Kid Thomas,kid-thomas,Kid Thomas,Current Pear Audio turntable target.,2026-06-18T05:03:50+00:00
+27,Pioneer,PLX-1000,plx-1000,PLX-1000,Current Pioneer direct-drive turntable target.,2026-06-18T05:12:10+00:00
+34,Pro-Ject,Debut PRO S Balanced,debut-pro-s-balanced,Debut PRO S Balanced,Modern Pro-Ject balanced-output turntable target.,2026-06-18T05:14:34+00:00
+7,Pro-Ject,Xtension 12 Evolution,xtension-12-evolution,Xtension 12 Evolution,Flagship Pro-Ject target.,2026-06-18T05:03:50+00:00
+1,Rega,Planar 10,planar-10,Planar 10,Current Rega reference turntable target.,2026-06-18T04:59:48+00:00
+32,Rega,Planar 8,planar-8,Planar 8,Upper-tier Rega skeletal turntable target.,2026-06-18T05:14:34+00:00
+37,SME,Model 15,model-15,Model 15,Compact SME suspended turntable target.,2026-06-18T05:14:34+00:00
+24,SME,Model 20/3,model-20-3,Model 20/3,Seed target Model 20/3 represented using current official Model 20 page and Model 20 family support.,2026-06-18T05:09:30+00:00
+28,Sony,PS-LX310BT,ps-lx310bt,PS-LX310BT,Current Sony wireless turntable target.,2026-06-18T05:12:10+00:00
+17,TW-Acustic,Raven LS,raven-ls,Raven LS,Current TW-Acustic turntable target.,2026-06-18T05:06:21+00:00
+2,Technics,SL-1200G,sl-1200g,SL-1200G,Current Technics flagship-core direct-drive target.,2026-06-18T04:59:48+00:00
+30,Technics,SP-10R,sp-10r,SP-10R,Reference Technics motor-unit turntable target.,2026-06-18T05:14:34+00:00
+3,Thorens,TD 124 DD,td-124-dd,TD 124 DD,Current Thorens statement direct-drive target.,2026-06-18T04:59:48+00:00
+31,Thorens,TD 1600,td-1600,TD 1600,Modern suspended Thorens turntable target.,2026-06-18T05:14:34+00:00
+33,VPI,Avenger,avenger,Avenger,Multi-arm VPI reference-series target.,2026-06-18T05:14:34+00:00
+9,VPI,Prime 21,prime-21,Prime 21,Current VPI target.,2026-06-18T05:03:50+00:00
+18,Well Tempered Lab,Amadeus,amadeus,Amadeus,Seed target Amadeus represented by current Amadeus MK II official page.,2026-06-18T05:06:21+00:00
+8,Yamaha,GT-5000,gt-5000,GT-5000,Current Yamaha flagship turntable target.,2026-06-18T05:03:50+00:00

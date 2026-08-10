@@ -1,0 +1,22 @@
+{
+  "name": "@wally/app-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check": "tsc --noEmit -p tsconfig.json",
+    "test": "node --test dist/**/*.test.js",
+    "dev": "tsx watch src/local.ts"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.817.0",
+    "@aws-sdk/s3-request-presigner": "^3.817.0",
+    "@wally/contracts": "*"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.151",
+    "@types/node": "^22.15.29",
+    "tsx": "^4.19.4"
+  }
+}

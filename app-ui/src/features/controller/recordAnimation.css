@@ -1,0 +1,5 @@
+@keyframes wally-record-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="description" content="Audioservicemanuals contains a collection of schematics, owners and service manuals in an easy-to-browse format. Everything here is free - no logins or limits."/>
+    <link rel="canonical" href="https://www.audioservicemanuals.com/"/>
+    <title>Audio Service Manuals</title>
+    <!-- <link rel="stylesheet" href="/styles.css"> -->
+    <style>
+    body{font-family:Arial,sans-serif;margin:0;padding:0}html,body{height:100%;margin:0;padding:0;display:flex;flex-direction:column}.img-fluid{max-width:100%;height:auto}a{color:#333;text-decoration:underline}p{font-size:1em;line-height:1.5;margin:0 0 1em;font-weight:100;overflow-wrap: break-word;}.btn{display:inline-block;font-weight:400;color:#212529;text-align:center;vertical-align:middle;cursor:pointer;-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none;background-color:#fff0;border:1px solid #fff0;padding:.375rem .75rem;font-size:1rem;line-height:1.5;border-radius:.25rem;transition:color .15s ease-in-out,background-color .15s ease-in-out,border-color .15s ease-in-out,box-shadow .15s ease-in-out}h6{font-size:1rem;color #777;font-weight:500}.list-unstyled{padding-left:0;list-style:none}header{background-color:#fafafa}header nav{display:flex;justify-content:space-between;align-items:center;margin:0 auto;padding:1em 1em;max-width:1200px}main{max-width:1200px;margin:auto;width:100%;flex-grow:1}.hero-desktop{color:#333;font-size:.8em;line-height:1.5;font-weight:10;border:#333;border:0 solid #ccc;border-radius:4px;margin:2em 0em;box-shadow:rgb(0 0 0 / .15) 0 8px 16px 0;display:none}h1{font-size:1.5em;font-weight:500;margin:0;line-height:1.2}.hero-desktop h1{font-size:3.5em;margin:0;line-height:1.2}.hero-desktop p{font-size:1.2em;margin:.5em 0 0}main .search{padding:1em 1em;text-align:center}.search h2{margin:0 0 .5em 0;font-weight:500;font-size:2em;text-align:left}header .search{padding-left:1em;display:flex;flex-grow:1;justify-content:flex-end}.search form{display:flex;flex-grow:1;align-items:stretch}.search input[type="text"]{padding:.5em;flex:1 1 auto;min-width:0;border:1px solid #ccc;border-radius:4px;border-top-right-radius:0;border-bottom-right-radius:0;font-size:1rem}.search button{padding:.5em 1em;border:none;background-color:#333;color:#fff;border-radius:4px;border-top-left-radius:0;border-bottom-left-radius:0;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center}.search button:hover{background-color:#575757}.asm-searchwrap{position:relative;flex:1 1 auto;min-width:0;display:flex;text-align:left!important}.asm-searchwrap input[type="text"]{flex:1 1 auto;min-width:0}.asm-suggestions{position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #ccc;border-top:0;border-radius:0!important;box-shadow:0 8px 16px rgba(0,0,0,.12);z-index:1000;max-height:240px;overflow-y:auto;text-align:left!important}.asm-suggestions .asm-suggestion{display:block;width:100%;text-align:left!important;justify-content:flex-start;align-items:center;padding:.5em .75em;border:0;border-radius:0!important;background:#fff;color:#000;cursor:pointer;font-size:.95rem;appearance:none;-webkit-appearance:none}.asm-suggestion:hover,.asm-suggestion:focus{background:#111;color:#fff;outline:none}section{padding:0em 1em}section h1{margin-bottom:.5em}.breadcrumb{display:-ms-flexbox;display:flex;-ms-flex-wrap:wrap;flex-wrap:wrap;padding:0rem 0rem;margin-bottom:1rem;list-style:none;border-radius:.25rem}.breadcrumb a{text-decoration:none}.breadcrumb a:hover{text-decoration:underline}.breadcrumb-item+.breadcrumb-item{padding-left:.5rem}.breadcrumb-item+.breadcrumb-item::before{display:inline-block;padding-right:.5rem;color:#6c757d;content:"/"}.breadcrumb-item+.breadcrumb-item:hover::before{text-decoration:underline}.breadcrumb-item+.breadcrumb-item:hover::before{text-decoration:none}.breadcrumb-item.active{color:#6c757d}hr{border:0;border-top:1px solid #ccc;margin:2em 0em}.manuals-list{padding:0 0em}.manuals-list h2{margin:0 .5em 1em}.manuals-list-columns{columns:3;column-gap:1em}.manuals-list-columns a{display:inline-block;width:100%;text-decoration:none;color:#333;padding:.5em;margin-bottom:1em;border-radius:4px}.manuals-list a:hover{background-color:#ddd}table{border-collapse:collapse;width:100%;max-width:100%;margin-bottom:1rem;background-color:#fff0}.table a{display:block;text-decoration:none}.table td,.table th{padding:.75rem;vertical-align:middle;border-top:1px solid #dee2e6}.table-hover tbody tr:hover{color:#212529;background-color:rgb(0 0 0 / .075)}.grey{background-color:#fafafa}.topmargin15{margin-top:15px}tr{padding:0rem!important}th{padding:0rem!important;width:1em}td{padding:0rem!important}th a{padding:.75rem}td a{width:100%!important;height:100%!important;display:block!important}#the-container{position:relative;border:1px solid #000}#pagenumbers{position:absolute;margin-left:7px}.controlpanel{border-width:1px;border-color:#ddd;width:100%;height:100%;position:absolute}.controlpanel .left{width:50%;height:100%;position:absolute;display:flex;flex-direction:column;justify-content:center;opacity:0}.controlpanel .right{left:50%;width:50%;height:100%;position:absolute;display:flex;flex-direction:column;justify-content:center;opacity:0}.controlpanel .left svg{position:absolute;top:40%;left:10%;height:70px;-moz-transform:scale(-1,-1);-o-transform:scale(-1,-1);-webkit-transform:scale(-1,-1);transform:scale(-1,-1)}.controlpanel .right svg{position:absolute;top:40%;right:10%;height:70px}.controlpanel .right:hover{opacity:.1}.controlpanel .right:active{opacity:0}.controlpanel .left:hover{opacity:.1}.controlpanel .left:active{opacity:0}.controls-under-manual{display:flex;justify-content:space-between;align-items:center;margin-top:1em}.pagination{display:-ms-flexbox;display:flex;padding-left:0;list-style:none;border-radius:.25rem}.page-link{position:relative;display:block;padding:.5rem .75rem;margin-left:-1px;line-height:1.25;background-color:#fff;border:1px solid #dee2e6}.page-link:hover{z-index:2;text-decoration:none;background-color:#e9ecef;border-color:#dee2e6}.page-link:focus{z-index:3;outline:0;box-shadow:0 0 0 .2rem rgb(0 123 255 / .25)}.page-item:first-child .page-link{margin-left:0;border-top-left-radius:.25rem;border-bottom-left-radius:.25rem}.page-item:last-child .page-link{border-top-right-radius:.25rem;border-bottom-right-radius:.25rem}.page-item.active .page-link{z-index:3;color:#fff;background-color:#007bff;border-color:#007bff}footer{background-color:#fafafa;width:100%}footer .footercontainer{margin:0 auto;padding:2em 2em;display:flex;flex-direction:row;justify-content:left;max-width:1200px;gap:4em}footer .footercontainer div{text-align:left}footer h6{margin:0;font-weight:600;color:#666}footer ul{font-size:.85em;line-height:2em}.hidden-mobile{display:none}@media (min-width:400px){.manuals-list-columns{columns:3}}@media (min-width:768px){.manuals-list-columns{columns:4}.hidden-mobile{display:inline-block}}@media (min-width:1200px){.manuals-list-columns{columns:6}.hero-desktop{visibility:visible;display:block}.hero-mobile{display:none}section{padding:0em 0em}}.hidden{display:none}
+    #downloadbutton {
+        /* display: none; */
+        margin: 1em 0;
+    }
+    #downloadbutton button {
+        padding: .5em 1em;
+        border: 1px solid #000;
+        background-color: #eee;
+        color: #000;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 1rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    #downloadbutton button:hover {
+        background-color: #ddd;
+    }
+    #downloadbutton button:active {
+        background-color: #ccc;
+    }
+    .alert{padding:.75rem 1rem;border:1px solid transparent;border-radius:4px;margin:1em 0}.alert-danger{background:#f8d7da;color:#721c24;border-color:#f5c6cb}
+    .manual-ocr-text{margin-top:2em;border-top:1px solid #eee;padding-top:1.5em}.manual-ocr-text h2{font-size:1em;font-weight:600;color:#555;margin:0 0 1em}.manual-ocr-text p{font-size:.85em;line-height:1.6;color:#555;margin-bottom:.75em}
+    </style>
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5213936872537369"
+    crossorigin="anonymous"></script>
+    </head>
+<body>
+    <header>
+        <nav>
+            <div>
+                <a href="/">
+                    <svg aria-label="Tillbaks till startsidan" width="160" height="41">
+                        <use xlink:href="#audioservicemanualslogo"></use>
+                    </svg>
+                </a>
+            </div>
+            <!-- <div class="search">
+                <form action="#" method="POST">
+                    <input type="text" name="asm_searchquery" placeholder="Search hifi service manuals">
+                    <button type="submit" aria-label="Search">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19"
+                            viewBox="0 0 110 110">
+                            <g fill="none" stroke="#fff" stroke-width="10">
+                                <path d="M35 72L5 102"></path>
+                                <circle cx="65" cy="42" r="37"></circle>
+                            </g>
+                        </svg>
+                    </button>
+                </form>
+            </div> -->
+        </nav>
+    </header>
+    <main>
+                    <div class="hero-desktop">
+                <div class="search">
+                    <h2>Search more than 65000 HIFI manuals</h2>
+                    <form action="#" method="POST">
+                        <input type="text" name="asm_searchquery" placeholder="Search hifi service manuals">
+                        <button type="submit" aria-label="Search">Search</button>
+                    </form>
+                </div>
+            </div>
+            <div class="hero-mobile">
+                <section class="search">
+                    <h2>Search more than 65000 HIFI manuals</h2>
+                    <form action="#" method="POST">
+                        <input type="text" name="asm_searchquery" placeholder="Search hifi service manuals">
+                        <button type="submit" aria-label="Search">Search</button>
+                    </form>
+                </section>
+            </div>
+            <!-- SEARCH RESULTS -->
+            <section class="manuals-list">
+                <h2>A</h2>
+                <div class="manuals-list-columns">
+                    <a href="/a/ab-international/">AB-International</a>
+                        <a href="/a/abacus/">Abacus</a>
+                        <a href="/a/accuphase/">Accuphase</a>
+                        <a href="/a/acoustat/">Acoustat</a>
+                        <a href="/a/acoustic-research/">Acoustic-research</a>
+                        <a href="/a/acurus/">Acurus</a>
+                        <a href="/a/adc/">ADC</a>
+                        <a href="/a/adcom/">Adcom</a>
+                        <a href="/a/adret/">Adret</a>
+                        <a href="/a/advent/">Advent</a>
+                        <a href="/a/airline-wards/">Airline-wards</a>
+                        <a href="/a/aiwa/">Aiwa</a>
+                        <a href="/a/akai/">Akai</a>
+                        <a href="/a/akg/">AKG</a>
+                        <a href="/a/allen-and-heath/">Allen-and-Heath</a>
+                        <a href="/a/alpine/">Alpine</a>
+                        <a href="/a/altec/">Altec</a>
+                        <a href="/a/alto/">Alto</a>
+                        <a href="/a/amc/">Amc</a>
+                        <a href="/a/ampeg/">Ampeg</a>
+                        <a href="/a/ampex/">Ampex</a>
+                        <a href="/a/anatek/">Anatek</a>
+                        <a href="/a/arcam/">Arcam</a>
+                        <a href="/a/arp/">Arp</a>
+                        <a href="/a/ashdown/">Ashdown</a>
+                        <a href="/a/audio-research/">Audio-Research</a>
+                        <a href="/a/audio-technica/">Audio-Technica</a>
+                        <a href="/a/audiolab/">Audiolab</a>
+                        <a href="/a/audiolabor/">Audiolabor</a>
+                        <a href="/a/audionet/">Audionet</a>
+                        <a href="/a/audix/">Audix</a>
+                </div>
+                <hr>
+                <h2>B</h2>
+                <div class="manuals-list-columns">
+                            <a href="/b/bang-olufsen/">Bang-olufsen</a>
+                        <a href="/b/barthe/">Barthe</a>
+                        <a href="/b/basf/">BASF</a>
+                        <a href="/b/bbk/">BBK</a>
+                        <a href="/b/benytone/">Benytone</a>
+                        <a href="/b/beyerdynamic/">Beyerdynamic</a>
+                        <a href="/b/bgw/">BGW</a>
+                        <a href="/b/bic/">Bic</a>
+                        <a href="/b/blaupunkt/">Blaupunkt</a>
+                        <a href="/b/bogen/">Bogen</a>
+                        <a href="/b/bose/">Bose</a>
+                        <a href="/b/boss/">Boss</a>
+                        <a href="/b/boston-acoustics/">Boston-acoustics</a>
+                        <a href="/b/boulder/">Boulder</a>
+                        <a href="/b/bowers-wilkins/">Bowers-wilkins</a>
+                        <a href="/b/bozak/">Bozak</a>
+                        <a href="/b/braun/">Braun</a>
+                        <a href="/b/brenell/">Brenell</a>
+                        <a href="/b/brionvega/">Brionvega</a>
+                        <a href="/b/bryston/">Bryston</a>
+                        <a href="/b/bsr/">Bsr</a>
+                </div>
+                <hr>
+                <h2>C</h2>
+                <div class="manuals-list-columns">
+                            <a href="/c/cabasse/">Cabasse</a>
+                        <a href="/c/califone/">Califone</a>
+                        <a href="/c/cambridge-audio/">Cambridge-audio</a>
+                        <a href="/c/canton/">Canton</a>
+                        <a href="/c/carver/">Carver</a>
+                        <a href="/c/carvin/">Carvin</a>
+                        <a href="/c/casio/">Casio</a>
+                        <a href="/c/cec/">Cec</a>
+                        <a href="/c/celestion/">Celestion</a>
+                        <a href="/c/cello/">Cello</a>
+                        <a href="/c/ciclotron/">Ciclotron</a>
+                        <a href="/c/citronic/">Citronic</a>
+                        <a href="/c/classe-audio/">Classe-Audio</a>
+                        <a href="/c/classe/">Classe</a>
+                        <a href="/c/coby/">Coby</a>
+                        <a href="/c/concept/">Concept</a>
+                        <a href="/c/concord/">Concord</a>
+                        <a href="/c/connoisseur/">Connoisseur</a>
+                        <a href="/c/copland/">Copland</a>
+                        <a href="/c/counterpoint/">Counterpoint</a>
+                        <a href="/c/crate/">Crate</a>
+                        <a href="/c/creek/">Creek</a>
+                        <a href="/c/crest/">Crest</a>
+                        <a href="/c/crown/">Crown</a>
+                        <a href="/c/crumar/">Crumar</a>
+                </div>
+                <hr>
+                <h2>D</h2>
+                <div class="manuals-list-columns">
+                            <a href="/d/dbx/">Dbx</a>
+                        <a href="/d/decca/">Decca</a>
+                        <a href="/d/decware/">Decware</a>
+                        <a href="/d/denon/">Denon</a>
+                        <a href="/d/digitech/">Digitech</a>
+                        <a href="/d/dod/">DOD</a>
+                        <a href="/d/dual/">Dual</a>
+                        <a href="/d/dynaco/">Dynaco</a>
+                        <a href="/d/dynacord/">Dynacord</a>
+                </div>
+                <hr>
+                <h2>E</h2>
+                <div class="manuals-list-columns">
+                            <a href="/e/ecler/">Ecler</a>
+                        <a href="/e/eico/">Eico</a>
+                        <a href="/e/electro-harmonix/">Electro-harmonix</a>
+                        <a href="/e/electro-voice/">Electro-Voice</a>
+                        <a href="/e/elipson/">Elipson</a>
+                        <a href="/e/elka/">Elka</a>
+                        <a href="/e/emiment/">Emiment</a>
+                        <a href="/e/emu/">Emu</a>
+                        <a href="/e/ensoniq/">Ensoniq</a>
+                        <a href="/e/epiphone/">Epiphone</a>
+                        <a href="/e/era/">Era</a>
+                        <a href="/e/esoteric/">Esoteric</a>
+                        <a href="/e/eventide/">Eventide</a>
+                        <a href="/e/expert/">Expert</a>
+                </div>
+                <hr>
+                <h2>F</h2>
+                <div class="manuals-list-columns">
+                            <a href="/f/fairlight/">Fairlight</a>
+                        <a href="/f/farfisa/">Farfisa</a>
+                        <a href="/f/fender/">Fender</a>
+                        <a href="/f/ferrograph/">Ferrograph</a>
+                        <a href="/f/fisher/">Fisher</a>
+                        <a href="/f/focal/">Focal</a>
+                        <a href="/f/fostex/">Fostex</a>
+                </div>
+                <hr>
+                <h2>G</h2>
+                <div class="manuals-list-columns">
+                            <a href="/g/gallien-krueger/">Gallien-Krueger</a>
+                        <a href="/g/garrard/">Garrard</a>
+                        <a href="/g/gas/">GAS</a>
+                        <a href="/g/gemini/">Gemini</a>
+                        <a href="/g/genesis/">Genesis</a>
+                        <a href="/g/gibson/">Gibson</a>
+                        <a href="/g/goldmund/">Goldmund</a>
+                        <a href="/g/grace/">Grace</a>
+                        <a href="/g/gradiente/">Gradiente</a>
+                        <a href="/g/grommes/">Grommes</a>
+                        <a href="/g/grundig/">Grundig</a>
+                </div>
+                <hr>
+                <h2>H</h2>
+                <div class="manuals-list-columns">
+                            <a href="/h/hafler/">Hafler</a>
+                        <a href="/h/hammond/">Hammond</a>
+                        <a href="/h/harman-kardon/">Harman-Kardon</a>
+                        <a href="/h/hartke/">Hartke</a>
+                        <a href="/h/heathkit/">Heathkit</a>
+                        <a href="/h/hirtel/">Hirtel</a>
+                        <a href="/h/hitachi/">Hitachi</a>
+                        <a href="/h/hohner/">Hohner</a>
+                        <a href="/h/hovland/">Hovland</a>
+                </div>
+                <hr>
+                <h2>I</h2>
+                <div class="manuals-list-columns">
+                            <a href="/i/ibanez/">Ibanez</a>
+                        <a href="/i/infinity/">Infinity</a>
+                        <a href="/i/inkel/">Inkel</a>
+                        <a href="/i/integra/">Integra</a>
+                        <a href="/i/interm/">InterM</a>
+                        <a href="/i/itt/">ITT</a>
+                        <a href="/i/iwata/">Iwata</a>
+                </div>
+                <hr>
+                <h2>J</h2>
+                <div class="manuals-list-columns">
+                            <a href="/j/jadis/">Jadis</a>
+                        <a href="/j/jamo/">Jamo</a>
+                        <a href="/j/janszen/">Janszen</a>
+                        <a href="/j/jbl/">Jbl</a>
+                        <a href="/j/jeff-rowland/">Jeff-Rowland</a>
+                        <a href="/j/jen/">Jen</a>
+                        <a href="/j/jolida/">Jolida</a>
+                        <a href="/j/jvc/">JVC</a>
+                </div>
+                <hr>
+                <h2>K</h2>
+                <div class="manuals-list-columns">
+                            <a href="/k/kawai/">Kawai</a>
+                        <a href="/k/kef/">Kef</a>
+                        <a href="/k/kenwood/">Kenwood</a>
+                        <a href="/k/kirksaeter/">Kirksaeter</a>
+                        <a href="/k/klark-teknik/">Klark-Teknik</a>
+                        <a href="/k/klipsch/">Klipsch</a>
+                        <a href="/k/knight/">Knight</a>
+                        <a href="/k/knoll-systems/">Knoll-Systems</a>
+                        <a href="/k/koerting/">Koerting</a>
+                        <a href="/k/korg/">Korg</a>
+                        <a href="/k/koss/">Koss</a>
+                        <a href="/k/krell/">Krell</a>
+                        <a href="/k/kurzweil/">Kurzweil</a>
+                </div>
+                <hr>
+                <h2>L</h2>
+                <div class="manuals-list-columns">
+                            <a href="/l/labgruppen/">LabGruppen</a>
+                        <a href="/l/lafayette/">Lafayette</a>
+                        <a href="/l/laney/">Laney</a>
+                        <a href="/l/leak/">Leak</a>
+                        <a href="/l/lecson/">Lecson</a>
+                        <a href="/l/lenco/">Lenco</a>
+                        <a href="/l/leslie/">Leslie</a>
+                        <a href="/l/lexicon/">Lexicon</a>
+                        <a href="/l/lg/">LG</a>
+                        <a href="/l/linn/">Linn</a>
+                        <a href="/l/loewe/">Loewe</a>
+                        <a href="/l/luxman/">Luxman</a>
+                </div>
+                <hr>
+                <h2>M</h2>
+                <div class="manuals-list-columns">
+                            <a href="/m/mackie/">Mackie</a>
+                        <a href="/m/manley-laboratories/">Manley-Laboratories</a>
+                        <a href="/m/marantz/">Marantz</a>
+                        <a href="/m/mark-levinson/">Mark-levinson</a>
+                        <a href="/m/marshall/">Marshall</a>
+                        <a href="/m/mcintosh/">McIntosh</a>
+                        <a href="/m/meridian-audio/">Meridian-audio</a>
+                        <a href="/m/mesaboogie/">Mesaboogie</a>
+                        <a href="/m/micro-seiki/">Micro-Seiki</a>
+                        <a href="/m/mitsubishi/">Mitsubishi</a>
+                        <a href="/m/moog/">Moog</a>
+                        <a href="/m/moon/">Moon</a>
+                        <a href="/m/morley/">Morley</a>
+                        <a href="/m/motorola/">Motorola</a>
+                        <a href="/m/musical-fidelity/">Musical-Fidelity</a>
+                        <a href="/m/myryad/">Myryad</a>
+                </div>
+                <hr>
+                <h2>N</h2>
+                <div class="manuals-list-columns">
+                            <a href="/n/nad/">Nad</a>
+                        <a href="/n/nagra/">Nagra</a>
+                        <a href="/n/nakamichi/">Nakamichi</a>
+                        <a href="/n/national/">National</a>
+                        <a href="/n/nec/">Nec</a>
+                        <a href="/n/newcomb/">Newcomb</a>
+                        <a href="/n/nikko/">Nikko</a>
+                        <a href="/n/nordmende/">Nordmende</a>
+                        <a href="/n/norlin/">Norlin</a>
+                        <a href="/n/northern-electric/">Northern-Electric</a>
+                        <a href="/n/numark/">Numark</a>
+                </div>
+                <hr>
+                <h2>O</h2>
+                <div class="manuals-list-columns">
+                            <a href="/o/oberheim/">Oberheim</a>
+                        <a href="/o/octave/">Octave</a>
+                        <a href="/o/omnitronic/">Omnitronic</a>
+                        <a href="/o/onkyo/">Onkyo</a>
+                        <a href="/o/optonica/">Optonica</a>
+                        <a href="/o/ortofon/">Ortofon</a>
+                        <a href="/o/otari/">Otari</a>
+                </div>
+                <hr>
+                <h2>P</h2>
+                <div class="manuals-list-columns">
+                            <a href="/p/panasonic/">Panasonic</a>
+                        <a href="/p/parasound/">Parasound</a>
+                        <a href="/p/peavey/">Peavey</a>
+                        <a href="/p/phase-linear/">Phase-Linear</a>
+                        <a href="/p/philips/">Philips</a>
+                        <a href="/p/phonola/">Phonola</a>
+                        <a href="/p/pickering/">Pickering</a>
+                        <a href="/p/pioneer/">Pioneer</a>
+                        <a href="/p/polyvox/">Polyvox</a>
+                        <a href="/p/primare/">Primare</a>
+                        <a href="/p/proceed/">Proceed</a>
+                        <a href="/p/prology/">Prology</a>
+                        <a href="/p/proton/">Proton</a>
+                        <a href="/p/pyle/">Pyle</a>
+                </div>
+                <hr>
+                <h2>Q</h2>
+                <div class="manuals-list-columns">
+                            <a href="/q/qsc/">Qsc</a>
+                        <a href="/q/quad/">Quad</a>
+                        <a href="/q/quasar/">Quasar</a>
+                </div>
+                <hr>
+                <h2>R</h2>
+                <div class="manuals-list-columns">
+                            <a href="/r/radiola/">Radiola</a>
+                        <a href="/r/rane/">Rane</a>
+                        <a href="/r/realistic/">Realistic</a>
+                        <a href="/r/revac/">Revac</a>
+                        <a href="/r/revox/">Revox</a>
+                        <a href="/r/rhodes/">Rhodes</a>
+                        <a href="/r/rickenbacker/">Rickenbacker</a>
+                        <a href="/r/roberts/">Roberts</a>
+                        <a href="/r/rockola/">Rockola</a>
+                        <a href="/r/rogers/">Rogers</a>
+                        <a href="/r/roksan/">Roksan</a>
+                        <a href="/r/roland/">Roland</a>
+                        <a href="/r/rotel/">Rotel</a>
+                        <a href="/r/rowen/">Rowen</a>
+                </div>
+                <hr>
+                <h2>S</h2>
+                <div class="manuals-list-columns">
+                            <a href="/s/saba/">Saba</a>
+                        <a href="/s/sae/">SAE</a>
+                        <a href="/s/samson-audio/">Samson-Audio</a>
+                        <a href="/s/sanders-sound-systems/">Sanders-Sound-Systems</a>
+                        <a href="/s/sansui/">Sansui</a>
+                        <a href="/s/sanyo/">Sanyo</a>
+                        <a href="/s/schaub-lorenz/">Schaub-Lorenz</a>
+                        <a href="/s/scott/">Scott</a>
+                        <a href="/s/sennheiser/">Sennheiser</a>
+                        <a href="/s/sentec/">Sentec</a>
+                        <a href="/s/setton/">Setton</a>
+                        <a href="/s/sharp/">Sharp</a>
+                        <a href="/s/sherbourn-technologies/">Sherbourn-Technologies</a>
+                        <a href="/s/sherwood/">Sherwood</a>
+                        <a href="/s/shure/">Shure</a>
+                        <a href="/s/siel/">Siel</a>
+                        <a href="/s/simplex/">Simplex</a>
+                        <a href="/s/snell/">Snell</a>
+                        <a href="/s/sonab/">Sonab</a>
+                        <a href="/s/sonic-frontiers/">Sonic-Frontiers</a>
+                        <a href="/s/sony/">Sony</a>
+                        <a href="/s/soundstream/">Soundstream</a>
+                        <a href="/s/spendor/">Spendor</a>
+                        <a href="/s/staner/">Staner</a>
+                        <a href="/s/stanton/">Stanton</a>
+                        <a href="/s/stax/">Stax</a>
+                        <a href="/s/stromberg-carlson/">Stromberg-Carlson</a>
+                        <a href="/s/studer/">Studer</a>
+                        <a href="/s/sugden/">Sugden</a>
+                        <a href="/s/sunfire/">Sunfire</a>
+                        <a href="/s/sunn/">Sunn</a>
+                        <a href="/s/superscope/">Superscope</a>
+                        <a href="/s/swr/">Swr</a>
+                </div>
+                <hr>
+                <h2>T</h2>
+                <div class="manuals-list-columns">
+                            <a href="/t/tandberg/">Tandberg</a>
+                        <a href="/t/tapco/">Tapco</a>
+                        <a href="/t/tascam/">Tascam</a>
+                        <a href="/t/teac/">Teac</a>
+                        <a href="/t/technics/">Technics</a>
+                        <a href="/t/tectronic/">Tectronic</a>
+                        <a href="/t/teisco/">Teisco</a>
+                        <a href="/t/telefunken/">Telefunken</a>
+                        <a href="/t/teleton/">Teleton</a>
+                        <a href="/t/thomson/">Thomson</a>
+                        <a href="/t/thorens/">Thorens</a>
+                        <a href="/t/threshold/">Threshold</a>
+                        <a href="/t/thule-audio/">Thule-Audio</a>
+                        <a href="/t/toa/">TOA</a>
+                        <a href="/t/toshiba/">Toshiba</a>
+                </div>
+                <hr>
+                <h2>U</h2>
+                <div class="manuals-list-columns">
+                            <a href="/u/uher/">Uher</a>
+                        <a href="/u/unica/">Unica</a>
+                        <a href="/u/univox/">Univox</a>
+                </div>
+                <hr>
+                <h2>V</h2>
+                <div class="manuals-list-columns">
+                            <a href="/v/vac/">VAC</a>
+                        <a href="/v/valco-national-dobro-supro/">Valco-national-dobro-supro</a>
+                        <a href="/v/viking/">Viking</a>
+                        <a href="/v/vincent/">Vincent</a>
+                        <a href="/v/vox/">Vox</a>
+                </div>
+                <hr>
+                <h2>W</h2>
+                <div class="manuals-list-columns">
+                            <a href="/w/wega/">Wega</a>
+                        <a href="/w/wem-watkins/">Wem-Watkins</a>
+                        <a href="/w/westbury/">Westbury</a>
+                        <a href="/w/western-electric/">Western-Electric</a>
+                        <a href="/w/wharfedale/">Wharfedale</a>
+                </div>
+                <hr>
+                <h2>X</h2>
+                <div class="manuals-list-columns">
+                            <a href="/x/xtant/">Xtant</a>
+                </div>
+                <hr>
+                <h2>Y</h2>
+                <div class="manuals-list-columns">
+                            <a href="/y/yaesu/">Yaesu</a>
+                        <a href="/y/yamaha/">Yamaha</a>
+                        <a href="/y/yorkville/">Yorkville</a>
+                </div>
+                <hr>
+                <h2>Z</h2>
+                <div class="manuals-list-columns">
+                            <a href="/z/zenith/">Zenith</a>
+                </div>
+    </section>
+                            </main>
+    <footer>
+    <div class="footercontainer">
+        <div>
+            <svg aria-label="Tillbaks till startsidan" width="160" height="41">
+                <use xlink:href="#audioservicemanualslogo"></use>
+            </svg>
+        </div>
+        <div class="hidden-mobile">
+            <h6>About</h6>
+            <ul class="list-unstyled">
+                <li><a href="/about.php" title="About Audio Service Manuals">About this site</a></li>
+                <li><a href="/privacypolicy.php" title="Privacy Policy">Our Privacy
+                        Policy</a></li>
+                <li><a href="https://policies.google.com/technologies/partner-sites"
+                         title="Googles Privacy Policy">Google’s Privacy &amp; Terms</a></li>
+                <li><a href="mailto:info@audioservicemanuals.com" 
+                        title="info@audioservicemanuals.com">Contact</a></li>
+            </ul>
+        </div>
+        <div class="hidden-mobile">
+            <h6>Contribute</h6>
+            <ul class="list-unstyled">
+                <li></li>
+                <li><a href="https://audioservicemanuals.wetransfer.com/" 
+                        title="Upload manuals">Upload manuals</a></li>
+                <li><a href="mailto:info@audioservicemanuals.com" 
+                        title="Report Error">Report error</a></li>
+            </ul>
+        </div>
+    </div>
+</footer>
+<!-- SVG SPRITE -->
+<svg width="0" height="0" class="hidden">
+    <symbol xmlns="http://www.w3.org/2000/svg" xml:space="preserve" viewBox="0 0 159.5 41.27"
+        id="audioservicemanualslogo">
+        <path
+            d="M154.236 30.761v-2.364h2.298v2.364h-2.298zm-41.831 0h2.298v-2.364h-2.298v2.364zm3.47 1.761h2.305v-5.898h-2.305v5.898zm34.884-.584h2.311v-4.72h-2.311v4.72zm-3.628 3.524h2.298V23.673h-2.298v11.789zm-3.478-2.35h2.311v-7.078h-2.311v7.078zm-3.471 4.719h2.305V21.316h-2.305v16.515zM136.706 40h2.309V19.145h-2.309V40zm-3.468-2.169h2.301V21.316h-2.301v16.515zm-3.474-3.541h2.297v-9.434h-2.297v9.434zm-3.475-1.178h2.308v-7.078h-2.308v7.078zm-3.472-1.174h2.306v-4.72h-2.306v4.72zm-3.47 2.352h2.299v-9.434h-2.299v9.434zM1.155 16.803 7.52 1.492h3.127l6.365 15.311h-3.74l-1.269-3.215H5.945l-1.269 3.215H1.155zm7.83-10.827-1.728 4.332h3.434L8.985 5.976zm21.791-4.484v8.99c0 2.209-.591 3.85-1.794 4.943-1.181 1.093-2.668 1.641-4.462 1.641-2.034 0-3.653-.569-4.856-1.728-1.203-1.16-1.815-2.822-1.815-5.009V1.492h3.5v8.093c0 2.8 1.05 4.2 3.172 4.2 2.012 0 2.756-1.378 2.756-4.002v-8.29h3.499zm3.435 15.311V1.492h.307c.241 0 .984 0 2.188-.022 1.203-.022 1.99-.043 2.34-.043 2.887 0 5.031.722 6.452 2.143 1.422 1.422 2.144 3.237 2.144 5.447 0 2.252-.766 4.134-2.297 5.622-1.509 1.465-3.675 2.208-6.475 2.208-.219 0-.853 0-1.903-.021-1.05-.022-1.837-.022-2.384-.022h-.372zm3.5-12.03v8.749c.306.022.722.044 1.269.044 3.062 0 4.943-1.663 4.943-4.549 0-2.734-1.969-4.309-4.921-4.309-.569 0-1.007.021-1.291.065zm12.682 12.03V1.492h3.5v15.311h-3.5zm8.471-13.299c1.51-1.509 3.478-2.275 5.884-2.275 2.384 0 4.331.722 5.84 2.166 1.531 1.444 2.296 3.369 2.296 5.752 0 2.297-.765 4.2-2.318 5.687-1.531 1.488-3.478 2.231-5.818 2.231-2.384 0-4.331-.722-5.862-2.166-1.51-1.443-2.275-3.368-2.275-5.752 0-2.252.744-4.134 2.253-5.643zm2.756 8.947c.853.897 1.903 1.334 3.128 1.334 1.4 0 2.494-.437 3.259-1.291.766-.875 1.16-1.99 1.16-3.347 0-1.378-.416-2.494-1.269-3.346-.854-.854-1.903-1.291-3.15-1.291-1.291 0-2.341.437-3.171 1.291-.832.853-1.247 1.969-1.247 3.346 0 1.313.437 2.407 1.29 3.304zm17.119-1.882c-1.816-.787-4.178-2.034-4.134-4.921 0-1.225.459-2.275 1.356-3.128.897-.853 2.1-1.291 3.587-1.291 1.947 0 3.456.569 4.506 1.684l-1.881 2.625c-.788-.722-1.269-1.028-2.319-1.028-.962 0-1.531.437-1.531 1.137 0 2.537 6.387 1.925 6.387 6.912 0 1.312-.503 2.385-1.51 3.237-.984.854-2.23 1.269-3.74 1.269-1.094 0-2.144-.219-3.15-.678s-1.685-1.072-2.034-1.837l1.99-2.384c.81 1.05 2.144 1.619 3.281 1.619.897 0 1.444-.459 1.444-1.181.001-.81-1.006-1.444-2.252-2.035zm8.528 6.234V1.492h9.078v3.281h-5.577v2.69h4.921v3.281h-4.921v2.777h5.796v3.281h-9.297zm15.87 0h-3.499V1.492c.328 0 1.246 0 2.756-.022s2.341-.022 2.45-.022c3.959 0 5.665 1.859 5.665 4.9 0 2.078-.854 3.565-2.581 4.418l4.462 6.037h-4.243l-3.718-5.359h-1.292v5.359zm0-12.03v3.391h1.27c1.597 0 2.384-.591 2.384-1.772 0-1.116-.7-1.662-2.121-1.662-.067-.001-.569.021-1.533.043zm23.116-3.281-5.972 15.311h-2.689l-6.124-15.311h3.739l3.851 10.105 3.674-10.105h3.521zm1.757 15.311V1.492h3.5v15.311h-3.5zm19.233-1.509c-.459.524-1.159.962-2.077 1.291-.92.328-1.882.481-2.91.481-2.384 0-4.309-.722-5.796-2.166-1.488-1.465-2.231-3.368-2.231-5.752 0-2.296.7-4.2 2.1-5.687 1.4-1.487 3.368-2.231 5.906-2.231 1.947 0 3.719.656 4.681 1.597l-1.553 2.625c-1.028-.634-2.078-.94-3.128-.94-1.247 0-2.274.415-3.084 1.225-.81.809-1.203 1.947-1.203 3.412 0 1.356.438 2.472 1.29 3.347.854.854 1.969 1.291 3.347 1.291 1.226 0 2.341-.372 3.325-1.115l1.333 2.622zm2.032 1.509V1.492h9.077v3.281h-5.577v2.69h4.921v3.281h-4.921v2.777h5.797v3.281h-9.297zM1.155 36.391V21.08h3.522l4.725 6.452 4.462-6.452h3.303v15.311h-3.5v-9.756l-4.265 5.973h-.504l-4.244-5.906v9.689H1.155zm17.779 0 6.365-15.311h3.128l6.364 15.311h-3.74l-1.269-3.215h-6.059l-1.269 3.215h-3.52zm7.831-10.828-1.728 4.331h3.434l-1.706-4.331zm23.138 10.828h-2.8l-7.262-9.187v9.187H36.56V21.08h2.8l7.262 9.23v-9.23h3.281v15.311zM66.264 21.08v8.989c0 2.21-.591 3.85-1.793 4.943-1.181 1.094-2.668 1.641-4.462 1.641-2.034 0-3.653-.568-4.855-1.729-1.203-1.159-1.816-2.82-1.816-5.009V21.08h3.5v8.093c0 2.799 1.05 4.199 3.171 4.199 2.012 0 2.756-1.378 2.756-4.002v-8.29h3.499zm.826 15.311 6.365-15.311h3.128l6.366 15.311h-3.741l-1.269-3.215H71.88l-1.269 3.215H67.09zm7.83-10.828-1.728 4.331h3.434l-1.706-4.331zm9.795 10.828V21.08h3.501v12.029h6.233v3.281h-9.734zm15.514-6.234c-1.815-.787-4.178-2.034-4.134-4.922 0-1.225.459-2.274 1.355-3.128.897-.853 2.1-1.291 3.588-1.291 1.946 0 3.456.569 4.505 1.685l-1.88 2.625c-.788-.722-1.269-1.028-2.319-1.028-.962 0-1.53.438-1.53 1.138 0 2.537 6.386 1.925 6.386 6.912 0 1.312-.503 2.385-1.508 3.237-.984.853-2.232 1.269-3.741 1.269-1.094 0-2.144-.219-3.149-.678-1.007-.459-1.685-1.072-2.034-1.838l1.99-2.384c.809 1.05 2.144 1.618 3.281 1.618.896 0 1.443-.459 1.443-1.181-.001-.809-1.007-1.444-2.253-2.034z" />
+    </symbol>
+    <symbol xmlns="http://www.w3.org/2000/svg" xml:space="preserve" viewBox="0 0 50 50" id="folder-icon">
+        <path fill="none" d="M0 0h50v50H0z" />
+        <path fill="none" stroke="#000" stroke-linecap="round" stroke-miterlimit="10" stroke-width="2"
+            d="M47 8H18c-1.469 0-2.484-4-4-4H3a2 2 0 0 0-2 2v38a2 2 0 0 0 2 2h44a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2z" />
+        <path fill="none" stroke="#000" stroke-linecap="round" stroke-miterlimit="10" stroke-width="2"
+            d="M1 27V16a2 2 0 0 1 2-2h44a2 2 0 0 1 2 2v11" />
+    </symbol>
+    <symbol xmlns="http://www.w3.org/2000/svg" xml:space="preserve" viewBox="0 0 566.93 566.93" id="house-icon">
+        <path
+            d="M456.243 216.24V88.594h-75.59v50.532L283.465 40 13.498 315.366H88.29v178.178h157.379V368.762h75.591v124.782h157.38V315.366h74.792z" />
+    </symbol>
+    <symbol xmlns="http://www.w3.org/2000/svg" xml:space="preserve" viewBox="3.644 -.352 16.708 24.704"
+        id="right-angle">
+        <path stroke="#FFF" stroke-miterlimit="10" stroke-width=".5"
+            d="M8.122 24 4 20l8-8-8-8 4.122-4L20 12 8.122 24z" />
+    </symbol>
+    <symbol xmlns="http://www.w3.org/2000/svg" xml:space="preserve" viewBox="0 0 537.794 537.795"
+        id="download-arrow">
+        <path
+            d="M463.091 466.114H74.854c-11.857 0-21.497 9.716-21.497 21.497v28.688c0 11.857 9.716 21.496 21.497 21.496h388.084c11.857 0 21.496-9.716 21.496-21.496v-28.688c.231-11.934-9.485-21.497-21.343-21.497zM253.94 427.635c4.208 4.208 9.716 6.35 15.147 6.35 5.508 0 11.016-2.142 15.147-6.35l147.033-147.033c8.339-8.338 8.339-21.955 0-30.447l-20.349-20.349c-8.339-8.339-21.956-8.339-30.447 0l-75.582 75.659V21.497C304.889 9.639 295.173 0 283.393 0h-28.688c-11.857 0-21.497 9.562-21.497 21.497v284.044l-75.658-75.659c-8.339-8.338-22.032-8.338-30.447 0l-20.349 20.349c-8.338 8.338-8.338 22.032 0 30.447L253.94 427.635z" />
+    </symbol>
+</svg><!-- SLUT SVG SPRITE -->
+<!-- Default Statcounter code for Audioservicemanuals.com
+http://audioservicemanuals.com -->
+<script type="text/javascript">
+var sc_project=11567376; 
+var sc_invisible=1; 
+var sc_security="0e81b8a5"; 
+</script>
+<script type="text/javascript"
+src="https://www.statcounter.com/counter/counter.js"
+async></script>
+<!-- End of Statcounter Code -->
+<script>
+(() => {
+    const inputs = document.querySelectorAll('input[name="asm_searchquery"]');
+    if (!inputs.length) {
+        return;
+    }
+
+    let debounceTimer = null;
+    let lastQuery = '';
+
+    const normalizeQuery = (value) => value.trim().replace(/\s+/g, ' ');
+
+    const createSuggestionsBox = (input) => {
+        const wrap = document.createElement('div');
+        wrap.className = 'asm-searchwrap';
+        input.parentNode.insertBefore(wrap, input);
+        wrap.appendChild(input);
+
+        const box = document.createElement('div');
+        box.className = 'asm-suggestions';
+        box.setAttribute('role', 'listbox');
+        box.style.display = 'none';
+        wrap.appendChild(box);
+
+        return { wrap, box };
+    };
+
+    const updateSuggestions = (box, items) => {
+        box.innerHTML = '';
+        if (!items.length) {
+            box.style.display = 'none';
+            return;
+        }
+
+        items.forEach((item) => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'asm-suggestion';
+            button.textContent = item.title;
+            button.dataset.url = item.url;
+            button.addEventListener('mousedown', (event) => {
+                event.preventDefault();
+                window.location.href = item.url;
+            });
+            box.appendChild(button);
+        });
+        box.style.display = 'block';
+    };
+
+    const fetchSuggestions = (query, box) => {
+        if (query.length < 2) {
+            updateSuggestions(box, []);
+            return;
+        }
+        if (query === lastQuery) {
+            return;
+        }
+        lastQuery = query;
+        fetch(`/autosuggest.php?q=${encodeURIComponent(query)}`)
+            .then((response) => response.ok ? response.json() : [])
+            .then((data) => updateSuggestions(box, Array.isArray(data) ? data : []))
+            .catch(() => updateSuggestions(box, []));
+    };
+
+    inputs.forEach((input) => {
+        input.setAttribute('autocomplete', 'off');
+        input.setAttribute('spellcheck', 'false');
+
+        const { box, wrap } = createSuggestionsBox(input);
+
+        input.addEventListener('input', () => {
+            const query = normalizeQuery(input.value);
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => fetchSuggestions(query, box), 250);
+        });
+
+        input.addEventListener('focus', () => {
+            if (box.children.length) {
+                box.style.display = 'block';
+            }
+        });
+
+        input.addEventListener('blur', () => {
+            setTimeout(() => {
+                box.style.display = 'none';
+            }, 150);
+        });
+
+        document.addEventListener('click', (event) => {
+            if (!wrap.contains(event.target)) {
+                box.style.display = 'none';
+            }
+        });
+    });
+})();
+</script>
+</body>
+
+</html>

@@ -59,6 +59,7 @@ def measure_sine_file(
         audio.samples,
         period_samples=samples_per_period,
         threshold_fraction=config.envelope_threshold_fraction,
+        end_threshold_fraction=config.envelope_end_threshold_fraction,
     )
     t_envelope = time.perf_counter() - t1
 
@@ -87,6 +88,10 @@ def measure_sine_file(
     fundamental_freq_hz = np.full((n_segments, 2), np.nan, dtype=float)
     harmonic_amplitude = np.full((n_segments, 3), np.nan, dtype=float)
     lr_diff_over_sum_rms_ratio = np.full(n_segments, np.nan, dtype=float)
+    lag_difference_db = np.full((n_segments, 2), np.nan, dtype=float)
+    power_noise = np.full((n_segments, 4), np.nan, dtype=float)
+    harmonic_lr_difference_ratio = np.full(n_segments, np.nan, dtype=float)
+    phase_delta_rad = np.full((n_segments, 2 * config.spectral_half_width_bins + 1), np.nan, dtype=float)
     valid_mask = np.zeros(n_segments, dtype=bool)
 
     process_start = time.perf_counter()
@@ -145,6 +150,10 @@ def measure_sine_file(
         lag_s[index] = fft_result.lag_s
         fundamental_freq_hz[index, :] = fft_result.fundamental_freq_hz
         harmonic_amplitude[index, :] = fft_result.harmonic_amplitude
+        lag_difference_db[index, :] = fft_result.lag_difference_db
+        power_noise[index, :] = fft_result.power_noise
+        harmonic_lr_difference_ratio[index] = fft_result.harmonic_lr_difference_ratio
+        phase_delta_rad[index, : fft_result.phase_delta_rad.shape[0]] = fft_result.phase_delta_rad
 
         loop_t4 = time.perf_counter()
         sum_signal = detrended[:, 0] + detrended[:, 1]
@@ -163,6 +172,10 @@ def measure_sine_file(
     fundamental_freq_hz[large_lag_mask, :] = np.nan
     harmonic_amplitude[large_lag_mask, :] = np.nan
     lr_diff_over_sum_rms_ratio[large_lag_mask] = np.nan
+    lag_difference_db[large_lag_mask, :] = np.nan
+    power_noise[large_lag_mask, :] = np.nan
+    harmonic_lr_difference_ratio[large_lag_mask] = np.nan
+    phase_delta_rad[large_lag_mask, :] = np.nan
     processing_time_s = time.perf_counter() - process_start
 
     modulation_duration_s = (
@@ -239,6 +252,10 @@ def measure_sine_file(
         valid_mask=valid_mask,
         processing_time_s=float(processing_time_s),
         diagnostics=diagnostics,
+        lag_difference_db=lag_difference_db,
+        power_noise=power_noise,
+        harmonic_lr_difference_ratio=harmonic_lr_difference_ratio,
+        phase_delta_rad=phase_delta_rad,
     )
 
 

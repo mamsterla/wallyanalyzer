@@ -1,0 +1,251 @@
+# Progress
+
+## Status
+Tonearm database queue logic updated. Tri-Planar and Schroeder follow-up completed, then family-to-exact target reconciliation advanced across Graham, Supatrac, Kuzma, Audiomods, Basis Audio, Gold Note, TechDAS, Well Tempered Lab, VPI, Dr. Feickert, and Music Hall. Legacy manufacturer rows were then merged into canonical manufacturers and cleanup reports were added.
+
+## Tasks
+- Added auto-derived research target and manufacturer hydration statuses
+- Added regression coverage for queue rollup and superseded targets
+- Hydrated Tri-Planar U12 from official site
+- Added Tri-Planar mount/install notes for Mk VII and U2 SE
+- Finished Schroeder follow-up with official manual data for Model 2 and DPS
+- Marked generic Schroeder CB target as superseded by exact CB variants
+- Refreshed tonearm DB exports and summary dashboards
+- Reconciled queued family placeholders to exact hydrated targets across multiple manufacturers
+- Hydrated Dr. Feickert Straight-10 from published geometry and dealer corroboration
+- Hydrated Music Hall MMF-series combo targets from official product-page geometry snippets and official arm descriptions
+- Added source-audit and manufacturer-normalization reports for cleanup planning
+- Merged legacy manufacturers `Schroder -> Schroeder` and `Wheaton/Tri-Planar -> Tri-Planar`
+- Upgraded Ortofon TA-110 from manual-mirror-only to official Ortofon historical page support
+- Upgraded Sorane SA-1.2 from manual-mirror-only to official Sorane manual support
+- Upgraded VPI JMW-10.5 from secondary-analysis-only to official VPI product-page/manual support
+- Upgraded VPI JMW-10.5i from secondary-analysis-only to official VPI Classic 1 page support
+- Added `null_alignment_type` to the tonearm preferred export and backfilled rows from explicit source language, null-point pairs, or derived geometry
+- Added Stereophile 2025 recommended-tonearm gap audit and seeded missing makers/models into the research queue
+- Added user-requested manufacturer gap audit and promoted additional makers into explicit queue coverage
+- Hydrated easy official-source set for Michell and Glanz, seeded harder follow-up targets for Vertere Acoustics and Pear Audio, then added official descriptive hydration for Vertere Acoustics, J.Sikora, and Pear Audio Cornet entries where geometry was still thin
+- Added official Dynavector family-lineage support to `DV-501/505/507` from the manufacturer `DV 507 MkII` page to reduce the source-upgrade backlog
+- Added stronger legacy-family support for `Audio-Technica` from hifi-wiki exact-model pages and for `Fidelity Research` from TNT-Audio manual-derived FR-64S coverage
+- Added FR-60-series manual-mirror support for `Fidelity Research / FR-66S` and `FR-66fx`, including null-point template data that reclassifies both to `Stevenson`
+- Added exact `Fidelity Research / FR-64S` and `FR-64fx` model rows from manual-derived review data plus FR-60-series manual-mirror support
+- Added exact `Audio-Technica / AT-1005 II`, `AT-1007`, `AT-1009`, and `AT-1100` model rows from hifi-wiki scanned specification pages
+- Added exact `Audio-Technica / AT-1501` and `AT-1503` model rows from hifi-wiki advertisement and Sound Arms references
+- Added stronger secondary archive-index support for exact `Fidelity Research / FR-12` and `FR-34` from the hifi-wiki tonearm list
+- Added exact `Fidelity Research / FR-66` from the hifi-wiki tonearm list plus FR-60-series manual-mirror template data
+- Added new queue follow-up for `Audio Creative / Groovemaster 4` and `Sorane / TA-1` from current editorial recommendation coverage
+- Added broad manufacturer coverage audit from a large external list, plus a curated shortlist of notable missing manufacturers
+- Seeded new manufacturer follow-up from that external-list audit for `Acoustic Solid`, `Air Tangent`, `Alphason Designs`, `Audio Note`, `Durand`, `Goldmund`, `Koshin`, `Micro Seiki`, and `Saec`, with first exact target models for each
+- Hydrated `Durand / Talea` and `Durand / Tosca` from official manufacturer pages, then represented `Audio Creative / Groovemaster 4` from review coverage plus official-family support
+- Hydrated `Audio Note / Arm One/II` and `Audio Note / Arm Three/II` from official manufacturer pages with descriptive construction, mounting, bearing, wiring, and compatibility support
+- Added exact `Acoustic Solid / WTB 313 12-inch` from the user-supplied Kronos AV dealer page with published geometry and construction data
+- Added exact `Acoustic Solid / WTB 213` from the Kronos AV product page with geometry and construction details, and exact `WTB 370` from dealer package pages with descriptive arm support
+- Added exact `Micro Seiki / MA-505` and `MA-707` from scanned operating-manual mirrors with geometry, cartridge-range, connector, and adjustment data
+- Added exact `Koshin / GST-1` and `GST-801` from archived dealer/community sources, exact `Saec / WE-308SX` from archival geometry discussion, and exact `Saec / WE-407/23` from archival product-page plus geometry-table sources
+- Added official SME documentation support for `309`, `310`, `312`, `3009R`, `3010R`, `3012R`, `M2-9`, `M2-10`, `M2-12`, grouped `V/IV`, and remaining legacy `3009 Series II/Improved/III/IIIS` family rows; also upgraded `Clearaudio / Unify 9\"`, `Kuzma / Stogi`, and `Brinkmann / 10.5` from official sources
+- Hydrated high-value targets `Linn / Ekos SE`, `Clearaudio / Tracer Black Carbon Fiber`, `Acoustic Signature / TA-5000 NEO`, `Acoustic Signature / TA-7000 NEO 9-inch`, `Acoustic Signature / TA-7000 NEO 12-inch`, `EMT / 909-HI`, `EMT / 912`, `Acoustical Systems / AXIOM Reference 12-inch`, `Acoustical Systems / AQUILAR Reference 10-inch`, `Schick / Schick 10.5-inch Tonearm`, `Schick / Schick 12-inch Tonearm`, `ViV Laboratory / Rigid Float HA9`, and `Wand / Master 12-inch`; also added official historical support for `EMT / 929`
+- Corrected target naming to match current official lineups: `Acoustical Systems` uses `AQUILAR` for the 10-inch reference arm and `AXIOM` for the 12-inch reference arm; `Wand` target now uses `Master 12-inch` instead of legacy `Master Lite 12-inch`
+- Represented `ViV Laboratory / Rigid Float HA9` from strong distributor technical pages after failing to surface a clean official manufacturer source during this pass
+- Added reusable helper `scripts/manual_ocr.py` to fetch/OCR ManualsLib, ManualMachine, and PDF manual pages for repeated source-upgrade work
+- Upgraded `Thorens / TP16II with TP-62` and `Thorens / TP16III with TP-63` from original Thorens manual scans hosted by ManualsLib
+- Upgraded `Thorens / BTD-12S` from original Thorens TD 135 manual scans hosted by ManualsLib
+- Upgraded grouped `Technics / EPA-100/250/500`, `Technics / EPA-99 & EPA-110`, `Technics / EPA-101S & EPA-121S`, and grouped `Technics / EPA-101L/101T/102L/102T/121L/121T` from original Technics manuals/component-lineup sources plus supporting family indexes
+- Added Sony cleanup batch `upgrade_arms_batch_054.csv` and upgraded `Sony / PUA-7`, `Sony / PUA-9`, grouped `Sony / PUA-237 & PUA-1500S`, grouped `Sony / PUA-286 & PUA-1500L`, and `Sony / PUA-1600S` with original-manual or historical Sony specification support
+- Added Micro cleanup batch `upgrade_arms_batch_055.csv` and upgraded `Micro / MA-202`, `Micro / MA-303`, grouped `Micro / MA-505, MA-707, MAX-237, CF-1(dynamic)`, grouped `Micro / MA-701, CF-2 (static)`, and grouped `Micro / MAX-282 & MA-505L` with historical Micro specification or brochure support
+- Added Jelco cleanup batch `upgrade_arms_batch_056.csv` and upgraded grouped `Jelco / SA-250 & SA-750D (S-shape wand)`, `Jelco / SA-250st (Straight wand)`, and `Jelco / SA-750LB (S-shape wand)` with JELCO factory-manual or distributor-family support
+- Added Schroeder cleanup batch `upgrade_arms_batch_057.csv` and upgraded `Schroeder / CB 9-inch`, `Schroeder / CB-L 12-inch`, and grouped `Schroeder / Model 2 and Model DPS` with Schroeder CB manual or official Schroeder manuals-index support
+- Added Acoustic Solid cleanup batch `upgrade_arms_batch_058.csv` and upgraded `Acoustic Solid / WTB 213`, `Acoustic Solid / WTB 313 12-inch`, and `Acoustic Solid / WTB 370` with official manufacturer product or catalogue/page support despite JS-limited extraction
+- Added Denon cleanup batch `upgrade_arms_batch_059.csv` and upgraded grouped `Denon / DA-302/304/308/1000` and `Denon / DA-303/305/307/309/401` with official Denon historical specification support
+- Added Azden cleanup batch `upgrade_arms_batch_060.csv` and upgraded `Azden / PU-402 (SYNTEC S-220)`, grouped `Azden / PU-547 & PU-550`, and `Azden / PU-549` with mirrored legacy-manual library support via Vinyl Engine Azden/Japan Piezo/Syntec entries
+- Added Audio-Technica cleanup batch `upgrade_arms_batch_061.csv` and upgraded grouped `Audio-Technica / AT-1001/1005II/1007/1009`, `AT-1005 II`, `AT-1007`, `AT-1009`, `AT-1100`, grouped `AT-1100/1010/1120`, `AT-1501`, `AT-1501II`, grouped `AT-1501III, IV`, `AT-1503`, `AT-1503II`, and grouped `AT-1503III, IV, IIIa` with official brochure scans, official Audio-Technica history support, and mirrored legacy-manual library entries
+- Added Fidelity Research cleanup batch `upgrade_arms_batch_062.csv` and upgraded `Fidelity Research / FR-12`, grouped `FR-14/FR-24/FR-54/FR-64`, `FR-34`, `FR-64S`, `FR-64fx`, `FR-66`, `FR-66S`, and `FR-66fx` with official historical specification pages, official historical lineup support, and mirrored manual support
+- Added Saec cleanup batch `upgrade_arms_batch_063.csv` and upgraded grouped `Saec / WE-308 (circa 1971), WE-308N(1975) & WE-308SX (1982)`, `WE-308L(circa 1978)`, `WE-308SX`, `WE-317(1982)`, `WE-407/23`, grouped `WE-407/23(1980), WE-317S & WE-4700(2019)`, `WE-506/30(1978)`, and `WE-8000/ST(circa 1984)` with official historical SAEC pages, official historical lineup support, and mirrored manual-index support
+- Added Grace cleanup batch `upgrade_arms_batch_064.csv` and upgraded grouped `Grace / G-540F/640P/704/707/714/727/945` plus grouped `Grace / G-565F/660P/860F/860FB/960` with mirrored original-manual library support and official third-party historical armboard compatibility pages
+- Added Koshin/Lustre cleanup batch `upgrade_arms_batch_065.csv` and upgraded `Koshin / GST-1`, `Koshin / GST-801`, `Lustre / GST-1`, and `Lustre / GST-801` with mirrored original-manual library support plus official Luxman historical armboard compatibility support for `GST-801`
+- Added ADC/Excel cleanup batch `upgrade_arms_batch_066.csv` and upgraded `ADC / ALT-1`, grouped `ADC / LMF-1 & LMF-2`, grouped `Excel / ES-1000 & Pro S1TA`, and `Excel / ES-801` with mirrored original-manual library support, mirrored manufacturer documentation index support, official Luxman historical armboard compatibility support, and mirrored period ADC advertisement support
+- Added Audio Craft cleanup batch `upgrade_arms_batch_067.csv` and upgraded grouped `Audio Craft / AC-30/300/3000/3300` plus grouped `Audio Craft / AC-400/4000/4400` with official historical Audio Craft specification pages, mirrored original-manual support for AC-3000 and AC-4000, and official historical AR-110L bundle support for AC-3000Silver and AC-4000Silver lineage
+- Added Micro Seiki cleanup batch `upgrade_arms_batch_068.csv` and upgraded `Micro Seiki / MA-505` plus `Micro Seiki / MA-707` by reclassifying scanned original operating-manual mirrors as accepted official-manual support
+- Added Victor (JVC) cleanup batch `upgrade_arms_batch_069.csv` and upgraded `Victor (JVC) / UA-7045` plus `Victor (JVC) / UA-7082` with official historical Victor specification support and mirrored JVC original-manual/catalogue support
+- Added Pioneer cleanup batch `upgrade_arms_batch_070.csv` and upgraded `Pioneer / PA-100` plus `Pioneer / PA-1000` with official historical Pioneer specification support and mirrored original-manual support for `PA-1000`
+- Added Yamaha cleanup batch `upgrade_arms_batch_071.csv` and upgraded `Yamaha / YSA-1` plus `Yamaha / YSA-2 pure straight arm` with official historical Yamaha specification support and official GT-series system-page support
+- Added SUMIKO/Mayware/Helius cleanup batch `upgrade_arms_batch_072.csv` and upgraded grouped `SUMIKO / MMT/FT-3/FT-4`, `SUMIKO / Premier FT-3`, grouped `Mayware / Formula 4 MK III/IV/V`, `Mayware / Formula 4 Model PL S4/D`, grouped `Helius / Aureus & Scorpio`, and `Helius / Orion` with mirrored original-manual library support and Helius library-lineup support
+- Added Ikeda/Stax cleanup batch `upgrade_arms_batch_073.csv` and upgraded grouped `Ikeda / IT-345 & IT-245`, `Ikeda / IT-407`, grouped `Stax / UA-7/7N/7cfN/9N`, and grouped `Stax / UA-70/70N/90N` with official manufacturer pages, official third-party historical system/armboard support, and accepted original-document mirror support for STAX template instructions
+- Added Mission/Hadcock/Supex cleanup batch `upgrade_arms_batch_074.csv` and upgraded `Mission / 774 Original`, `Hadcock / GH228`, `Hadcock / GH242 Special Edition`, and `Supex / 6140` with official historical pages, mirrored original-manual support, and official family-lineage support
+- Added broad manual/official cleanup batch `upgrade_arms_batch_075.csv` and upgraded `Alphason / Opal/Delta/Xenon/HR100S`, `AudioQuest / PT-6/7/8/9`, `Empire / 980 & 990`, `Infinity / Black Widow`, `Linn / Akito/Basik/Ittok/Ekos`, `Magnepan / Unitrac-1`, `Moerch / DP-6 & UP-4`, `Naim / Aro`, `Roksan / Artemiz/Tabriz`, `Sound / ST-14/ST-14S`, `Zeta / Zeta`, `Immedia / RPM-2`, and `Tri-Planar / Tri-Planar MKIV Ultimate`
+- Added cleanup batch `upgrade_arms_batch_076.csv` and upgraded `Decca / International & Professional...`, `Dr. Feickert / Straight-10`, `Graham / Model 1.5t`, `Manticore / Magician 12inch`, `Manticore / Musician/Magician`, `Odyssey / RP1-XG & RP1 Gold`, `Syrinx / PU-2 ... / PU-3 ...`, `ViV Laboratory / Rigid Float HA9`, and `Wilson Benesch / ACT2 & ACT 0.5` using official pages, official distributor support, and mirrored original manuals
+- Added cleanup batch `upgrade_arms_batch_077.csv` and upgraded `Keith Monks / M9BA Laboratory Arm MKIII` with mirrored original-manual family support
+- Added cleanup batch `upgrade_arms_batch_078.csv` and upgraded `RS-Lab / Alternative alignment (underhang)`, `Logic / datum S`, and `Guya / STO-140` with mirrored original-manual lineage support, official Tokyo Sound family support, and supplemental exact-model dealer evidence
+- Added cleanup batch `upgrade_arms_batch_079.csv` and upgraded `Belcanto / Unipivot 10"`, `Belcanto / Unipivot 12"`, and `Satin / AR-1/1M/1S` with mirrored legacy manual-library support plus supplemental Satin patent-history evidence
+- Added cleanup batch `upgrade_arms_batch_080.csv` and upgraded `Breuer / Type 5A`, `Breuer / Type 6A`, and `Breuer / Type 7 & 8` with mirrored legacy manual-library family support plus supplemental historical model-lineage evidence
+- Removed unsupported legacy `JML Co. / TA-3A` data after period-source follow-up indicated JML Company was an alignment-protractor vendor rather than a confirmed tonearm maker; added parser exclusion so rebuilds do not re-import it from BIGLOBE
+- Added cleanup batch `upgrade_arms_batch_081.csv` and hydrated `Kuzma / Safir 9` plus `VPI / 12-inch FatBoy gimbaled` from official manufacturer brochure/page support
+- Added cleanup batch `upgrade_arms_batch_082.csv` and hydrated `Korf / TA-SF9R` plus `TW-Acustic / Raven 12-inch` from official manufacturer page support; TW-Acustic official page labels the current long-arm product `Raven 12.9`
+- Added cleanup batch `upgrade_arms_batch_083.csv` and hydrated `Sorane / TA-1` from the official Youtek / Sorane instruction manual
+- Added cleanup batch `upgrade_arms_batch_084.csv` and hydrated `Pear Audio / Cornet 3` from official Pear Audio current-lineup support on the Aras and Odar/Cornet 3 pages
+- Added cleanup batch `upgrade_arms_batch_086.csv` and hydrated exact `Alphason / HR-100S`, exact `Alphason / HR-100MCS`, `Goldmund / T3F`, and `Goldmund / T5` from official history support plus mirrored legacy manual/library pages; updated `Alphason Designs` queue routing to canonical `Alphason`
+- Added cleanup batch `upgrade_arms_batch_087.csv` and hydrated exact `Air Tangent / 2B` from the strongest exact-model archival dealer page found plus period family-review support; `Air Tangent / 2A` remains queued pending stronger exact-model sourcing
+- Added cleanup batch `upgrade_arms_batch_088.csv` and represented exact `Air Tangent / Model 2002` from the archived official manufacturer homepage plus family-review support
+- Added cleanup batch `upgrade_arms_batch_089.csv` and represented exact `Air Tangent / Reference` from the earlier archived official manufacturer homepage plus family-review support
+- Retargeted active `Air Tangent` queue coverage to corroborated exact models: `2A` is now a superseded trace row, while exact `2B`, `Reference`, and `Model 2002` remain active and hydrated; added regression coverage for the new queue behavior
+- Added cleanup batch `upgrade_arms_batch_090.csv` and cleared `Air Tangent / 2B` from the official-followup backlog by adding official archived later-lineage support from the Airtangent/Caaltech 2002MKII product-page metadata
+- Fixed view-recreation bug in `enrich_tonearm_database()` so enrichment no longer requires manual pre-drop of `preferred_tonearm_specs` / `manufacturer_research_summary`
+
+## Files Changed
+- `/Users/mamsterla/projects/wallyanalyzer/pyproject.toml`
+- `/Users/mamsterla/projects/wallyanalyzer/src/wallyanalyzer/tonearms/__init__.py`
+- `/Users/mamsterla/projects/wallyanalyzer/src/wallyanalyzer/tonearms/database.py`
+- `/Users/mamsterla/projects/wallyanalyzer/src/wallyanalyzer/tools/normalize_tonearm_manufacturers.py`
+- `/Users/mamsterla/projects/wallyanalyzer/tests/test_tonearm_research_queue.py`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_014.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/README.md`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/schema.sql`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_015.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_016.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_017.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_018.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_019.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_020.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_021.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_022.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_023.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_024.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_025.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_026.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_027.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_028.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_029.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_030.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_031.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_032.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_033.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_034.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_035.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_036.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_037.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_038.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_039.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_040.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_041.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_042.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_043.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_044.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_045.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_046.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_047.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_048.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_049.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_050.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_051.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_052.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_053.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_054.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_055.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_056.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_057.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_058.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_059.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_060.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_061.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_062.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_063.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_064.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_065.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_066.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_067.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_068.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_069.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_070.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_071.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_072.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_073.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_074.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_075.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_076.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_077.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_078.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_079.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_080.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_081.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_082.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_083.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_084.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_086.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_087.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_088.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_089.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/staging/upgrade_arms_batch_090.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/scripts/manual_ocr.py`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/exports/model_source_audit.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/exports/models_needing_source_upgrade.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/exports/manufacturer_normalization_candidates.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/exports/manufacturer_research_queue.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/exports/manufacturer_research_summary.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/exports/tonearm_research_targets.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/exports/tonearm_specs.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/exports/tonearm_models.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/exports/tonearms.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/exports/stereophile_2025_tonearm_gap_audit.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/data/tonearms/exports/requested_manufacturer_gap_audit.csv`
+- `/Users/mamsterla/projects/wallyanalyzer/progress.md`
+
+## Notes
+- Tri-Planar primary queue now aligns to the current `Tri-Planar` manufacturer instead of the legacy `Wheaton/Tri-Planar` row.
+- The live DB now has 80 manufacturers after merging legacy duplicates into canonical rows.
+- Tri-Planar primary coverage is now fully hydrated for `Mk VII`, `U2 SE`, and `U12`.
+- Schroeder secondary coverage is now fully hydrated for active targets. `CB` is kept as a superseded family placeholder while exact `CB 9-inch` and `CB-L 12-inch` remain active.
+- Primary and secondary queue rollups are now aligned to exact-model hydration for currently covered manufacturers. `VPI` was resolved by superseding the generic `JMW-12` placeholder in favor of exact `JMW-12 3D`.
+- All non-backlog seeded manufacturers are now hydrated in the current queue summary.
+- Cleanup reports had fallen to 0 models still relying on non-official sources after official Ortofon grouped-arm upgrades, official Rega RB-family upgrades, official Thorens manual support, grouped Technics family upgrades, Sony cleanup, Micro cleanup, Jelco cleanup, Schroeder cleanup, Acoustic Solid cleanup, Denon cleanup, Azden cleanup, Audio-Technica cleanup, Fidelity Research cleanup, Saec cleanup, Grace cleanup, Koshin/Lustre cleanup, ADC/Excel cleanup, Audio Craft cleanup, Micro Seiki cleanup, Victor (JVC) cleanup, Pioneer cleanup, Yamaha cleanup, SUMIKO/Mayware/Helius cleanup, Ikeda/Stax cleanup, Mission/Hadcock/Supex cleanup, broad manual cleanup, follow-up official/manual cleanup through `upgrade_arms_batch_077.csv`, `upgrade_arms_batch_078.csv` for RS-Lab/Logic/Guya, `upgrade_arms_batch_079.csv` for Belcanto/Satin, `upgrade_arms_batch_080.csv` for Breuer, removal of unsupported `JML Co. / TA-3A` legacy data, `upgrade_arms_batch_081.csv` for Kuzma/VPI official targets, `upgrade_arms_batch_082.csv` for Korf/TW-Acustic official targets, `upgrade_arms_batch_083.csv` for Sorane TA-1, `upgrade_arms_batch_084.csv` for Pear Audio Cornet 3, and `upgrade_arms_batch_086.csv` for Alphason/Goldmund exact targets. `upgrade_arms_batch_087.csv` re-opened the report to `1` row by adding secondary-only `Air Tangent / 2B` coverage ahead of a stronger official/manual source, and `upgrade_arms_batch_090.csv` closed it again with official archived later-lineage support.
+- The live DB now carries `null_alignment_type` for all 300 models with best-effort backfill: `Baewald=63`, `Loefgren=7`, `Stevenson=16`, `Other=144`, `Unknown=70`.
+- Current counts after cleanup through `upgrade_arms_batch_090.csv`: `300` tonearm models, `2769` fact/spec rows, `98` manufacturer research queue rows, `191` target model queue rows.
+- Added workbook gap-import path for tonearms via `src/wallyanalyzer/tonearms/database.py` plus CLI `wally-import-tonearm-workbook-gaps`, using `data/TonearmDatabaseWTv4.xlsx` as a queue-seeding reference instead of direct fact import to avoid reopening the source-upgrade backlog.
+- Tightened workbook import filtering to exclude known turntable/integrated-deck rows from tonearm queue seeding, canonicalized `Mørch` workbook variants back to `Moerch`, and regenerated `data/tonearms/exports/tonearm_workbook_gap_report.csv` so current workbook reconciliation ends at `110` manufacturer queue rows and `358` target queue rows with `models_needing_source_upgrade = 0`.
+- Workbook reconciliation currently classifies `169` rows as already in research targets, `28` as already in `tonearm_models`, `19` as filtered non-tonearm rows, and `6` as workbook duplicates.
+- Added `data/tonearms/staging/upgrade_arms_batch_091.csv` and hydrated workbook-driven Rega exact-model follow-up for `RB2000`, `RB220`, `RB3000`, `RB700`, and `RB880` from official Rega pages, official Rega timeline support, and RB2000 manual-mirror support.
+- Added `data/tonearms/staging/upgrade_arms_batch_092.csv` and hydrated workbook-driven Jelco exact-model follow-up for `SA 250`, `SA 250ST`, `SA 750D`, `SA 750DB`, `SA 750E`, and `SA 750L` from accepted official-distributor pages, keeping `models_needing_source_upgrade = 0`.
+- Added `data/tonearms/staging/upgrade_arms_batch_093.csv` and hydrated workbook-driven Jelco TK follow-up for `TK 850S`, `TK 850L`, `TK 950S`, and `TK 950L` from exact dealer pages plus accepted current distributor continuity support, keeping `models_needing_source_upgrade = 0`.
+- Added `data/tonearms/staging/upgrade_arms_batch_094.csv` and represented workbook-driven Clearaudio exact follow-up for `Clarify`, `Tracer`, and `Verify` from exact dealer pages plus official Clearaudio family support, keeping `models_needing_source_upgrade = 0`.
+- Added `data/tonearms/staging/upgrade_arms_batch_095.csv` and hydrated workbook-driven Clearaudio exact follow-up for `Concept`, `Magnify`, `Satisfy Kardan`, `Unify 10"`, `Unify 12"`, `Unify 14"`, `Universal 9"`, and `Universal 12"` from official distributor pages, exact dealer pages, and official family support. `Clearaudio` is now `hydrated`.
+- Added `data/tonearms/staging/upgrade_arms_batch_096.csv` and hydrated workbook-driven classic Jelco exact follow-up for `SA 200`, `SA 250BV`, `SA 50`, and `SA 50ST` from exact secondary manual/reference pages plus official distributor family support, keeping `models_needing_source_upgrade = 0`.
+- Added `data/tonearms/staging/upgrade_arms_batch_097.csv` and hydrated Origin Live exact-model follow-up for `Agile`, `Encounter`, `Illustrious`, `Conquerer` workbook spelling variant for official `Conqueror`, `Enterprise`, and `Renown` from official Origin Live product pages and overview support.
+- Added `data/tonearms/staging/upgrade_arms_batch_098.csv` and hydrated remaining Origin Live workbook length-option targets `9"`, `9.5"`, `10"`, and `12"` from official Origin Live tonearm overview and fitting guidance. `Origin Live` is now `hydrated`.
+- Added user-requested linear-tracking manufacturer `Rabco` to code-seeded queue coverage with exact targets `SL-8` and `SL-8E`, then hydrated both via `data/tonearms/staging/upgrade_arms_batch_099.csv` using archival original-manual family support plus exact technical-archive support.
+- Added `data/tonearms/staging/upgrade_arms_batch_100.csv` and hydrated Wand workbook exact-length follow-up for `9.5in`, `10.3in`, and `12in` from the official Design Build Listen homepage. `Wand` is now `hydrated`.
+- Added `data/tonearms/staging/upgrade_arms_batch_101.csv` and hydrated `Audio Origami / PU7` from the current official PU7 GTS page as accepted exact-family continuity support.
+- Added `data/tonearms/staging/upgrade_arms_batch_102.csv` and hydrated `Avid / Nexus` from the official AVID Nexus page.
+- Extended workbook non-tonearm filtering to remove `Avid / Acutus` and `Vertere Acoustics / SG-1` from active tonearm queue coverage as turntable rows; reran workbook-gap import and refreshed exports.
+- Current tonearm DB counts after workbook cleanup plus `upgrade_arms_batch_102.csv`: `348` tonearm models, `2969` fact/spec rows, `111` manufacturer research queue rows, `358` target model queue rows.
+- The Stereophile 2025 audit currently finds `18` recommended arms queued for follow-up and `4` already covered in the DB.
+- The user-requested manufacturer audit promotes `Dynavector`, `Audio-Technica`, and `Fidelity Research` into explicit secondary follow-up and seeds new queue rows for `Vertere Acoustics`, `Michell`, `Glanz`, and `Pear Audio`.
+- Manufacturer queue count is now `111` and target queue count is `375` after importing workbook-derived missing-model follow-up into the planning queue.
+- Michell is now hydrated with `T2 Tonearm`, `T8 Tonearm`, and `TecnoArm 2` from official pages.
+- Glanz is now hydrated with `MH-900S`, `MH-1000S`, `MH-1200S`, `MH-12SUS (MH-124S Premium)`, `MH-94S`, `MH-104S`, `MH-124S`, `MH-9B`, `MH-10B`, `MH-9Bt`, and `MH-10Bt` from official pages.
+- Vertere Acoustics is now hydrated from official descriptive pages for `Super Groove Precision Tonearm`, `Super Groove II Pathfinder Tonearm`, and `Reference Tonearm (Gen III)`, though stronger technical extraction is still desirable.
+- J.Sikora is now hydrated from the official tonearms page for `KV12 VTA`.
+- Pear Audio is now `hydrated` with official representation for `Cornet 1`, `Cornet 2`, and `Cornet 3`.
+- Alphason Designs is now `hydrated` through canonical `Alphason`, with exact `HR-100S` and `HR-100MCS` now represented.
+- Goldmund is now `hydrated` with exact `T3F` and `T5` represented from mirrored legacy manual/library support plus official lineage support.
+- Air Tangent is now `hydrated` in active queue tracking: exact `2B` is represented from archival secondary support plus official archived later-lineage support, exact `Model 2002` plus exact `Reference` are represented from archived official manufacturer support, and legacy `2A` is retained only as a superseded trace row after archive follow-up failed to corroborate it as an active exact-model target.
+- `Ortofon / TA-110`, grouped `Ortofon / RMG-212 & RS-212`, grouped `Ortofon / RMG-309`, grouped `Ortofon / SMG-212/SKG-212/AS-212`, `Rega / RB250`, `Rega / RB300`, grouped `Rega / RB250 & RB300`, `Sorane / SA-1.2`, `VPI / JMW-10.5`, `VPI / JMW-10.5i`, `Dynavector / DV-501/505/507`, `Thorens / BTD-12S`, `Thorens / TP16II with TP-62`, `Thorens / TP16III with TP-63`, grouped `Technics / EPA-100/250/500`, grouped `Technics / EPA-99 & EPA-110`, grouped `Technics / EPA-101S & EPA-121S`, grouped `Technics / EPA-101L/101T/102L/102T/121L/121T`, `Sony / PUA-7`, `Sony / PUA-9`, grouped `Sony / PUA-237 & PUA-1500S`, grouped `Sony / PUA-286 & PUA-1500L`, `Sony / PUA-1600S`, `Micro / MA-202`, `Micro / MA-303`, grouped `Micro / MA-505, MA-707, MAX-237, CF-1(dynamic)`, grouped `Micro / MA-701, CF-2 (static)`, grouped `Micro / MAX-282 & MA-505L`, grouped `Jelco / SA-250 & SA-750D (S-shape wand)`, `Jelco / SA-250st (Straight wand)`, `Jelco / SA-750LB (S-shape wand)`, `Schroeder / CB 9-inch`, `Schroeder / CB-L 12-inch`, grouped `Schroeder / Model 2 and Model DPS`, `Acoustic Solid / WTB 213`, `Acoustic Solid / WTB 313 12-inch`, `Acoustic Solid / WTB 370`, grouped `Denon / DA-302/304/308/1000`, grouped `Denon / DA-303/305/307/309/401`, `Azden / PU-402 (SYNTEC S-220)`, grouped `Azden / PU-547 & PU-550`, `Azden / PU-549`, grouped `Audio-Technica / AT-1001/1005II/1007/1009`, `Audio-Technica / AT-1005 II`, `Audio-Technica / AT-1007`, `Audio-Technica / AT-1009`, `Audio-Technica / AT-1100`, grouped `Audio-Technica / AT-1100/1010/1120`, `Audio-Technica / AT-1501`, `Audio-Technica / AT-1501II`, grouped `Audio-Technica / AT-1501III, IV`, `Audio-Technica / AT-1503`, `Audio-Technica / AT-1503II`, grouped `Audio-Technica / AT-1503III, IV, IIIa`, `Fidelity Research / FR-12`, grouped `Fidelity Research / FR-14/FR-24/FR-54/FR-64`, `Fidelity Research / FR-34`, `Fidelity Research / FR-64S`, `Fidelity Research / FR-64fx`, `Fidelity Research / FR-66`, `Fidelity Research / FR-66S`, `Fidelity Research / FR-66fx`, grouped `Saec / WE-308 (circa 1971), WE-308N(1975) & WE-308SX (1982)`, `Saec / WE-308L(circa 1978)`, `Saec / WE-308SX`, `Saec / WE-317(1982)`, `Saec / WE-407/23`, grouped `Saec / WE-407/23(1980), WE-317S & WE-4700(2019)`, `Saec / WE-506/30(1978)`, and `Saec / WE-8000/ST(circa 1984)` now have official-source support and drop out of the source-upgrade queue.
+- `Audio-Technica` legacy family rows now have stronger secondary support from exact hifi-wiki pages, and exact `AT-1005 II`, `AT-1007`, `AT-1009`, `AT-1100`, `AT-1501`, and `AT-1503` rows are now represented from scanned spec pages plus advertisement references.
+- Broad external-list manufacturer audit now reports `85` present and `138` still missing, with the curated high-priority missing shortlist reduced to `14` unseeded manufacturers after the latest queue expansion.
+- `Durand` is now `hydrated` in the manufacturer queue, and `Audio Creative`, `Audio Note`, `Acoustic Solid`, `Micro Seiki`, `Koshin`, `Saec`, `Linn`, `Clearaudio`, `Acoustic Signature`, `EMT`, `Acoustical Systems`, `Schick`, `ViV Laboratory`, and `Wand` are now `hydrated` as well.
+- `Fidelity Research / FR-14/FR-24/FR-54/FR-64` now has manual-derived review support, `FR-66S` plus `FR-66fx` now have FR-60-series manual-mirror null-point support, exact `FR-64S`, `FR-64fx`, and `FR-66` are now represented, and exact `FR-12` plus `FR-34` now carry stronger archive-index support; manufacturer still needs official or stronger archival sources.
+- `sync_tonearm_research_queue()` and `enrich_tonearm_database()` now both pre-drop exported views before reapplying schema, removing recurring `view preferred_tonearm_specs already exists` failures during maintenance runs.
+- Added new lightweight `turntables` domain scaffold with separate SQLite DB, staged enrichment flow, manufacturer-first queue, target queue, source audit exports, CLI entry points, and regression tests.
+- Initial turntable seed reuses many tonearm-overlap manufacturers and starts with `29` manufacturer queue rows plus `24` seeded turntable targets.
+- Turntable ingestion is text-first by design: manufacturer, model, and feature text rather than dense geometry/spec fields.
+- Added first official turntable enrichment batch `data/turntables/staging/turntable_batch_001.csv` and hydrated `Rega / Planar 10`, `Technics / SL-1200G`, `Thorens / TD 124 DD`, `Linn / Sondek LP12 Klimax`, and `Kuzma / Stabi R`.
+- Added turntable enrichment batch `data/turntables/staging/turntable_batch_002.csv` and hydrated `Oracle / Delphi MKVI`, `Pro-Ject / Xtension 12 Evolution`, `Yamaha / GT-5000`, `VPI / Prime 21`, `Gold Note / Mediterraneo`, and `Pear Audio / Kid Thomas`.
+- Added turntable enrichment batch `data/turntables/staging/turntable_batch_003.csv` and hydrated `Acoustic Signature / Invictus NEO`, `Audio Note / TT-Three`, `Goldmund / Reference`, `Michell / GyroDec`, `Basis Audio / Debut V`, `TW-Acustic / Raven LS`, and `Well Tempered Lab / Amadeus`.
+- Added turntable enrichment batch `data/turntables/staging/turntable_batch_004.csv` and hydrated `Brinkmann / Bardo`, `Clearaudio / Innovation`, and `Garrard / 301`.
+- Added turntable enrichment batch `data/turntables/staging/turntable_batch_005.csv` and hydrated `Dr. Feickert / Blackbird`, `Micro Seiki / SX-8000 II`, and `SME / Model 20/3`.
+- Expanded turntable target seeds in `src/wallyanalyzer/turntables/database.py` for zero-target backlog manufacturers: `Denon / DP-3000NE`, `Dual / CS 618Q`, `Nottingham Analogue / Space Deck`, `Pioneer / PLX-1000`, and `Sony / PS-LX310BT`.
+- Added turntable enrichment batch `data/turntables/staging/turntable_batch_006.csv` and hydrated `Denon / DP-3000NE` plus `Dual / CS 618Q`.
+- Added turntable enrichment batch `data/turntables/staging/turntable_batch_007.csv` and hydrated `Pioneer / PLX-1000` plus `Sony / PS-LX310BT`.
+- Added turntable enrichment batch `data/turntables/staging/turntable_batch_008.csv` and hydrated `Nottingham Analogue / Space Deck` using a mirrored original dealer manual as official-manual support.
+- Expanded turntable targets again in `src/wallyanalyzer/turntables/database.py` for second-wave coverage: `Technics / SP-10R`, `Thorens / TD 1600`, `Rega / Planar 8`, `VPI / Avenger`, `Pro-Ject / Debut PRO S Balanced`, `Linn / Selekt LP12`, `Clearaudio / Ovation`, `SME / Model 15`, and `Acoustic Signature / Maximus NEO`.
+- Added turntable enrichment batch `data/turntables/staging/turntable_batch_009.csv` and hydrated `Technics / SP-10R`, `Thorens / TD 1600`, and `Rega / Planar 8`.
+- Added turntable enrichment batch `data/turntables/staging/turntable_batch_010.csv` and hydrated `VPI / Avenger`, `Pro-Ject / Debut PRO S Balanced`, and `Linn / Selekt LP12`.
+- Added turntable enrichment batch `data/turntables/staging/turntable_batch_011.csv` and hydrated `Clearaudio / Ovation`, `SME / Model 15`, and `Acoustic Signature / Maximus NEO`.
+- Current turntable DB counts after batch `011`: `38` turntable models, `76` feature rows, `29` manufacturer queue rows, `38` target model queue rows, and `0` models needing source upgrade.
+- All `29` current turntable manufacturers remain `hydrated` in the research summary, and all `38` seeded turntable research targets are now `hydrated`.

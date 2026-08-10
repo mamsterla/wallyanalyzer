@@ -1,0 +1,30 @@
+manufacturer_name,canonical_match_name,manufacturer_type,coverage_focus,priority_tier,status,discovery_source,search_terms,notes
+Kuzma,Kuzma,turntable-specialist,high-end-turntables,primary,hydrated,tonearm-manufacturer-reuse,Kuzma turntable official models Stabi R XL,Primary turntable maker overlapping with tonearm coverage.
+Linn,Linn,turntable-specialist,suspended-subchassis,primary,hydrated,tonearm-manufacturer-reuse,Linn Sondek LP12 official models Klimax Selekt,Primary turntable maker overlapping with tonearm coverage.
+Rega,Rega,turntable-specialist,rigid-lightweight-belt-drive,primary,hydrated,tonearm-manufacturer-reuse,Rega turntable official models Planar 8 10 Naia,Primary turntable maker overlapping with tonearm coverage.
+Technics,Technics,turntable-specialist,direct-drive-turntables,primary,hydrated,tonearm-manufacturer-reuse,Technics turntable official models SL-1200G SP-10R,Primary turntable maker overlapping with tonearm coverage.
+Thorens,Thorens,turntable-specialist,historic-and-modern-turntables,primary,hydrated,tonearm-manufacturer-reuse,Thorens turntable official models TD124 TD1600 TD124DD,Primary turntable maker overlapping with tonearm coverage.
+VPI,VPI,turntable-specialist,american-belt-drive,primary,hydrated,tonearm-manufacturer-reuse,VPI turntable official models Prime Avenger Classic,Primary turntable maker overlapping with tonearm coverage.
+Acoustic Signature,Acoustic Signature,turntable-specialist,high-mass-belt-drive,secondary,hydrated,tonearm-manufacturer-reuse,Acoustic Signature turntable official models specs,Turntable manufacturer seeded from overlapping tonearm coverage.
+Audio Note,Audio Note,turntable-specialist,belt-drive-turntables,secondary,hydrated,tonearm-manufacturer-reuse,Audio Note turntable official models TT,Turntable manufacturer seeded from overlapping tonearm coverage.
+Basis Audio,Basis Audio,turntable-specialist,high-end-belt-drive,secondary,hydrated,tonearm-manufacturer-reuse,Basis Audio turntable official models Debut,Turntable manufacturer seeded from overlapping tonearm coverage.
+Brinkmann,Brinkmann,turntable-specialist,belt-drive-turntables,secondary,hydrated,tonearm-manufacturer-reuse,Brinkmann turntable official models Bardo Balance,Turntable manufacturer seeded from overlapping tonearm coverage.
+Clearaudio,Clearaudio,turntable-specialist,belt-drive-turntables,secondary,hydrated,tonearm-manufacturer-reuse,Clearaudio turntable official models Innovation Ovation,Turntable manufacturer seeded from overlapping tonearm coverage.
+Denon,Denon,legacy-audio-brand,historic-direct-drive,secondary,hydrated,tonearm-manufacturer-reuse,Denon turntable official historical models DP,Historic table maker overlapping with tonearm support work.
+Dr. Feickert,Dr. Feickert,turntable-specialist,high-end-belt-drive,secondary,hydrated,tonearm-manufacturer-reuse,Dr Feickert turntable official models Blackbird Woodpecker,Turntable manufacturer seeded from overlapping tonearm coverage.
+Dual,Dual,legacy-audio-brand,historic-turntables,secondary,hydrated,turntable-seed,Dual turntable official historical models,Historic turntable maker seed.
+Garrard,Garrard,legacy-audio-brand,idler-drive-turntables,secondary,hydrated,turntable-seed,Garrard turntable 301 401 official historical,Historic turntable maker seed.
+Gold Note,Gold Note,turntable-specialist,modern-belt-drive,secondary,hydrated,tonearm-manufacturer-reuse,Gold Note turntable official models Mediterraneo Pianosa,Turntable manufacturer seeded from overlapping tonearm coverage.
+Goldmund,Goldmund,turntable-specialist,statement-turntables,secondary,hydrated,tonearm-manufacturer-reuse,Goldmund turntable official models Reference Studio,Turntable manufacturer seeded from overlapping tonearm coverage.
+Michell,Michell,turntable-specialist,suspended-belt-drive,secondary,hydrated,tonearm-manufacturer-reuse,Michell turntable official models GyroDec Orbe,Turntable manufacturer seeded from overlapping tonearm coverage.
+Micro Seiki,Micro Seiki,legacy-audio-brand,historic-high-end-turntables,secondary,hydrated,tonearm-manufacturer-reuse,Micro Seiki turntable historical models SX RX DQX,Historic high-end turntable maker seed.
+Nottingham Analogue,Nottingham Analogue,turntable-specialist,belt-drive-turntables,secondary,hydrated,turntable-seed,Nottingham Analogue turntable official models Dais Space Deck,Turntable specialist seed.
+Oracle,Oracle,turntable-specialist,suspended-belt-drive,secondary,hydrated,turntable-seed,Oracle Delphi official turntable models,Turntable specialist seed.
+Pear Audio,Pear Audio,turntable-specialist,belt-drive-turntables,secondary,hydrated,tonearm-manufacturer-reuse,Pear Audio turntable official models Kid Thomas Odar,Turntable manufacturer seeded from overlapping tonearm coverage.
+Pioneer,Pioneer,legacy-audio-brand,historic-direct-drive,secondary,hydrated,turntable-seed,Pioneer turntable historical PL official,Historic turntable maker seed.
+Pro-Ject,Pro-Ject,turntable-specialist,modern-belt-drive,secondary,hydrated,turntable-seed,Pro-Ject turntable official models Xtension Signature,Major modern turntable maker seed.
+SME,SME,turntable-specialist,statement-turntables,secondary,hydrated,turntable-seed,SME turntable official models 15 20 30,Turntable specialist seed.
+Sony,Sony,legacy-audio-brand,historic-direct-drive,secondary,hydrated,tonearm-manufacturer-reuse,Sony turntable historical PS official,Historic turntable maker seed.
+TW-Acustic,TW-Acustic,turntable-specialist,high-end-belt-drive,secondary,hydrated,tonearm-manufacturer-reuse,TW-Acustic turntable official models Raven,Turntable manufacturer seeded from overlapping tonearm coverage.
+Well Tempered Lab,Well Tempered Lab,turntable-specialist,belt-drive-turntables,secondary,hydrated,tonearm-manufacturer-reuse,Well Tempered Lab turntable official Amadeus Versalex,Turntable manufacturer seeded from overlapping tonearm coverage.
+Yamaha,Yamaha,legacy-audio-brand,historic-turntables,secondary,hydrated,tonearm-manufacturer-reuse,Yamaha turntable historical GT official,Historic turntable maker seed.

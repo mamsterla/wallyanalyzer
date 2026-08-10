@@ -1,0 +1,101 @@
+manufacturer_id,name,normalized_name,created_at
+25,ADC,adc,2026-06-16T15:53:09+00:00
+76,AMG,amg,2026-06-16T16:50:17+00:00
+94,Acoustic Signature,acoustic-signature,2026-06-17T02:07:06+00:00
+91,Acoustic Solid,acoustic-solid,2026-06-17T00:00:32+00:00
+95,Acoustical Systems,acoustical-systems,2026-06-17T02:07:06+00:00
+100,Air Tangent,air-tangent,2026-06-18T03:15:41+00:00
+26,Alphason,alphason,2026-06-16T15:53:09+00:00
+1,Audio Craft,audio-craft,2026-06-16T15:53:09+00:00
+89,Audio Creative,audio-creative,2026-06-16T23:55:13+00:00
+90,Audio Note,audio-note,2026-06-16T23:58:47+00:00
+102,Audio Origami,audio-origami,2026-06-18T07:59:15+00:00
+2,Audio-Technica,audio-technica,2026-06-16T15:53:09+00:00
+27,AudioQuest,audioquest,2026-06-16T15:53:09+00:00
+78,Audiomods,audiomods,2026-06-16T16:50:17+00:00
+103,Avid,avid,2026-06-18T07:59:15+00:00
+3,Azden,azden,2026-06-16T15:53:09+00:00
+79,Basis Audio,basis-audio,2026-06-16T16:50:17+00:00
+28,Belcanto,belcanto,2026-06-16T15:53:09+00:00
+29,Breuer,breuer,2026-06-16T15:53:09+00:00
+30,Brinkmann,brinkmann,2026-06-16T15:53:09+00:00
+31,Clearaudio,clearaudio,2026-06-16T15:53:09+00:00
+32,Decca,decca,2026-06-16T15:53:09+00:00
+4,Denon,denon,2026-06-16T15:53:09+00:00
+81,Dr. Feickert,dr-feickert,2026-06-16T21:11:25+00:00
+88,Durand,durand,2026-06-16T23:54:40+00:00
+5,Dynavector,dynavector,2026-06-16T15:53:09+00:00
+34,EMT,emt,2026-06-16T15:53:09+00:00
+33,Empire,empire,2026-06-16T15:53:09+00:00
+6,Excel,excel,2026-06-16T15:53:09+00:00
+7,Fidelity Research,fidelity-research,2026-06-16T15:53:09+00:00
+84,Glanz,glanz,2026-06-16T22:56:11+00:00
+80,Gold Note,gold-note,2026-06-16T16:59:56+00:00
+99,Goldmund,goldmund,2026-06-18T03:14:16+00:00
+8,Grace,grace,2026-06-16T15:53:09+00:00
+35,Graham,graham,2026-06-16T15:53:09+00:00
+9,Guya,guya,2026-06-16T15:53:09+00:00
+36,Hadcock,hadcock,2026-06-16T15:53:09+00:00
+37,Helius,helius,2026-06-16T15:53:09+00:00
+10,Ikeda,ikeda,2026-06-16T15:53:09+00:00
+38,Immedia,immedia,2026-06-16T15:53:09+00:00
+39,Infinity,infinity,2026-06-16T15:53:09+00:00
+85,J.Sikora,j-sikora,2026-06-16T23:05:58+00:00
+11,Jelco,jelco,2026-06-16T15:53:09+00:00
+41,Keith Monks,keith-monks,2026-06-16T15:53:09+00:00
+75,Korf,korf,2026-06-16T16:50:17+00:00
+93,Koshin,koshin,2026-06-17T00:27:42+00:00
+42,Kuzma,kuzma,2026-06-16T15:53:09+00:00
+43,Linn,linn,2026-06-16T15:53:09+00:00
+44,Logic,logic,2026-06-16T15:53:09+00:00
+12,Lustre,lustre,2026-06-16T15:53:09+00:00
+45,Magnepan,magnepan,2026-06-16T15:53:09+00:00
+46,Manticore,manticore,2026-06-16T15:53:09+00:00
+47,Mayware,mayware,2026-06-16T15:53:09+00:00
+83,Michell,michell,2026-06-16T22:56:11+00:00
+13,Micro,micro,2026-06-16T15:53:09+00:00
+92,Micro Seiki,micro-seiki,2026-06-17T00:11:05+00:00
+48,Mission,mission,2026-06-16T15:53:09+00:00
+49,Moerch,moerch,2026-06-16T15:53:09+00:00
+82,Music Hall,music-hall,2026-06-16T21:14:07+00:00
+50,Naim,naim,2026-06-16T15:53:09+00:00
+51,Odyssey,odyssey,2026-06-16T15:53:09+00:00
+66,Origin Live,origin-live,2026-06-16T16:35:49+00:00
+52,Ortofon,ortofon,2026-06-16T15:53:09+00:00
+87,Pear Audio,pear-audio,2026-06-16T23:05:58+00:00
+14,Pioneer,pioneer,2026-06-16T15:53:09+00:00
+69,Pro-Ject,pro-ject,2026-06-16T16:38:05+00:00
+15,RS-Lab,rs-lab,2026-06-16T15:53:09+00:00
+101,Rabco,rabco,2026-06-18T07:51:09+00:00
+67,Reed,reed,2026-06-16T16:38:05+00:00
+53,Rega,rega,2026-06-16T15:53:09+00:00
+54,Roksan,roksan,2026-06-16T15:53:09+00:00
+70,SAT,sat,2026-06-16T16:44:31+00:00
+56,SME,sme,2026-06-16T15:53:09+00:00
+57,SUMIKO,sumiko,2026-06-16T15:53:09+00:00
+16,Saec,saec,2026-06-16T15:53:09+00:00
+17,Satin,satin,2026-06-16T15:53:09+00:00
+96,Schick,schick,2026-06-17T02:25:27+00:00
+77,Schroeder,schroeder,2026-06-16T16:50:17+00:00
+18,Sony,sony,2026-06-16T15:53:09+00:00
+63,Sorane,sorane,2026-06-16T15:59:52+00:00
+19,Sound,sound,2026-06-16T15:53:09+00:00
+21,Stax,stax,2026-06-16T15:53:09+00:00
+65,Supatrac,supatrac,2026-06-16T16:35:49+00:00
+20,Supex,supex,2026-06-16T15:53:09+00:00
+58,Syrinx,syrinx,2026-06-16T15:53:09+00:00
+74,TW-Acustic,tw-acustic,2026-06-16T16:44:31+00:00
+73,TechDAS,techdas,2026-06-16T16:44:31+00:00
+22,Technics,technics,2026-06-16T15:53:09+00:00
+71,Thales,thales,2026-06-16T16:44:31+00:00
+59,Thorens,thorens,2026-06-16T15:53:09+00:00
+64,Tri-Planar,tri-planar,2026-06-16T16:35:49+00:00
+68,VPI,vpi,2026-06-16T16:38:05+00:00
+86,Vertere Acoustics,vertere-acoustics,2026-06-16T23:05:58+00:00
+97,ViV Laboratory,viv-laboratory,2026-06-17T03:54:19+00:00
+23,Victor (JVC),victor-jvc,2026-06-16T15:53:09+00:00
+98,Wand,wand,2026-06-17T03:54:19+00:00
+72,Well Tempered Lab,well-tempered-lab,2026-06-16T16:44:31+00:00
+61,Wilson Benesch,wilson-benesch,2026-06-16T15:53:09+00:00
+24,Yamaha,yamaha,2026-06-16T15:53:09+00:00
+62,Zeta,zeta,2026-06-16T15:53:09+00:00
