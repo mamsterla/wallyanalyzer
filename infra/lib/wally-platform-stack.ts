@@ -6,6 +6,7 @@ import * as codepipelineActions from 'aws-cdk-lib/aws-codepipeline-actions';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as ecs from 'aws-cdk-lib/aws-ecs';
+import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as rds from 'aws-cdk-lib/aws-rds';
@@ -26,16 +27,29 @@ export class WallyPlatformStack extends cdk.Stack {
 
     const retention = cdk.RemovalPolicy.RETAIN;
     const vpc = new ec2.Vpc(this, 'ProductionVpc', {
-      maxAzs: 2,
+      availabilityZones: ['us-east-1c', 'us-east-1d'],
       natGateways: 0,
-      subnetConfiguration: [{ name: 'isolated', subnetType: ec2.SubnetType.PRIVATE_ISOLATED, cidrMask: 24 }],
+      subnetConfiguration: [
+        // Preserve the original isolated-subnet CIDRs before allocating public ALB subnets.
+        { name: 'isolated', subnetType: ec2.SubnetType.PRIVATE_ISOLATED, cidrMask: 24 },
+        { name: 'public', subnetType: ec2.SubnetType.PUBLIC, cidrMask: 24 },
+      ],
     });
+
+    const loadBalancerSecurityGroup = new ec2.SecurityGroup(this, 'TemporaryBrowserLoadBalancerSecurityGroup', {
+      vpc,
+      allowAllOutbound: false,
+      description: 'Temporary restricted HTTP browser access',
+    });
+    loadBalancerSecurityGroup.addIngressRule(ec2.Peer.ipv4('47.150.127.7/32'), ec2.Port.tcp(80), 'Temporary browser access');
 
     const serviceSecurityGroup = new ec2.SecurityGroup(this, 'ApplicationServiceSecurityGroup', {
       vpc,
       allowAllOutbound: false,
       description: 'Private Wally ECS tasks',
     });
+    loadBalancerSecurityGroup.addEgressRule(serviceSecurityGroup, ec2.Port.tcp(80), 'HTTP to application tasks');
+    serviceSecurityGroup.addIngressRule(loadBalancerSecurityGroup, ec2.Port.tcp(80), 'HTTP from temporary browser load balancer');
     const endpointSecurityGroup = new ec2.SecurityGroup(this, 'VpcEndpointSecurityGroup', {
       vpc,
       allowAllOutbound: false,
@@ -191,7 +205,7 @@ export class WallyPlatformStack extends cdk.Stack {
       ],
       resources: [userPool.userPoolArn],
     }));
-    new ecs.FargateService(this, 'PrivateApplicationService', {
+    const applicationService = new ecs.FargateService(this, 'PrivateApplicationService', {
       cluster,
       taskDefinition,
       desiredCount: 1,
@@ -201,6 +215,26 @@ export class WallyPlatformStack extends cdk.Stack {
       circuitBreaker: { rollback: true },
       minHealthyPercent: 100,
       maxHealthyPercent: 200,
+    });
+    const temporaryBrowserLoadBalancer = new elbv2.ApplicationLoadBalancer(this, 'TemporaryBrowserLoadBalancer', {
+      vpc,
+      internetFacing: true,
+      securityGroup: loadBalancerSecurityGroup,
+      vpcSubnets: { subnetType: ec2.SubnetType.PUBLIC },
+    });
+    const temporaryBrowserListener = temporaryBrowserLoadBalancer.addListener('TemporaryHttpListener', {
+      port: 80,
+      protocol: elbv2.ApplicationProtocol.HTTP,
+      open: false,
+    });
+    temporaryBrowserListener.addTargets('PrivateApplicationTargets', {
+      port: 80,
+      protocol: elbv2.ApplicationProtocol.HTTP,
+      targets: [applicationService],
+      healthCheck: {
+        path: '/health',
+        healthyHttpCodes: '200',
+      },
     });
 
     const bootstrapTaskDefinition = new ecs.FargateTaskDefinition(this, 'BootstrapAdministratorTaskDefinition', {
@@ -304,6 +338,10 @@ export class WallyPlatformStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'BootstrapAdministratorTaskDefinitionArn', { value: bootstrapTaskDefinition.taskDefinitionArn });
     new cdk.CfnOutput(this, 'ApplicationClusterArn', { value: cluster.clusterArn });
     new cdk.CfnOutput(this, 'ApplicationLogGroupName', { value: applicationLogGroup.logGroupName });
+    new cdk.CfnOutput(this, 'TemporaryBrowserHttpUrl', {
+      value: `http://${temporaryBrowserLoadBalancer.loadBalancerDnsName}`,
+      description: 'Temporary restricted HTTP browser URL. Replace with HTTPS after DNS and ACM are configured.',
+    });
     new cdk.CfnOutput(this, 'PrivateTaskSecurityGroupId', { value: serviceSecurityGroup.securityGroupId });
     new cdk.CfnOutput(this, 'PrivateSubnetIds', { value: vpc.isolatedSubnets.map((subnet) => subnet.subnetId).join(',') });
     new cdk.CfnOutput(this, 'ProductionPipelineName', { value: pipeline.pipelineName });

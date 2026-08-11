@@ -11,11 +11,45 @@ Use the AWS CLI profile explicitly for operator commands:
 AWS_PROFILE=wallyanalyzer AWS_REGION=us-east-1 npm run synth
 ```
 
-## Private production posture
+## Production network posture
 
-The production CDK stack has no public ALB, API Gateway, public DNS, public S3 bucket, NAT gateway, or browser CORS origin. ECS tasks, RDS PostgreSQL, and RDS Proxy are isolated in a VPC. Tasks use S3 gateway and interface VPC endpoints for ECR, CloudWatch Logs, Secrets Manager, Cognito IDP, and SES APIs.
+The temporary browser path is a public Application Load Balancer (ALB) HTTP listener. Its security group permits port 80 only from `47.150.127.7/32`. The ALB is the only public Wally resource; it forwards only to port 80 on private ECS tasks. ECS tasks remain in isolated subnets without public IPs or NAT. RDS PostgreSQL, RDS Proxy, Cognito, and S3 remain non-public. Tasks use S3 gateway and interface VPC endpoints for ECR, CloudWatch Logs, Secrets Manager, Cognito IDP, and SES APIs.
 
-Do not add public ingress, NAT, a domain, or production CORS without an approved architecture change.
+The temporary URL is HTTP only and sends traffic without TLS encryption. Do not use it on untrusted networks or enter sensitive production data. Its ALB hostname is not a replacement for a custom domain. Add an ACM certificate and HTTPS listener after the DNS domain is ready, then remove the temporary port-80 listener and its `47.150.127.7/32` ingress rule. Do not add NAT or widen ingress without an approved architecture change.
+
+## Failed first-deployment recovery
+
+Use this procedure only for the recorded `WallyPlatform-production` `ROLLBACK_COMPLETE` attempt. Before cleanup, reconfirm that the resources below contain no identities or data. The verified state at the time of this runbook update was: all three buckets had no object versions or delete markers; Cognito pool `us-east-1_KeHJ2FGHJ` had zero users; and the log group had zero stored bytes. No database instance was created.
+
+The failed stack still owns non-retained dependencies such as bucket policies, the Cognito client, and Cognito groups. Delete the failed stack first and wait for completion so CloudFormation removes those dependencies while retaining only these parent artifacts:
+
+```text
+wallyplatform-production-productionpipelineartifac-rbw9dwg13uz3
+wallyplatform-production-reportbucket577f0fcd-lb401ovvwcjo
+wallyplatform-production-samplebucket7f6f8160-wzqhje7d8yup
+us-east-1_KeHJ2FGHJ
+arn:aws:secretsmanager:us-east-1:265404809336:secret:BootstrapAdministratorSecre-SsuabW3E0NxI-KPQWKq
+WallyPlatform-production-ApplicationLogGroupE33FCF9B-L1lqxvMfJ4ph
+wallyplatform-production-applicationdatabasesubnetgroup242bc54f-sigs1xqsy3fn
+```
+
+Do not delete the separate older bucket set with suffixes `wtgaoqbqz6su`, `jh5ymbjhx7d2`, or `lpkd7hdlkktx`. Its ownership is outside this recovery procedure.
+
+After confirming the narrow scope, delete the failed stack and wait for completion. Only then revalidate that the listed retained buckets remain empty, the user pool has zero users, the log group has zero stored bytes, and no DB instance uses the subnet group. Delete the verified empty retained artifacts only after those checks pass:
+
+```bash
+AWS_PROFILE=wallyanalyzer AWS_REGION=us-east-1 aws cloudformation delete-stack --stack-name WallyPlatform-production
+AWS_PROFILE=wallyanalyzer AWS_REGION=us-east-1 aws cloudformation wait stack-delete-complete --stack-name WallyPlatform-production
+AWS_PROFILE=wallyanalyzer AWS_REGION=us-east-1 aws s3api delete-bucket --bucket wallyplatform-production-productionpipelineartifac-rbw9dwg13uz3
+AWS_PROFILE=wallyanalyzer AWS_REGION=us-east-1 aws s3api delete-bucket --bucket wallyplatform-production-reportbucket577f0fcd-lb401ovvwcjo
+AWS_PROFILE=wallyanalyzer AWS_REGION=us-east-1 aws s3api delete-bucket --bucket wallyplatform-production-samplebucket7f6f8160-wzqhje7d8yup
+AWS_PROFILE=wallyanalyzer AWS_REGION=us-east-1 aws cognito-idp delete-user-pool --user-pool-id us-east-1_KeHJ2FGHJ
+AWS_PROFILE=wallyanalyzer AWS_REGION=us-east-1 aws secretsmanager delete-secret --secret-id arn:aws:secretsmanager:us-east-1:265404809336:secret:BootstrapAdministratorSecre-SsuabW3E0NxI-KPQWKq --force-delete-without-recovery
+AWS_PROFILE=wallyanalyzer AWS_REGION=us-east-1 aws logs delete-log-group --log-group-name WallyPlatform-production-ApplicationLogGroupE33FCF9B-L1lqxvMfJ4ph
+AWS_PROFILE=wallyanalyzer AWS_REGION=us-east-1 aws rds delete-db-subnet-group --db-subnet-group-name wallyplatform-production-applicationdatabasesubnetgroup242bc54f-sigs1xqsy3fn
+```
+
+The repaired stack pins `us-east-1c` and `us-east-1d`, which support every required interface endpoint, and preserves the original isolated subnet CIDRs before adding public ALB subnets. Deploy only after the cleanup and a reviewed CDK diff.
 
 ## Deployment pipeline
 
@@ -37,4 +71,4 @@ Cognito self-service signup is disabled. Accounts are created by admin fulfillme
 
 SES production delivery is deferred. `AdminCreateUser` is suppressed until `wallyanalyzer.com` has an approved SES identity, DKIM/SPF/DMARC, and production SES access. Do not send fulfillment invitations from the stack before then.
 
-The private ECS service has no public ingress. Browser access and custom domain/CORS configuration are intentionally deferred; only controlled private-network callers can use the admin fulfillment route.
+The temporary ALB serves the static React application for restricted browser review. It is not a complete authenticated production application: Cognito login, admin fulfillment screens, and public browser CORS are not yet implemented. The production fulfillment API still requires a valid Cognito admin access token. PSIU browser control remains local-device work; a private ECS task cannot reach a PSIU on an operator LAN.
