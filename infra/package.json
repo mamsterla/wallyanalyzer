@@ -6,9 +6,8 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "check": "tsc --noEmit -p tsconfig.json",
-    "synth": "cdk synth -c environment=staging",
-    "deploy:staging": "cdk deploy -c environment=staging --require-approval broadening",
-    "deploy:production": "cdk deploy -c environment=production --require-approval broadening"
+    "synth": "cdk synth -c environment=production",
+    "deploy:production": "cdk deploy WallyPlatform-production -c environment=production --require-approval broadening"
   },
   "dependencies": {
     "aws-cdk-lib": "^2.197.0",

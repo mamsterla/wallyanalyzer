@@ -16,7 +16,6 @@
     "dev:ui": "npm run dev --workspace=@wally/app-ui",
     "dev:server": "npm run dev --workspace=@wally/app-server",
     "synth": "npm run synth --workspace=@wally/infra",
-    "deploy:staging": "npm run deploy:staging --workspace=@wally/infra",
     "deploy:production": "npm run deploy:production --workspace=@wally/infra",
     "docker:up": "docker compose up --build",
     "docker:down": "docker compose down",

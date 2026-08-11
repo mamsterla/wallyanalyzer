@@ -1,7 +1,46 @@
 import type { APIGatewayProxyEvent } from 'aws-lambda';
+import { CognitoJwtVerifier } from 'aws-jwt-verify';
 import type { Role } from '@wally/contracts';
 
 const ROLE_PRECEDENCE: Record<Role, number> = { user: 1, installer: 2, admin: 3 };
+const accessTokenVerifiers = new Map<string, ReturnType<typeof CognitoJwtVerifier.create>>();
+
+export interface AuthenticatedPrincipal {
+  subject: string;
+  roles: Role[];
+}
+
+/**
+ * Verifies a Cognito access token before a private ECS/API route uses its claims.
+ * Authorization remains a Postgres query over this subject, not a JWT claim.
+ */
+export async function verifyCognitoAccessToken(
+  accessToken: string,
+  settings: { userPoolId: string; clientId: string },
+): Promise<AuthenticatedPrincipal> {
+  const key = `${settings.userPoolId}:${settings.clientId}`;
+  let verifier = accessTokenVerifiers.get(key);
+  if (!verifier) {
+    verifier = CognitoJwtVerifier.create({
+      userPoolId: settings.userPoolId,
+      tokenUse: 'access',
+      clientId: settings.clientId,
+    });
+    accessTokenVerifiers.set(key, verifier);
+  }
+
+  let payload;
+  try {
+    payload = await verifier.verify(accessToken);
+  } catch {
+    throw new HttpError(401, 'Invalid access token.');
+  }
+  if (typeof payload.sub !== 'string' || payload.sub.length === 0) {
+    throw new HttpError(401, 'Access token subject required.');
+  }
+  const groups = Array.isArray(payload['cognito:groups']) ? payload['cognito:groups'] : [];
+  return { subject: payload.sub, roles: groups.filter(isRole) };
+}
 
 export function authenticatedSubject(event: APIGatewayProxyEvent): string {
   const subject = event.requestContext.authorizer?.claims?.sub;

@@ -1,5 +1,13 @@
 {
   "packages": [
     "npm:pi-subagents"
-  ]
+  ],
+  "subagents": {
+    "defaultModel": "openai-codex/gpt-5.6-terra",
+    "agentOverrides": {
+      "reviewer": {
+        "model": "openai-codex/gpt-5.6-terra"
+      }
+    }
+  }
 }

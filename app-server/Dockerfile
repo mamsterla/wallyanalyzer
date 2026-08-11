@@ -24,10 +24,17 @@ RUN apk add --no-cache nginx
 COPY app-server/docker/nginx.conf /etc/nginx/http.d/default.conf
 COPY app-server/docker/entrypoint.sh /usr/local/bin/wally-entrypoint
 RUN chmod +x /usr/local/bin/wally-entrypoint
+COPY --from=builder /workspace/node_modules /app/node_modules
+COPY --from=builder /workspace/packages/contracts /app/packages/contracts
 COPY --from=builder /workspace/app-server/dist/local.js /app/local.js
+COPY --from=builder /workspace/app-server/dist/production.js /app/production.js
+COPY --from=builder /workspace/app-server/dist/migrate.js /app/migrate.js
+COPY --from=builder /workspace/app-server/dist/bootstrapAdmin.js /app/bootstrapAdmin.js
+COPY --from=builder /workspace/app-server/migrations /app/migrations
 COPY --from=builder /workspace/app-ui/dist /usr/share/nginx/html
 
-ENV NODE_ENV=development \
+ENV NODE_ENV=production \
+    NODE_SERVER_PATH=/app/production.js \
     PORT=3000
 EXPOSE 80
 ENTRYPOINT ["/usr/local/bin/wally-entrypoint"]

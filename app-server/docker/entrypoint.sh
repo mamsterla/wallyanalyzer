@@ -1,7 +1,15 @@
 #!/bin/sh
 set -eu
 
-node /app/local.js &
+if [ "${1:-}" = "bootstrap-admin" ]; then
+  exec node /app/bootstrapAdmin.js
+fi
+
+if [ -n "${DATABASE_URL:-}${DATABASE_PROXY_HOST:-}" ]; then
+  node /app/migrate.js
+fi
+
+node "${NODE_SERVER_PATH:-/app/local.js}" &
 node_pid=$!
 
 cleanup() {

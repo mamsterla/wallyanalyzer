@@ -30,7 +30,7 @@ npm run check
 npm run synth
 ```
 
-Use `npm run deploy:staging` or `npm run deploy:production` only after setting AWS account/region context in `infra/cdk.json` and reviewing the generated CloudFormation.
+Development is Docker Compose only. Production CDK configuration is fixed to the approved account and region; review `docs/production-runbook.md` and run `AWS_PROFILE=wallyanalyzer npm run synth` before any manual production deployment.
 
 ## Agent workflow
 
@@ -39,7 +39,7 @@ Project-local `pi-subagents` is installed in `.pi/settings.json`. Reopen Pi in t
 ## Boundary decisions
 
 - S3 stores immutable audio uploads and algorithm/report artifacts; Postgres stores transactional and queryable metadata.
-- Cognito groups are `user`, `installer`, and `admin`. API authorization must enforce server-side RBAC; UI guards are not authorization.
+- Cognito groups are `user`, `installer`, and `admin`. Cognito proves identity; Postgres account state, customer scope, PSIU assignment, and backend checks enforce authorization. UI guards are not authorization.
 - The browser talks to a PSIU only on the user's LAN. No browser client owns AWS credentials; uploads use short-lived presigned S3 URLs.
 - Python algorithms remain versioned reference workers. Production execution should package each approved algorithm version as a Lambda container image or Fargate task, selected by job type.
 

@@ -8,6 +8,7 @@ services:
     environment:
       PORT: "3000"
       NODE_ENV: development
+      NODE_SERVER_PATH: /app/local.js
       PSIU_BASE_URL: "${PSIU_BASE_URL:-http://psiu.local}"
       DATABASE_URL: "postgresql://${POSTGRES_USER:-wally}:${POSTGRES_PASSWORD:-wally_local_password}@postgres:5432/${POSTGRES_DB:-wally}"
     ports:
@@ -26,7 +27,6 @@ services:
       - "127.0.0.1:${POSTGRES_PORT:-5433}:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
-      - ./app-server/migrations/0001_initial.sql:/docker-entrypoint-initdb.d/0001_initial.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s

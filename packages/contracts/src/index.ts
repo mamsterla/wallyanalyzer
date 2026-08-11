@@ -1,5 +1,21 @@
 export type Role = 'user' | 'installer' | 'admin';
 
+export type UserAccountStatus = 'provisioned' | 'active' | 'suspended' | 'cancelled';
+
+export interface AdminFulfillmentRequest {
+  email: string;
+  psiuSerialNumber: string;
+  psiuOpaqueUid?: string;
+}
+
+export interface AdminFulfillmentResult {
+  userId: string;
+  cognitoSubject: string;
+  psiuUnitId: string;
+  assignmentId: string;
+  accountStatus: UserAccountStatus;
+}
+
 export type EquipmentType = 'turntable' | 'tonearm' | 'cartridge';
 
 export interface EquipmentItem {

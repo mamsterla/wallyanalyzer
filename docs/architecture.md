@@ -18,9 +18,9 @@ Wally Analyzer is an AWS SaaS platform for commerce, PSIU-assisted recording, an
 
 ## Runtime flow
 
-1. Cognito authenticates user; API Gateway passes verified claims to Lambda.
-2. API verifies group/entitlement server-side and creates durable `samples` upload intent.
-3. API returns a short-lived S3 multipart/presigned upload URL. Browser uploads audio directly to private S3.
+1. Cognito authenticates the user; private Node services verify signed access tokens and resolve the Cognito subject to a Postgres account.
+2. The service checks account status, group, customer scope, PSIU assignment, and resource ownership before creating durable upload intent.
+3. The service returns a short-lived S3 multipart/presigned upload URL. Browser uploads audio directly to private S3 after public ingress is explicitly approved.
 4. S3 event validation confirms object metadata/checksum and moves sample to `queued`.
 5. Step Functions selects algorithm version. Lambda container is default for bounded jobs; Fargate task is selected for long, memory-heavy, or native-library work.
 6. Workers write artifacts and report payloads to S3, transactional status/results to Postgres, and report summary to API.
@@ -29,13 +29,13 @@ Wally Analyzer is an AWS SaaS platform for commerce, PSIU-assisted recording, an
 ## AWS foundation
 
 - **Cognito:** user pool plus groups `user`, `installer`, `admin`.
-- **API Gateway + Lambda:** public REST API, RBAC enforcement, signed upload issuance.
-- **S3:** private, encrypted raw input and immutable versioned output artifacts.
-- **Aurora PostgreSQL:** transactional metadata, entitlements, jobs, reports, and analytics dimensions.
-- **Step Functions:** durable algorithm orchestration, retries, branching, and audit trail.
-- **ECS/Fargate:** reserved execution plane for oversized algorithm packages.
+- **Cognito:** managed credentials, access tokens, password reset, and invite lifecycle; custom Wally UI owns presentation.
+- **ECS/Fargate:** private production Node application service and future oversized algorithm execution plane.
+- **S3:** private, encrypted, versioned raw input and immutable output artifacts.
+- **RDS PostgreSQL + RDS Proxy:** encrypted transactional metadata, entitlements, jobs, reports, and analytics dimensions.
+- **VPC endpoints:** private ECS access to approved AWS services without NAT.
 - **CloudWatch:** structured application/workflow logs, metrics, alarms, dashboards.
-- **CodePipeline/CodeBuild:** recommended deployment pipeline. CDK synthesizes staging and production stacks from same code.
+- **CodePipeline/CodeBuild:** GitHub `main` validation and production deployment pipeline. Development remains local Docker Compose only.
 
 ## Security rules
 
