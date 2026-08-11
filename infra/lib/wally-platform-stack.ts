@@ -5,6 +5,7 @@ import * as codepipeline from 'aws-cdk-lib/aws-codepipeline';
 import * as codepipelineActions from 'aws-cdk-lib/aws-codepipeline-actions';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
+import * as ecrAssets from 'aws-cdk-lib/aws-ecr-assets';
 import * as ecs from 'aws-cdk-lib/aws-ecs';
 import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import * as iam from 'aws-cdk-lib/aws-iam';
@@ -167,10 +168,18 @@ export class WallyPlatformStack extends cdk.Stack {
     });
 
     const cluster = new ecs.Cluster(this, 'ApplicationCluster', { vpc, containerInsightsV2: ecs.ContainerInsights.ENHANCED });
-    const applicationImage = ecs.ContainerImage.fromAsset(path.resolve(process.cwd(), '..'), { file: 'app-server/Dockerfile' });
+    const runtimePlatform = {
+      cpuArchitecture: ecs.CpuArchitecture.X86_64,
+      operatingSystemFamily: ecs.OperatingSystemFamily.LINUX,
+    };
+    const applicationImage = ecs.ContainerImage.fromAsset(path.resolve(process.cwd(), '..'), {
+      file: 'app-server/Dockerfile',
+      platform: ecrAssets.Platform.LINUX_AMD64,
+    });
     const taskDefinition = new ecs.FargateTaskDefinition(this, 'ApplicationTaskDefinition', {
       cpu: 256,
       memoryLimitMiB: 512,
+      runtimePlatform,
     });
     const applicationLogGroup = new logs.LogGroup(this, 'ApplicationLogGroup', {
       retention: logs.RetentionDays.ONE_MONTH,
@@ -240,6 +249,7 @@ export class WallyPlatformStack extends cdk.Stack {
     const bootstrapTaskDefinition = new ecs.FargateTaskDefinition(this, 'BootstrapAdministratorTaskDefinition', {
       cpu: 256,
       memoryLimitMiB: 512,
+      runtimePlatform,
     });
     bootstrapTaskDefinition.addContainer('BootstrapAdministratorContainer', {
       image: applicationImage,
