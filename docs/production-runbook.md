@@ -17,6 +17,40 @@ The temporary browser path is a public Application Load Balancer (ALB) HTTP list
 
 The temporary URL is HTTP only and sends traffic without TLS encryption. Do not use it on untrusted networks or enter sensitive production data. Its ALB hostname is not a replacement for a custom domain. Add an ACM certificate and HTTPS listener after the DNS domain is ready, then remove the temporary port-80 listener and its `47.150.127.7/32` ingress rule. Do not add NAT or widen ingress without an approved architecture change.
 
+## ECS diagnostic deployment
+
+Use this mode only to investigate a task-start failure after an approved cleanup. It creates the same VPC, RDS, RDS Proxy, task definitions, and restricted ALB as production, but creates no running application service task and no CodePipeline. It therefore cannot autonomously deploy `desiredCount: 1` while task evidence is collected.
+
+Deploy the diagnostic stack with the explicit context flag:
+
+```bash
+cd infra
+AWS_PROFILE=wallyanalyzer AWS_REGION=us-east-1 npx cdk deploy WallyPlatform-production \
+  -c environment=production -c diagnosticMode=true --require-approval never
+```
+
+Read the stack outputs, then run one application task on the production-equivalent private network. Do not add a public IP:
+
+```bash
+export AWS_PROFILE=wallyanalyzer AWS_REGION=us-east-1
+STACK=WallyPlatform-production
+CLUSTER=$(aws cloudformation describe-stacks --stack-name "$STACK" --query "Stacks[0].Outputs[?OutputKey=='ApplicationClusterArn'].OutputValue | [0]" --output text)
+TASK_DEFINITION=$(aws cloudformation describe-stacks --stack-name "$STACK" --query "Stacks[0].Outputs[?OutputKey=='ApplicationTaskDefinitionArn'].OutputValue | [0]" --output text)
+SUBNETS=$(aws cloudformation describe-stacks --stack-name "$STACK" --query "Stacks[0].Outputs[?OutputKey=='PrivateSubnetIds'].OutputValue | [0]" --output text)
+SECURITY_GROUP=$(aws cloudformation describe-stacks --stack-name "$STACK" --query "Stacks[0].Outputs[?OutputKey=='PrivateTaskSecurityGroupId'].OutputValue | [0]" --output text)
+TASK_ARN=$(aws ecs run-task --cluster "$CLUSTER" --launch-type FARGATE --task-definition "$TASK_DEFINITION" \
+  --network-configuration "awsvpcConfiguration={subnets=$SUBNETS,securityGroups=$SECURITY_GROUP,assignPublicIp=DISABLED}" \
+  --query 'tasks[0].taskArn' --output text)
+aws ecs describe-tasks --cluster "$CLUSTER" --tasks "$TASK_ARN" --output json
+```
+
+Collect the stopped-task reason, container exit code, and the `wally-app` CloudWatch logs before any cleanup. If the task remains running, terminate it after recording its state. After fixing the verified cause, deploy without `diagnosticMode`; that restores application `desiredCount: 1` and creates the CodePipeline:
+
+```bash
+AWS_PROFILE=wallyanalyzer AWS_REGION=us-east-1 npx cdk deploy WallyPlatform-production \
+  -c environment=production --require-approval never
+```
+
 ## Failed first-deployment recovery
 
 Use this procedure only for the recorded `WallyPlatform-production` `ROLLBACK_COMPLETE` attempt. Before cleanup, reconfirm that the resources below contain no identities or data. The verified state at the time of this runbook update was: all three buckets had no object versions or delete markers; Cognito pool `us-east-1_KeHJ2FGHJ` had zero users; and the log group had zero stored bytes. No database instance was created.

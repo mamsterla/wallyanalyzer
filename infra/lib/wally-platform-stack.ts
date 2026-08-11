@@ -27,6 +27,7 @@ export class WallyPlatformStack extends cdk.Stack {
     super(scope, id, props);
 
     const retention = cdk.RemovalPolicy.RETAIN;
+    const diagnosticMode = this.node.tryGetContext('diagnosticMode') === true || this.node.tryGetContext('diagnosticMode') === 'true';
     const vpc = new ec2.Vpc(this, 'ProductionVpc', {
       availabilityZones: ['us-east-1c', 'us-east-1d'],
       natGateways: 0,
@@ -217,7 +218,7 @@ export class WallyPlatformStack extends cdk.Stack {
     const applicationService = new ecs.FargateService(this, 'PrivateApplicationService', {
       cluster,
       taskDefinition,
-      desiredCount: 1,
+      desiredCount: diagnosticMode ? 0 : 1,
       assignPublicIp: false,
       securityGroups: [serviceSecurityGroup],
       vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
@@ -279,65 +280,68 @@ export class WallyPlatformStack extends cdk.Stack {
       resources: [userPool.userPoolArn],
     }));
 
-    const sourceOutput = new codepipeline.Artifact('SourceOutput');
-    const validationProject = pipelineProject(this, 'ValidationProject', {
-      buildSpec: codebuild.BuildSpec.fromObject({
-        version: '0.2',
-        phases: {
-          install: { commands: ['npm ci'] },
-          build: { commands: ['npm run check', 'npm run build', 'npm run test', 'cd infra && npx cdk synth -c environment=production'] },
-        },
-      }),
-    });
-    const deploymentProject = pipelineProject(this, 'DeploymentProject', {
-      buildSpec: codebuild.BuildSpec.fromObject({
-        version: '0.2',
-        phases: {
-          install: { commands: ['npm ci'] },
-          build: { commands: ['npm run check', 'npm run build', 'npm run test', 'cd infra && npx cdk deploy WallyPlatform-production -c environment=production --require-approval never'] },
-        },
-      }),
-    });
-    const bootstrapRoleArns = [
-      'deploy-role',
-      'file-publishing-role',
-      'image-publishing-role',
-      'lookup-role',
-    ].map((role) => `arn:aws:iam::265404809336:role/cdk-hnb659fds-${role}-265404809336-us-east-1`);
-    deploymentProject.addToRolePolicy(new iam.PolicyStatement({
-      actions: ['sts:AssumeRole'],
-      resources: bootstrapRoleArns,
-    }));
-    deploymentProject.addToRolePolicy(new iam.PolicyStatement({
-      actions: ['ssm:GetParameter'],
-      resources: ['arn:aws:ssm:us-east-1:265404809336:parameter/cdk-bootstrap/hnb659fds/version'],
-    }));
+    let pipeline: codepipeline.Pipeline | undefined;
+    if (!diagnosticMode) {
+      const sourceOutput = new codepipeline.Artifact('SourceOutput');
+      const validationProject = pipelineProject(this, 'ValidationProject', {
+        buildSpec: codebuild.BuildSpec.fromObject({
+          version: '0.2',
+          phases: {
+            install: { commands: ['npm ci'] },
+            build: { commands: ['npm run check', 'npm run build', 'npm run test', 'cd infra && npx cdk synth -c environment=production'] },
+          },
+        }),
+      });
+      const deploymentProject = pipelineProject(this, 'DeploymentProject', {
+        buildSpec: codebuild.BuildSpec.fromObject({
+          version: '0.2',
+          phases: {
+            install: { commands: ['npm ci'] },
+            build: { commands: ['npm run check', 'npm run build', 'npm run test', 'cd infra && npx cdk deploy WallyPlatform-production -c environment=production --require-approval never'] },
+          },
+        }),
+      });
+      const bootstrapRoleArns = [
+        'deploy-role',
+        'file-publishing-role',
+        'image-publishing-role',
+        'lookup-role',
+      ].map((role) => `arn:aws:iam::265404809336:role/cdk-hnb659fds-${role}-265404809336-us-east-1`);
+      deploymentProject.addToRolePolicy(new iam.PolicyStatement({
+        actions: ['sts:AssumeRole'],
+        resources: bootstrapRoleArns,
+      }));
+      deploymentProject.addToRolePolicy(new iam.PolicyStatement({
+        actions: ['ssm:GetParameter'],
+        resources: ['arn:aws:ssm:us-east-1:265404809336:parameter/cdk-bootstrap/hnb659fds/version'],
+      }));
 
-    const pipeline = new codepipeline.Pipeline(this, 'ProductionPipeline', {
-      pipelineName: 'wally-analyzer-production',
-      pipelineType: codepipeline.PipelineType.V1,
-      restartExecutionOnUpdate: true,
-    });
-    pipeline.addStage({
-      stageName: 'Source',
-      actions: [new codepipelineActions.CodeStarConnectionsSourceAction({
-        actionName: 'GitHubMain',
-        connectionArn: props.githubConnectionArn,
-        owner: props.githubOwner,
-        repo: props.githubRepository,
-        branch: 'main',
-        output: sourceOutput,
-        triggerOnPush: true,
-      })],
-    });
-    pipeline.addStage({
-      stageName: 'Validate',
-      actions: [new codepipelineActions.CodeBuildAction({ actionName: 'CheckAndSynth', project: validationProject, input: sourceOutput })],
-    });
-    pipeline.addStage({
-      stageName: 'Deploy',
-      actions: [new codepipelineActions.CodeBuildAction({ actionName: 'DeployProduction', project: deploymentProject, input: sourceOutput })],
-    });
+      pipeline = new codepipeline.Pipeline(this, 'ProductionPipeline', {
+        pipelineName: 'wally-analyzer-production',
+        pipelineType: codepipeline.PipelineType.V1,
+        restartExecutionOnUpdate: true,
+      });
+      pipeline.addStage({
+        stageName: 'Source',
+        actions: [new codepipelineActions.CodeStarConnectionsSourceAction({
+          actionName: 'GitHubMain',
+          connectionArn: props.githubConnectionArn,
+          owner: props.githubOwner,
+          repo: props.githubRepository,
+          branch: 'main',
+          output: sourceOutput,
+          triggerOnPush: true,
+        })],
+      });
+      pipeline.addStage({
+        stageName: 'Validate',
+        actions: [new codepipelineActions.CodeBuildAction({ actionName: 'CheckAndSynth', project: validationProject, input: sourceOutput })],
+      });
+      pipeline.addStage({
+        stageName: 'Deploy',
+        actions: [new codepipelineActions.CodeBuildAction({ actionName: 'DeployProduction', project: deploymentProject, input: sourceOutput })],
+      });
+    }
 
     new cdk.CfnOutput(this, 'UserPoolId', { value: userPool.userPoolId });
     new cdk.CfnOutput(this, 'WebClientId', { value: webClient.userPoolClientId });
@@ -346,6 +350,7 @@ export class WallyPlatformStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'DatabaseProxyEndpoint', { value: databaseProxy.endpoint });
     new cdk.CfnOutput(this, 'BootstrapAdministratorSecretArn', { value: bootstrapAdminSecret.secretArn });
     new cdk.CfnOutput(this, 'BootstrapAdministratorTaskDefinitionArn', { value: bootstrapTaskDefinition.taskDefinitionArn });
+    new cdk.CfnOutput(this, 'ApplicationTaskDefinitionArn', { value: taskDefinition.taskDefinitionArn });
     new cdk.CfnOutput(this, 'ApplicationClusterArn', { value: cluster.clusterArn });
     new cdk.CfnOutput(this, 'ApplicationLogGroupName', { value: applicationLogGroup.logGroupName });
     new cdk.CfnOutput(this, 'TemporaryBrowserHttpUrl', {
@@ -354,7 +359,7 @@ export class WallyPlatformStack extends cdk.Stack {
     });
     new cdk.CfnOutput(this, 'PrivateTaskSecurityGroupId', { value: serviceSecurityGroup.securityGroupId });
     new cdk.CfnOutput(this, 'PrivateSubnetIds', { value: vpc.isolatedSubnets.map((subnet) => subnet.subnetId).join(',') });
-    new cdk.CfnOutput(this, 'ProductionPipelineName', { value: pipeline.pipelineName });
+    if (pipeline) new cdk.CfnOutput(this, 'ProductionPipelineName', { value: pipeline.pipelineName });
   }
 }
 
