@@ -13,9 +13,15 @@ AWS_PROFILE=wallyanalyzer AWS_REGION=us-east-1 npm run synth
 
 ## Production network posture
 
-The temporary browser path is a public Application Load Balancer (ALB) HTTP listener. Its security group permits port 80 only from `47.150.127.7/32`. The ALB is the only public Wally resource; it forwards only to port 80 on private ECS tasks. ECS tasks remain in isolated subnets without public IPs or NAT. RDS PostgreSQL, RDS Proxy, Cognito, and S3 remain non-public. Tasks use S3 gateway and interface VPC endpoints for ECR, CloudWatch Logs, Secrets Manager, Cognito IDP, and SES APIs.
+The temporary browser path is a public Application Load Balancer (ALB) HTTP listener. Its security group permits port 80 only from `47.150.127.7/32`. The ALB is the only public Wally resource; it forwards only to port 80 on private ECS tasks. ECS tasks remain in isolated subnets without public IPs or NAT. RDS PostgreSQL, RDS Proxy, Cognito, and S3 remain non-public. Tasks use the S3 gateway endpoint with AWS-managed prefix-list HTTPS egress for ECR image layers, plus interface endpoints for ECR, CloudWatch Logs, Secrets Manager, Cognito IDP, SES, Lambda, Step Functions, and Systems Manager APIs.
 
 The temporary URL is HTTP only and sends traffic without TLS encryption. Do not use it on untrusted networks or enter sensitive production data. Its ALB hostname is not a replacement for a custom domain. Add an ACM certificate and HTTPS listener after the DNS domain is ready, then remove the temporary port-80 listener and its `47.150.127.7/32` ingress rule. Do not add NAT or widen ingress without an approved architecture change.
+
+## Private database operator access
+
+The bastion has no public IP and no inbound SSH rule. Access it only with an IAM principal authorized for Session Manager, then use the SSM port-forwarding document to the RDS Proxy endpoint. Its security group can reach only the dedicated SSM, SSM Messages, and EC2 Messages interface endpoints on TCP/443, plus RDS Proxy on TCP/5432. The bastion cannot reach the ECS workload endpoints (ECR, Logs, Secrets Manager, Cognito, SES, Lambda, or Step Functions). ECS tasks retain their separate proxy and workload-endpoint rules. Do not expose the bastion, RDS, or RDS Proxy publicly.
+
+Before production deployment, synthesize the template and confirm: endpoint services support `us-east-1c` and `us-east-1d`; application-task egress includes TCP/443 to the S3 managed prefix list and endpoint SG only; tasks are Linux/x86_64; ALB ingress is only `47.150.127.7/32:80`; RDS, ECS tasks, and bastion have no public IP; and any failed retained RDS instance is deleted or explicitly adopted before its VPC is removed.
 
 ## ECS diagnostic deployment
 

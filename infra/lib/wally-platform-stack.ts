@@ -3,6 +3,7 @@ import * as cdk from 'aws-cdk-lib';
 import * as codebuild from 'aws-cdk-lib/aws-codebuild';
 import * as codepipeline from 'aws-cdk-lib/aws-codepipeline';
 import * as codepipelineActions from 'aws-cdk-lib/aws-codepipeline-actions';
+import * as cr from 'aws-cdk-lib/custom-resources';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as ecrAssets from 'aws-cdk-lib/aws-ecr-assets';
@@ -55,12 +56,27 @@ export class WallyPlatformStack extends cdk.Stack {
     const endpointSecurityGroup = new ec2.SecurityGroup(this, 'VpcEndpointSecurityGroup', {
       vpc,
       allowAllOutbound: false,
-      description: 'AWS PrivateLink endpoints used by Wally ECS tasks',
+      description: 'AWS PrivateLink endpoints used by private Wally workloads',
     });
     endpointSecurityGroup.addIngressRule(serviceSecurityGroup, ec2.Port.tcp(443), 'HTTPS from private application tasks');
     serviceSecurityGroup.addEgressRule(endpointSecurityGroup, ec2.Port.tcp(443), 'HTTPS to approved AWS PrivateLink endpoints');
 
     vpc.addGatewayEndpoint('S3GatewayEndpoint', { service: ec2.GatewayVpcEndpointAwsService.S3 });
+    const s3PrefixList = new cr.AwsCustomResource(this, 'S3ManagedPrefixList', {
+      onUpdate: {
+        service: 'EC2',
+        action: 'describeManagedPrefixLists',
+        parameters: { Filters: [{ Name: 'prefix-list-name', Values: [`com.amazonaws.${this.region}.s3`] }] },
+        physicalResourceId: cr.PhysicalResourceId.of(`s3-prefix-list-${this.region}`),
+      },
+      policy: cr.AwsCustomResourcePolicy.fromSdkCalls({ resources: cr.AwsCustomResourcePolicy.ANY_RESOURCE }),
+      installLatestAwsSdk: false,
+    });
+    serviceSecurityGroup.addEgressRule(
+      ec2.Peer.prefixList(s3PrefixList.getResponseField('PrefixLists.0.PrefixListId')),
+      ec2.Port.tcp(443),
+      'HTTPS to S3 image layers through the gateway endpoint',
+    );
     [
       ec2.InterfaceVpcEndpointAwsService.ECR,
       ec2.InterfaceVpcEndpointAwsService.ECR_DOCKER,
@@ -68,6 +84,8 @@ export class WallyPlatformStack extends cdk.Stack {
       ec2.InterfaceVpcEndpointAwsService.SECRETS_MANAGER,
       ec2.InterfaceVpcEndpointAwsService.COGNITO_IDP,
       ec2.InterfaceVpcEndpointAwsService.EMAIL,
+      ec2.InterfaceVpcEndpointAwsService.LAMBDA,
+      ec2.InterfaceVpcEndpointAwsService.STEP_FUNCTIONS,
     ].forEach((service, index) => vpc.addInterfaceEndpoint(`PrivateLinkEndpoint${index}`, {
       service,
       privateDnsEnabled: true,
@@ -86,10 +104,50 @@ export class WallyPlatformStack extends cdk.Stack {
       allowAllOutbound: false,
       description: 'TLS-only RDS Proxy',
     });
+    const bastionSecurityGroup = new ec2.SecurityGroup(this, 'DatabaseBastionSecurityGroup', {
+      vpc,
+      allowAllOutbound: false,
+      description: 'Private Session Manager database tunnel host',
+    });
+    const ssmEndpointSecurityGroup = new ec2.SecurityGroup(this, 'SessionManagerEndpointSecurityGroup', {
+      vpc,
+      allowAllOutbound: false,
+      description: 'Session Manager PrivateLink endpoints used only by the database bastion',
+    });
+    ssmEndpointSecurityGroup.addIngressRule(bastionSecurityGroup, ec2.Port.tcp(443), 'HTTPS from private Session Manager bastion');
+    bastionSecurityGroup.addEgressRule(ssmEndpointSecurityGroup, ec2.Port.tcp(443), 'HTTPS to Session Manager endpoints');
+    [
+      ec2.InterfaceVpcEndpointAwsService.SSM,
+      ec2.InterfaceVpcEndpointAwsService.SSM_MESSAGES,
+      ec2.InterfaceVpcEndpointAwsService.EC2_MESSAGES,
+    ].forEach((service, index) => vpc.addInterfaceEndpoint(`SessionManagerEndpoint${index}`, {
+      service,
+      privateDnsEnabled: true,
+      open: false,
+      securityGroups: [ssmEndpointSecurityGroup],
+      subnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
+    }));
+    bastionSecurityGroup.addEgressRule(proxySecurityGroup, ec2.Port.tcp(5432), 'PostgreSQL tunnel to RDS Proxy');
     proxySecurityGroup.addIngressRule(serviceSecurityGroup, ec2.Port.tcp(5432), 'PostgreSQL from private application tasks');
+    proxySecurityGroup.addIngressRule(bastionSecurityGroup, ec2.Port.tcp(5432), 'PostgreSQL from Session Manager bastion');
     proxySecurityGroup.addEgressRule(databaseSecurityGroup, ec2.Port.tcp(5432), 'PostgreSQL to database');
     serviceSecurityGroup.addEgressRule(proxySecurityGroup, ec2.Port.tcp(5432), 'PostgreSQL through RDS Proxy');
     databaseSecurityGroup.addIngressRule(proxySecurityGroup, ec2.Port.tcp(5432), 'PostgreSQL only through RDS Proxy');
+
+    const bastionRole = new iam.Role(this, 'DatabaseBastionRole', {
+      assumedBy: new iam.ServicePrincipal('ec2.amazonaws.com'),
+      managedPolicies: [iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMManagedInstanceCore')],
+    });
+    const bastion = new ec2.Instance(this, 'DatabaseBastion', {
+      vpc,
+      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
+      instanceType: ec2.InstanceType.of(ec2.InstanceClass.T4G, ec2.InstanceSize.NANO),
+      machineImage: ec2.MachineImage.latestAmazonLinux2023({ cpuType: ec2.AmazonLinuxCpuType.ARM_64 }),
+      role: bastionRole,
+      securityGroup: bastionSecurityGroup,
+      requireImdsv2: true,
+      detailedMonitoring: false,
+    });
 
     const database = new rds.DatabaseInstance(this, 'ApplicationDatabase', {
       engine: rds.DatabaseInstanceEngine.postgres({ version: rds.PostgresEngineVersion.VER_18_3 }),
@@ -358,6 +416,7 @@ export class WallyPlatformStack extends cdk.Stack {
       description: 'Temporary restricted HTTP browser URL. Replace with HTTPS after DNS and ACM are configured.',
     });
     new cdk.CfnOutput(this, 'PrivateTaskSecurityGroupId', { value: serviceSecurityGroup.securityGroupId });
+    new cdk.CfnOutput(this, 'DatabaseBastionInstanceId', { value: bastion.instanceId });
     new cdk.CfnOutput(this, 'PrivateSubnetIds', { value: vpc.isolatedSubnets.map((subnet) => subnet.subnetId).join(',') });
     if (pipeline) new cdk.CfnOutput(this, 'ProductionPipelineName', { value: pipeline.pipelineName });
   }

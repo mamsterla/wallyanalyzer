@@ -33,7 +33,8 @@ Wally Analyzer is an AWS SaaS platform for commerce, PSIU-assisted recording, an
 - **ECS/Fargate:** private production Node application service and future oversized algorithm execution plane.
 - **S3:** private, encrypted, versioned raw input and immutable output artifacts.
 - **RDS PostgreSQL + RDS Proxy:** encrypted transactional metadata, entitlements, jobs, reports, and analytics dimensions.
-- **VPC endpoints:** private ECS access to approved AWS services without NAT.
+- **VPC endpoints:** private ECS access to approved AWS services without NAT; S3 gateway access is restricted by its AWS-managed prefix list.
+- **SSM bastion:** private Amazon Linux EC2 operator tunnel host with no public IP or inbound SSH. IAM-authenticated Session Manager provides controlled RDS Proxy port forwarding.
 - **CloudWatch:** structured application/workflow logs, metrics, alarms, dashboards.
 - **CodePipeline/CodeBuild:** GitHub `main` validation and production deployment pipeline. Development remains local Docker Compose only.
 
@@ -44,6 +45,8 @@ Wally Analyzer is an AWS SaaS platform for commerce, PSIU-assisted recording, an
 - S3 never exposes public read/write. Signed URLs are scope- and time-limited.
 - Store only opaque device IDs and approved run metadata. Do not persist LAN reachability or device credentials.
 - Encrypt secrets with Secrets Manager/KMS; never build them into UI or Lambda environment configuration.
+- RDS and RDS Proxy remain private. Only ECS task, approved future VPC-attached Lambda, and the private SSM bastion security groups may open TLS PostgreSQL connections to RDS Proxy.
+- Step Functions has no security group. ECS invokes Lambda and Step Functions through least-privilege IAM and private endpoints; future VPC-attached Lambda functions receive their own security group and an explicit RDS Proxy rule.
 - Add WAF, audit logs, retention policies, and production frontend origin before public launch.
 
 ## Algorithm evolution
