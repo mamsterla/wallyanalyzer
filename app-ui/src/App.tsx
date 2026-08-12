@@ -1,40 +1,16 @@
-import { AppBar, Box, Button, Container, Stack, Toolbar, Typography } from '@mui/material';
+import { AppBar, Alert, Box, Button, Container, Paper, Stack, TextField, Toolbar, Typography } from '@mui/material';
 import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import { BrowserRouter } from 'react-router-dom';
-import { ControllerPage } from './pages/ControllerPage.js';
-import { DashboardPage } from './pages/DashboardPage.js';
-import { EquipmentPage } from './pages/EquipmentPage.js';
-import { ReportsPage } from './pages/ReportsPage.js';
+import { useEffect, useState } from 'react';
+import type { CustomerSummary, CustomerUnit, MeResponse } from '@wally/contracts';
+import { accessToken, changePassword, completeTemporaryPassword, configured, forgotPassword, login, logout, resetPassword } from './auth.js';
 
-function Navigation() {
-  const navigate = useNavigate();
-  return (
-    <AppBar position="static" color="transparent" elevation={0}>
-      <Container maxWidth="lg">
-        <Toolbar disableGutters>
-          <Typography variant="h6" sx={{ flexGrow: 1 }}>Wally Analyzer</Typography>
-          <Stack direction="row" spacing={1}>
-            {['Dashboard', 'Reports', 'Equipment', 'PSIU Controller'].map((label) => (
-              <Button key={label} color="inherit" onClick={() => navigate(label === 'Dashboard' ? '/' : `/${label.toLowerCase().replace(' ', '-')}`)}>{label}</Button>
-            ))}
-          </Stack>
-        </Toolbar>
-      </Container>
-    </AppBar>
-  );
-}
-
-export function App() {
-  return (
-    <BrowserRouter>
-      <Navigation />
-      <Box component="main" py={5}><Container maxWidth="lg"><Routes>
-        <Route path="/" element={<DashboardPage />} />
-        <Route path="/reports" element={<ReportsPage />} />
-        <Route path="/equipment" element={<EquipmentPage />} />
-        <Route path="/psiu-controller" element={<ControllerPage />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes></Container></Box>
-    </BrowserRouter>
-  );
-}
+const api=import.meta.env.VITE_API_BASE_URL ?? '/api';
+async function request<T>(path:string,init?:RequestInit):Promise<T>{const token=await accessToken();const r=await fetch(`${api}${path}`,{...init,headers:{...init?.headers,authorization:`Bearer ${token}`,'content-type':'application/json'}});if(!r.ok)throw Error((await r.json().catch(()=>({}))).message??'Request failed.');return r.status===204?undefined as T:r.json()}
+function Login({done}:{done:()=>void}){const[e,setE]=useState('');const[p,setP]=useState('');const[m,setM]=useState('');const[mode,setMode]=useState<'login'|'reset'|'temporary'>('login');const[code,setCode]=useState('');return <Paper sx={{p:3,maxWidth:420,mx:'auto'}}><Typography variant="h5">Wally sign in</Typography>{!configured()&&<Alert severity="warning" sx={{my:2}}>Cognito browser configuration is required.</Alert>}<Stack spacing={2} mt={2}><TextField label="Email" value={e} onChange={x=>setE(x.target.value)}/>{mode==='reset'&&<TextField label="Verification code" value={code} onChange={x=>setCode(x.target.value)}/>}<TextField label={mode==='login'?'Password':mode==='temporary'?'Temporary password':'New password'} type="password" value={p} onChange={x=>setP(x.target.value)}/>{mode==='temporary'&&<TextField label="New password" type="password" value={code} onChange={x=>setCode(x.target.value)}/>}<Button variant="contained" onClick={async()=>{try{if(mode==='reset'){await resetPassword(e,code,p);setMode('login');setM('Password reset. Sign in.')}else if(mode==='temporary'){await completeTemporaryPassword(e,p,code);done()}else{await login(e,p);done()}}catch(x){if(mode==='login'&&x instanceof Error&&x.message.includes('Temporary password'))setMode('temporary');setM(x instanceof Error?x.message:'Sign-in failed.')}}}>{mode==='reset'?'Reset password':mode==='temporary'?'Set password':'Sign in'}</Button><Button onClick={async()=>{try{await forgotPassword(e);setMode('reset');setM('Check your email for the verification code.')}catch(x){setM(x instanceof Error?x.message:'Password reset failed.')}}}>Forgot password</Button>{m&&<Alert severity="info">{m}</Alert>}</Stack></Paper>}
+function Home({me}:{me:MeResponse}){return <Stack spacing={2}><Typography variant="h4">Your Wally system</Typography><Typography>{me.email}</Typography><Units units={me.units}/></Stack>}
+function Units({units}:{units:CustomerUnit[]}){return <Paper sx={{p:2}}><Typography variant="h6">Assigned PSIU</Typography>{units.length?units.map(u=><Box key={u.id} py={1}>{u.serialNumber} · firmware UID {u.uid} · {u.status}</Box>):<Typography color="text.secondary">No PSIU assigned.</Typography>}</Paper>}
+function Account({me}:{me:MeResponse}){const[o,setO]=useState('');const[n,setN]=useState('');const[m,setM]=useState('');return <Stack spacing={2}><Typography variant="h4">Account</Typography><Paper sx={{p:2}}><Typography>Email: {me.email}</Typography><Alert severity="info" sx={{mt:2}}>Email changes are unavailable until the approved mutable-email Cognito migration is complete.</Alert></Paper><Paper sx={{p:2}}><Typography variant="h6">Change password</Typography><Stack spacing={1} mt={1}><TextField type="password" label="Current password" value={o} onChange={e=>setO(e.target.value)}/><TextField type="password" label="New password" value={n} onChange={e=>setN(e.target.value)}/><Button onClick={async()=>{try{await changePassword(o,n);setM('Password changed.')}catch(e){setM(e instanceof Error?e.message:'Failed.')}}}>Change password</Button>{m&&<Alert severity="info">{m}</Alert>}</Stack></Paper><Units units={me.units}/></Stack>}
+function Admin(){const[customers,setCustomers]=useState<CustomerSummary[]>([]);const[units,setUnits]=useState<CustomerUnit[]>([]);const[email,setEmail]=useState('');const[serial,setSerial]=useState('');const[uid,setUid]=useState('');const load=()=>Promise.all([request<CustomerSummary[]>('/v1/admin/customers'),request<CustomerUnit[]>('/v1/admin/psiu-units')]).then(([c,u])=>{setCustomers(c);setUnits(u)});useEffect(()=>{void load()},[]);return <Stack spacing={3}><Typography variant="h4">Administration</Typography><Paper sx={{p:2}}><Typography variant="h6">Customers</Typography><Stack direction="row" spacing={1} mt={1}><TextField label="Customer email" value={email} onChange={e=>setEmail(e.target.value)}/><Button onClick={async()=>{await request('/v1/admin/customers',{method:'POST',body:JSON.stringify({email})});setEmail('');await load()}}>Create customer</Button></Stack>{customers.map(c=><Box key={c.id} py={1}>{c.email} · {c.lifecycle} <Button size="small" onClick={async()=>{await request(`/v1/admin/customers/${c.id}/invite`,{method:'POST'});await load()}}>Invite</Button><Button size="small" onClick={async()=>{await request(`/v1/admin/customers/${c.id}/reset-password`,{method:'POST'});}}>Reset password</Button><Button size="small" onClick={async()=>{await request(`/v1/admin/customers/${c.id}/suspend`,{method:'POST'});await load()}}>Disable</Button><Button size="small" onClick={async()=>{await request(`/v1/admin/customers/${c.id}`,{method:'DELETE'});await load()}}>Archive</Button></Box>)}</Paper><Paper sx={{p:2}}><Typography variant="h6">PSIU inventory</Typography><Stack direction="row" spacing={1} mt={1}><TextField label="Serial number" value={serial} onChange={e=>setSerial(e.target.value)}/><TextField label="Firmware /status UID" value={uid} onChange={e=>setUid(e.target.value)}/><Button onClick={async()=>{await request('/v1/admin/psiu-units',{method:'POST',body:JSON.stringify({serialNumber:serial,uid})});setSerial('');setUid('');await load()}}>Add PSIU</Button></Stack>{units.map(u=><Box key={u.id} py={1}>{u.serialNumber} · {u.uid} · {u.status} <Button size="small" onClick={async()=>{await request(`/v1/admin/psiu-units/${u.id}/${u.status==='enabled'?'disable':'enable'}`,{method:'POST'});await load()}}>{u.status==='enabled'?'Disable':'Enable'}</Button><Button size="small" onClick={async()=>{const customerId=window.prompt('Customer ID');if(customerId){await request(`/v1/admin/psiu-units/${u.id}/assign`,{method:'POST',body:JSON.stringify({customerId})});await load()}}}>Assign</Button><Button size="small" onClick={async()=>{await request(`/v1/admin/psiu-units/${u.id}/deassign`,{method:'POST'});await load()}}>Deassign</Button></Box>)}</Paper></Stack>}
+function Shell(){const[me,setMe]=useState<MeResponse>();const nav=useNavigate();const load=()=>request<MeResponse>('/v1/me').then(setMe).catch(()=>setMe(undefined));useEffect(()=>{void load()},[]);if(!me)return <Login done={load}/>;return <><AppBar position="static" color="transparent"><Container maxWidth="lg"><Toolbar disableGutters><Typography variant="h6" sx={{flexGrow:1}}>Wally Analyzer</Typography><Button onClick={()=>nav('/')}>Home</Button><Button onClick={()=>nav('/account')}>Account</Button>{me.role==='admin'&&<Button onClick={()=>nav('/admin')}>Admin</Button>}<Button onClick={()=>{logout();setMe(undefined)}}>Logout</Button></Toolbar></Container></AppBar><Box component="main" py={5}><Container maxWidth="lg"><Routes><Route path="/" element={<Home me={me}/>}/><Route path="/account" element={<Account me={me}/>}/><Route path="/admin" element={me.role==='admin'?<Admin/>:<Navigate to="/" replace/>}/><Route path="*" element={<Navigate to="/" replace/>}/></Routes></Container></Box></>}
+export function App(){return <BrowserRouter><Shell/></BrowserRouter>}

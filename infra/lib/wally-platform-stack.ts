@@ -270,6 +270,9 @@ export class WallyPlatformStack extends cdk.Stack {
         'cognito-idp:AdminGetUser',
         'cognito-idp:AdminAddUserToGroup',
         'cognito-idp:AdminDisableUser',
+        'cognito-idp:AdminEnableUser',
+        'cognito-idp:AdminDeleteUser',
+        'cognito-idp:AdminResetUserPassword',
       ],
       resources: [userPool.userPoolArn],
     }));
