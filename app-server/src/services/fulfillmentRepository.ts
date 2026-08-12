@@ -66,8 +66,8 @@ export class PostgresFulfillmentRepository implements FulfillmentRepository, Act
 
       const id = randomUUID();
       await client.query(
-        `insert into users (id, cognito_subject, email, role, account_status)
-         values ($1, $2, $3, 'admin', 'active')`,
+        `insert into users (id, cognito_subject, email, role, account_status, lifecycle)
+         values ($1, $2, $3, 'admin', 'active', 'active')`,
         [id, input.cognitoSubject, input.email],
       );
       await insertAuditEvent(client, id, 'admin.bootstrap', 'user', id, undefined, {});
@@ -86,8 +86,8 @@ export class PostgresFulfillmentRepository implements FulfillmentRepository, Act
     try {
       await client.query('begin');
       await client.query(
-        `insert into users (id, cognito_subject, email, role, account_status, invited_at)
-         values ($1, $2, $3, 'user', 'provisioned', now())`,
+        `insert into users (id, cognito_subject, email, role, account_status, lifecycle, invited_at)
+         values ($1, $2, $3, 'user', 'provisioned', 'invited', now())`,
         [input.userId, input.cognitoSubject, input.email],
       );
       await client.query(

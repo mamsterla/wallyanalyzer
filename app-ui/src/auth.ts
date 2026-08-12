@@ -2,7 +2,9 @@ import { AuthenticationDetails, CognitoUser, CognitoUserPool, type CognitoUserSe
 const poolId=import.meta.env.VITE_COGNITO_USER_POOL_ID as string|undefined;
 const clientId=import.meta.env.VITE_COGNITO_WEB_CLIENT_ID as string|undefined;
 const pool=poolId&&clientId?new CognitoUserPool({UserPoolId:poolId,ClientId:clientId}):undefined;
-export function configured(){return Boolean(pool) && (window.location.protocol === 'https:' || import.meta.env.VITE_ALLOW_INSECURE_AUTH === 'true')}
+// Credentials must never be entered on the temporary plaintext ALB. Local UI
+// verification uses the separate mock API/auth harness, not Cognito browser auth.
+export function configured(){return Boolean(pool) && window.location.protocol === 'https:'}
 export async function accessToken():Promise<string>{if(!configured())throw Error('HTTPS Cognito configuration required.');const user=pool?.getCurrentUser();if(!user)throw Error('Sign in required.');return new Promise((resolve,reject)=>user.getSession((error: Error|null,session: CognitoUserSession)=>error?reject(error):resolve(session.getAccessToken().getJwtToken())))}
 export async function login(email:string,password:string){if(!configured()||!pool)throw Error('HTTPS Cognito configuration required.');const user=new CognitoUser({Username:email,Pool:pool});return new Promise<void>((resolve,reject)=>user.authenticateUser(new AuthenticationDetails({Username:email,Password:password}),{onSuccess:()=>resolve(),onFailure:reject,newPasswordRequired:()=>reject(Error('Temporary password must be changed.'))}))}
 export async function completeTemporaryPassword(email:string,temporaryPassword:string,newPassword:string){if(!configured()||!pool)throw Error('HTTPS Cognito configuration required.');const user=new CognitoUser({Username:email,Pool:pool});return new Promise<void>((resolve,reject)=>user.authenticateUser(new AuthenticationDetails({Username:email,Password:temporaryPassword}),{onSuccess:()=>resolve(),onFailure:reject,newPasswordRequired:()=>user.completeNewPasswordChallenge(newPassword,{}, {onSuccess:()=>resolve(),onFailure:reject})}))}
