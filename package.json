@@ -19,7 +19,8 @@
     "deploy:production": "npm run deploy:production --workspace=@wally/infra",
     "docker:up": "docker compose up --build",
     "docker:down": "docker compose down",
-    "docker:logs": "docker compose logs -f"
+    "docker:logs": "docker compose logs -f",
+    "docker:smoke:production": "sh app-server/docker/production-smoke.sh"
   },
   "devDependencies": {
     "prettier": "^3.5.3",

@@ -26,10 +26,8 @@ COPY app-server/docker/entrypoint.sh /usr/local/bin/wally-entrypoint
 RUN chmod +x /usr/local/bin/wally-entrypoint
 COPY --from=builder /workspace/node_modules /app/node_modules
 COPY --from=builder /workspace/packages/contracts /app/packages/contracts
-COPY --from=builder /workspace/app-server/dist/local.js /app/local.js
-COPY --from=builder /workspace/app-server/dist/production.js /app/production.js
-COPY --from=builder /workspace/app-server/dist/migrate.js /app/migrate.js
-COPY --from=builder /workspace/app-server/dist/bootstrapAdmin.js /app/bootstrapAdmin.js
+# Preserve compiled relative imports, such as production.js -> services/auth.js.
+COPY --from=builder /workspace/app-server/dist /app
 COPY --from=builder /workspace/app-server/migrations /app/migrations
 COPY --from=builder /workspace/app-ui/dist /usr/share/nginx/html
 

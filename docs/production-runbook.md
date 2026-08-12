@@ -44,13 +44,23 @@ CLUSTER=$(aws cloudformation describe-stacks --stack-name "$STACK" --query "Stac
 TASK_DEFINITION=$(aws cloudformation describe-stacks --stack-name "$STACK" --query "Stacks[0].Outputs[?OutputKey=='ApplicationTaskDefinitionArn'].OutputValue | [0]" --output text)
 SUBNETS=$(aws cloudformation describe-stacks --stack-name "$STACK" --query "Stacks[0].Outputs[?OutputKey=='PrivateSubnetIds'].OutputValue | [0]" --output text)
 SECURITY_GROUP=$(aws cloudformation describe-stacks --stack-name "$STACK" --query "Stacks[0].Outputs[?OutputKey=='PrivateTaskSecurityGroupId'].OutputValue | [0]" --output text)
+LOG_GROUP=$(aws cloudformation describe-stacks --stack-name "$STACK" --query "Stacks[0].Outputs[?OutputKey=='ApplicationLogGroupName'].OutputValue | [0]" --output text)
 TASK_ARN=$(aws ecs run-task --cluster "$CLUSTER" --launch-type FARGATE --task-definition "$TASK_DEFINITION" \
-  --network-configuration "awsvpcConfiguration={subnets=$SUBNETS,securityGroups=$SECURITY_GROUP,assignPublicIp=DISABLED}" \
+  --network-configuration "awsvpcConfiguration={subnets=[$SUBNETS],securityGroups=[$SECURITY_GROUP],assignPublicIp=DISABLED}" \
   --query 'tasks[0].taskArn' --output text)
-aws ecs describe-tasks --cluster "$CLUSTER" --tasks "$TASK_ARN" --output json
+printf 'Diagnostic task: %s\n' "$TASK_ARN"
+
+# This returns nonzero if the task is still running after approximately 10 minutes.
+if ! aws ecs wait tasks-stopped --cluster "$CLUSTER" --tasks "$TASK_ARN"; then
+  echo 'Task did not stop within the waiter window; record its current state before deciding whether to stop it.' >&2
+fi
+aws ecs describe-tasks --cluster "$CLUSTER" --tasks "$TASK_ARN" \
+  --query 'tasks[0].{lastStatus:lastStatus,desiredStatus:desiredStatus,stoppedReason:stoppedReason,stopCode:stopCode,containers:containers[].{name:name,lastStatus:lastStatus,exitCode:exitCode,reason:reason,logStreamName:logStreamName}}' \
+  --output json
+aws logs tail "$LOG_GROUP" --since 30m --format short || true
 ```
 
-Collect the stopped-task reason, container exit code, and the `wally-app` CloudWatch logs before any cleanup. If the task remains running, terminate it after recording its state. After fixing the verified cause, deploy without `diagnosticMode`; that restores application `desiredCount: 1` and creates the CodePipeline:
+Collect and retain the final task state, stopped-task reason, stop code, container exit code/reason/log stream, and `wally-app` CloudWatch logs before any cleanup. If the task remains running after the waiter window, record this output, then explicitly stop it only if needed. After fixing the verified cause, deploy without `diagnosticMode`; that restores application `desiredCount: 1` and creates the CodePipeline:
 
 ```bash
 AWS_PROFILE=wallyanalyzer AWS_REGION=us-east-1 npx cdk deploy WallyPlatform-production \

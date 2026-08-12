@@ -20,7 +20,7 @@ cp .env.example .env
 npm run docker:up
 ```
 
-Open `http://localhost:8081`; API health is at `http://localhost:8081/health`. The local PSIU proxy uses `PSIU_BASE_URL` (default `http://psiu.local`). Postgres maps to `localhost:5433` by default. Use `npm run docker:down` to stop services; add `-v` manually only when local database data should be removed.
+Open `http://localhost:8081`; API health is at `http://localhost:8081/health`. The local PSIU proxy uses `PSIU_BASE_URL` (default `http://psiu.local`). Postgres maps to `localhost:5431` by default (`POSTGRES_PORT` overrides it). Use `npm run docker:down` to stop services; add `-v` manually only when local database data should be removed.
 
 For non-container validation:
 

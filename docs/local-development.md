@@ -3,7 +3,7 @@
 Docker Compose is the local runtime. It starts only two services:
 
 1. `app-server` — one container running the Node local API behind Nginx. Nginx serves `app-ui` and forwards `/api/*` to Node. It exposes only `127.0.0.1:8081` by default.
-2. `postgres` — PostgreSQL 16, exposed only at `127.0.0.1:5433` by default.
+2. `postgres` — PostgreSQL 16, exposed only at `127.0.0.1:5431` by default (`POSTGRES_PORT` overrides it).
 
 ## Start
 
