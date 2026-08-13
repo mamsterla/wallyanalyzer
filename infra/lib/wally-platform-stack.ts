@@ -13,6 +13,8 @@ import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as rds from 'aws-cdk-lib/aws-rds';
+import * as route53 from 'aws-cdk-lib/aws-route53';
+import * as route53targets from 'aws-cdk-lib/aws-route53-targets';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import { Construct } from 'constructs';
@@ -29,12 +31,19 @@ export class WallyPlatformStack extends cdk.Stack {
     super(scope, id, props);
 
     const retention = cdk.RemovalPolicy.RETAIN;
-    // The externally managed DNS zone must publish ACM's CNAME after this phase
-    // deploys. The certificate is intentionally unattached until it is ISSUED.
+    // Wix remains registrar. Route 53 becomes authoritative only after the operator
+    // copies all existing DNS records and delegates Wix nameservers to this zone.
     const applicationHostname = 'wallyanalytics.app';
-    const applicationCertificate = new acm.CfnCertificate(this, 'ApplicationCertificate', {
+    const wwwApplicationHostname = `www.${applicationHostname}`;
+    const applicationHostedZone = new route53.PublicHostedZone(this, 'ApplicationHostedZone', {
+      zoneName: applicationHostname,
+    });
+    // Replaces the apex-only certificate. The existing certificate has no identity
+    // data and Route 53 writes validation records for both names automatically.
+    const applicationCertificate = new acm.Certificate(this, 'ApplicationCertificate', {
       domainName: applicationHostname,
-      validationMethod: 'DNS',
+      subjectAlternativeNames: [wwwApplicationHostname],
+      validation: acm.CertificateValidation.fromDns(applicationHostedZone),
     });
     const diagnosticMode = this.node.tryGetContext('diagnosticMode') === true || this.node.tryGetContext('diagnosticMode') === 'true';
     const vpc = new ec2.Vpc(this, 'ProductionVpc', {
@@ -327,10 +336,25 @@ export class WallyPlatformStack extends cdk.Stack {
     const httpsListener = temporaryBrowserLoadBalancer.addListener('ApplicationHttpsListener', {
       port: 443,
       protocol: elbv2.ApplicationProtocol.HTTPS,
-      certificates: [elbv2.ListenerCertificate.fromArn(applicationCertificate.ref)],
+      certificates: [elbv2.ListenerCertificate.fromCertificateManager(applicationCertificate)],
+      defaultAction: elbv2.ListenerAction.fixedResponse(404, { contentType: 'text/plain', messageBody: 'Not found' }),
       open: false,
     });
-    httpsListener.addTargets('PrivateApplicationTargets', {
+    httpsListener.addAction('RedirectWwwToApex', {
+      priority: 10,
+      conditions: [elbv2.ListenerCondition.hostHeaders([wwwApplicationHostname])],
+      action: elbv2.ListenerAction.redirect({
+        host: applicationHostname,
+        protocol: 'HTTPS',
+        port: '443',
+        path: '/#{path}',
+        query: '#{query}',
+        permanent: true,
+      }),
+    });
+    httpsListener.addTargets('CanonicalApplicationTargets', {
+      priority: 20,
+      conditions: [elbv2.ListenerCondition.hostHeaders([applicationHostname])],
       port: 80,
       protocol: elbv2.ApplicationProtocol.HTTP,
       targets: [applicationService],
@@ -338,6 +362,24 @@ export class WallyPlatformStack extends cdk.Stack {
         path: '/health',
         healthyHttpCodes: '200',
       },
+    });
+    new route53.ARecord(this, 'ApplicationApexAliasRecord', {
+      zone: applicationHostedZone,
+      target: route53.RecordTarget.fromAlias(new route53targets.LoadBalancerTarget(temporaryBrowserLoadBalancer)),
+    });
+    new route53.AaaaRecord(this, 'ApplicationApexAliasIpv6Record', {
+      zone: applicationHostedZone,
+      target: route53.RecordTarget.fromAlias(new route53targets.LoadBalancerTarget(temporaryBrowserLoadBalancer)),
+    });
+    new route53.ARecord(this, 'ApplicationWwwAliasRecord', {
+      zone: applicationHostedZone,
+      recordName: 'www',
+      target: route53.RecordTarget.fromAlias(new route53targets.LoadBalancerTarget(temporaryBrowserLoadBalancer)),
+    });
+    new route53.AaaaRecord(this, 'ApplicationWwwAliasIpv6Record', {
+      zone: applicationHostedZone,
+      recordName: 'www',
+      target: route53.RecordTarget.fromAlias(new route53targets.LoadBalancerTarget(temporaryBrowserLoadBalancer)),
     });
 
     const bootstrapTaskDefinition = new ecs.FargateTaskDefinition(this, 'BootstrapAdministratorTaskDefinition', {
@@ -438,11 +480,19 @@ export class WallyPlatformStack extends cdk.Stack {
 
     new cdk.CfnOutput(this, 'ApplicationHostname', {
       value: applicationHostname,
-      description: 'Public application hostname. Configure the external DNS apex ALIAS, ANAME, or CNAME-flattening record to the ALB DNS output.',
+      description: 'Canonical public application hostname.',
+    });
+    new cdk.CfnOutput(this, 'ApplicationHostedZoneId', {
+      value: applicationHostedZone.hostedZoneId,
+      description: 'Route 53 hosted-zone ID for wallyanalytics.app.',
+    });
+    new cdk.CfnOutput(this, 'ApplicationAuthoritativeNameServers', {
+      value: cdk.Fn.join(',', applicationHostedZone.hostedZoneNameServers!),
+      description: 'All four Route 53 authoritative name servers. Set these at Wix only after copying all existing DNS records.',
     });
     new cdk.CfnOutput(this, 'ApplicationCertificateArn', {
-      value: applicationCertificate.ref,
-      description: 'DNS-validated ACM certificate ARN. Add its ACM-provided validation CNAME at the external DNS provider before the HTTPS ALB phase.',
+      value: applicationCertificate.certificateArn,
+      description: 'DNS-validated ACM certificate for apex and www. Route 53 publishes validation CNAME records automatically.',
     });
     new cdk.CfnOutput(this, 'UserPoolId', { value: userPool.userPoolId });
     new cdk.CfnOutput(this, 'WebClientId', { value: webClient.userPoolClientId });

@@ -15,54 +15,47 @@ AWS_PROFILE=wallyanalyzer AWS_REGION=us-east-1 npm run synth
 
 The ALB is the only public Wally resource. Public TCP/443 terminates TLS for `wallyanalytics.app` and forwards only to TCP/80 on private ECS tasks. Public TCP/80 performs a permanent redirect to HTTPS and never serves the application. ECS tasks remain in isolated subnets without public IPs or NAT. RDS PostgreSQL, RDS Proxy, Cognito, and S3 remain non-public. Tasks use the S3 gateway endpoint with AWS-managed prefix-list HTTPS egress for ECR image layers, plus interface endpoints for ECR, CloudWatch Logs, Secrets Manager, Cognito IDP, SES, Lambda, Step Functions, and Systems Manager APIs.
 
-## Custom domain and HTTPS
+## Route 53 authoritative DNS, Wix registration, and HTTPS
 
-The ACM certificate for `wallyanalytics.app` is regional and DNS-validated. The HTTPS listener uses it directly. The external DNS provider must point the zone apex to the ALB with an `ALIAS`, `ANAME`, or CNAME-flattening record; a standard apex CNAME is not valid unless the provider supplies flattening.
+Wix remains the registrar for `wallyanalytics.app`. This stack creates the Route 53 public hosted zone, uses it to automatically validate the replacement ACM certificate for both `wallyanalytics.app` and `www.wallyanalytics.app`, and creates apex and `www` A/AAAA Alias records to the regional ALB. The ALB is still the only public resource: HTTP redirects to canonical HTTPS; `www` redirects permanently to `https://wallyanalytics.app`; only the apex hostname reaches ECS.
 
-After deployment, retrieve the exact ALB target and configure the external DNS record:
+### Cutover procedure
+
+1. Before deploying, inventory **every** Wix DNS record. Public lookups can be incomplete. Copy MX, SPF/DKIM/DMARC TXT, CAA, verification, subdomain, and third-party records into Route 53 before changing delegation. Do not assume email records are absent.
+2. Deploy the approved stack change. Route 53 creates ACM validation CNAMEs automatically; no ACM CNAME needs to be entered in Wix.
+3. Retrieve the four authoritative name servers:
 
 ```bash
 export AWS_PROFILE=wallyanalyzer AWS_REGION=us-east-1
 STACK=WallyPlatform-production
 aws cloudformation describe-stacks --stack-name "$STACK" \
-  --query "Stacks[0].Outputs[?OutputKey=='ApplicationLoadBalancerDnsName'].OutputValue | [0]" --output text
+  --query "Stacks[0].Outputs[?OutputKey=='ApplicationAuthoritativeNameServers'].OutputValue | [0]" --output text | tr ',' '\n'
 ```
 
-Create the DNS record at the provider:
-
-```text
-Name:  wallyanalytics.app (or @)
-Type:  ALIAS, ANAME, or CNAME flattening
-Target: <ApplicationLoadBalancerDnsName output>
-```
-
-Validate after DNS propagation:
+4. In Wix Domains, replace the domain nameservers with all four Route 53 values. Keep Wix as registrar. Do not add the ALB hostname, an apex CNAME, or Route 53 Alias records in Wix.
+5. Wait for delegation to propagate, then verify the authoritative servers and both hostnames:
 
 ```bash
+for ns in $(aws cloudformation describe-stacks --stack-name "$STACK" \
+  --query "Stacks[0].Outputs[?OutputKey=='ApplicationAuthoritativeNameServers'].OutputValue | [0]" --output text | tr ',' ' '); do
+  dig +short "$ns" wallyanalytics.app A
+  dig +short "$ns" www.wallyanalytics.app A
+done
 curl --fail --location --head http://wallyanalytics.app
 curl --fail --head https://wallyanalytics.app/health
+curl --fail --location --head https://www.wallyanalytics.app
 curl --fail https://wallyanalytics.app/runtime-config.js
 ```
 
-Rollback: remove the apex ALIAS/ANAME/flattened record to stop domain traffic. Do not repoint it to the old HTTP ALB path. For an infrastructure rollback, restore the prior stack template; this removes the HTTPS listener and reinstates no application listener on port 80, so DNS must be removed first.
+Expected results: HTTP `301` to HTTPS; apex HTTPS `200` at `/health`; `www` HTTPS `301` to apex; ACM `ISSUED`.
 
-## ACM DNS validation
+### Rollback
 
-The ACM DNS-validation CNAME is separate from the apex application record. Do not use an ALIAS, URL redirect, or proxy record for certificate validation.
+Before changing Wix delegation, preserve the prior Wix nameservers and exported record inventory. If cutover breaks a required record, restore the prior Wix nameservers; this restores the prior DNS authority after propagation. Do not point the apex at the old HTTP ALB path. After Route 53 is authoritative, DNS rollback does not require an infrastructure rollback. Do not delete the hosted zone while it is authoritative or while ACM uses its validation records.
 
-After the approved deployment completes, retrieve the CNAME required by ACM and create it at the external DNS provider exactly as returned. Do not use an ALIAS, URL redirect, or proxy record for certificate validation:
+### Certificate transition
 
-```bash
-export AWS_PROFILE=wallyanalyzer AWS_REGION=us-east-1
-STACK=WallyPlatform-production
-CERTIFICATE_ARN=$(aws cloudformation describe-stacks --stack-name "$STACK" \
-  --query "Stacks[0].Outputs[?OutputKey=='ApplicationCertificateArn'].OutputValue | [0]" --output text)
-aws acm describe-certificate --certificate-arn "$CERTIFICATE_ARN" \
-  --query 'Certificate.DomainValidationOptions[0].ResourceRecord.{Name:Name,Type:Type,Value:Value}' --output table
-aws acm wait certificate-validated --certificate-arn "$CERTIFICATE_ARN"
-```
-
-The domain provider must publish the returned `Name`, `Type` (`CNAME`), and `Value`. Confirm `ISSUED` before attaching the certificate to the HTTPS listener.
+The former apex-only ACM certificate is replaced by a Route 53 DNS-validated certificate containing apex and `www`. This is safe because the existing certificate has no user data. Keep the existing certificate until the replacement is `ISSUED` and the HTTPS listener is healthy; CloudFormation then detaches/removes it according to its resource lifecycle.
 
 The attempted in-place Cognito email-mutability update failed because Cognito rejects standard-attribute mutability changes. CloudFormation entered `UPDATE_ROLLBACK_FAILED`; rollback was continued with the failed logical UserPool resource skipped. The failed pool has zero Cognito users and there is no customer data.
 

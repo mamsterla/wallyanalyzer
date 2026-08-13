@@ -15,8 +15,8 @@
 
 Do not deploy or use these credential routes over the temporary HTTP ALB. Before production release, approve and implement:
 
-1. DNS, ACM certificate, HTTPS listener, HTTP redirect/removal, and final browser CORS origin. Phase 1 requests the ACM DNS-validation certificate for `wallyanalytics.app`; phase 2 remains a separate approved ALB/DNS change after ACM reports `ISSUED`.
-2. The current Cognito pool had zero users, so phase 1 enables mutable standard `email` before initial account creation. The synthesized CDK diff shows an in-place schema update; no identity migration is needed while the pool remains empty.
+1. Route 53 authoritative DNS cutover while Wix remains registrar: copy all existing Wix records, change Wix nameservers to the Route 53 output, and validate apex/`www` HTTPS routing. The stack manages ACM DNS validation and A/AAAA ALB Alias records.
+2. The current Cognito pool had zero users, so the replacement pool enables mutable standard `email` before initial account creation. No identity migration is needed while the pool remains empty.
 3. Cognito callback/logout configuration for the approved UI origin and operational test accounts.
 
 ## API surface

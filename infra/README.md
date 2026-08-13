@@ -12,11 +12,11 @@ npm run deploy:production --workspace=@wally/infra
 
 Use the `wallyanalyzer` AWS profile and review `docs/production-runbook.md` before deployment.
 
-## Public HTTPS application
+## Public HTTPS application and Route 53 DNS
 
-The ALB is the only public resource. It accepts public HTTPS on TCP/443 for `wallyanalytics.app` and forwards HTTP only to private ECS tasks in isolated subnets. TCP/80 is public only to send a permanent redirect to HTTPS; it never serves the application. Tasks have no public IP or NAT. RDS, RDS Proxy, Cognito, and S3 remain private.
+The ALB is the only public resource. It accepts public HTTPS on TCP/443 for canonical `wallyanalytics.app` and forwards HTTP only to private ECS tasks in isolated subnets. TCP/80 is public only to redirect to HTTPS; `www.wallyanalytics.app` redirects permanently to the apex. Tasks have no public IP or NAT. RDS, RDS Proxy, Cognito, and S3 remain private.
 
-Point `wallyanalytics.app` at the `ApplicationLoadBalancerDnsName` stack output using an apex `ALIAS`, `ANAME`, or CNAME-flattening record. See `docs/production-runbook.md` for exact verification and rollback steps.
+The stack creates the public Route 53 hosted zone, apex and `www` A/AAAA ALB Alias records, and ACM DNS validation records for both hostnames. Wix remains registrar. After deployment, copy every required existing Wix record to Route 53, then replace Wix nameservers with the four values from the `ApplicationAuthoritativeNameServers` output. Do not assume missing public lookup records means email or third-party records are absent. See `docs/production-runbook.md` for cutover, validation, and rollback.
 
 Production public Cognito identifiers and the API origin are injected at container startup into `/runtime-config.js`. They are public client configuration, not secrets. The image does not embed environment-specific Cognito IDs. PSIU browser control stays local until the device firmware supplies CORS headers on normal requests.
 
