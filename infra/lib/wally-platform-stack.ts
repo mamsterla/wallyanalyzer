@@ -435,7 +435,7 @@ export class WallyPlatformStack extends cdk.Stack {
           version: '0.2',
           phases: {
             install: { commands: ['npm ci'] },
-            build: { commands: ['npm run check', 'npm run build', 'npm run test', 'cd infra && npx cdk synth -c environment=production'] },
+            build: { commands: ['npm run check', 'npm run build', 'npm run test', 'cd infra && npx cdk synth -c environment=production -c applicationHostedZoneId=Z0640322GREKLUZ06W3O -c applicationExpectedNameServers=ns-723.awsdns-26.net,ns-386.awsdns-48.com,ns-1026.awsdns-00.org,ns-1580.awsdns-05.co.uk -c legacyApplicationCertificateArn=arn:aws:acm:us-east-1:265404809336:certificate/52ff0b5a-79fb-4504-ac2e-9c5ce89f303c -c retainManagedDomainResources=true'] },
           },
         }),
       });
