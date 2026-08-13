@@ -1,6 +1,5 @@
 import { AuthenticationDetails, CognitoUser, CognitoUserPool, type CognitoUserSession } from 'amazon-cognito-identity-js';
-const poolId=import.meta.env.VITE_COGNITO_USER_POOL_ID as string|undefined;
-const clientId=import.meta.env.VITE_COGNITO_WEB_CLIENT_ID as string|undefined;
+import { cognitoUserPoolId as poolId, cognitoWebClientId as clientId } from './runtimeConfig.js';
 const pool=poolId&&clientId?new CognitoUserPool({UserPoolId:poolId,ClientId:clientId}):undefined;
 // Credentials must never be entered on the temporary plaintext ALB. Local UI
 // verification uses the separate mock API/auth harness, not Cognito browser auth.

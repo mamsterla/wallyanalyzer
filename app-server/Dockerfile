@@ -23,7 +23,8 @@ RUN apk add --no-cache nginx
 
 COPY app-server/docker/nginx.conf /etc/nginx/http.d/default.conf
 COPY app-server/docker/entrypoint.sh /usr/local/bin/wally-entrypoint
-RUN chmod +x /usr/local/bin/wally-entrypoint
+COPY app-server/docker/write-runtime-config.sh /usr/local/bin/write-runtime-config
+RUN chmod +x /usr/local/bin/wally-entrypoint /usr/local/bin/write-runtime-config
 COPY --from=builder /workspace/node_modules /app/node_modules
 COPY --from=builder /workspace/packages/contracts /app/packages/contracts
 # Preserve compiled relative imports, such as production.js -> services/auth.js.

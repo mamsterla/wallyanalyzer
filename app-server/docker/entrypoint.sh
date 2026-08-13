@@ -9,6 +9,7 @@ if [ -n "${DATABASE_URL:-}${DATABASE_PROXY_HOST:-}" ]; then
   node /app/migrate.js
 fi
 
+/usr/local/bin/write-runtime-config
 node "${NODE_SERVER_PATH:-/app/local.js}" &
 node_pid=$!
 

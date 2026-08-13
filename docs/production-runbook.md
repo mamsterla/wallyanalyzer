@@ -13,13 +13,42 @@ AWS_PROFILE=wallyanalyzer AWS_REGION=us-east-1 npm run synth
 
 ## Production network posture
 
-The temporary browser path is a public Application Load Balancer (ALB) HTTP listener. Its security group permits port 80 only from `47.150.127.7/32`. The ALB is the only public Wally resource; it forwards only to port 80 on private ECS tasks. ECS tasks remain in isolated subnets without public IPs or NAT. RDS PostgreSQL, RDS Proxy, Cognito, and S3 remain non-public. Tasks use the S3 gateway endpoint with AWS-managed prefix-list HTTPS egress for ECR image layers, plus interface endpoints for ECR, CloudWatch Logs, Secrets Manager, Cognito IDP, SES, Lambda, Step Functions, and Systems Manager APIs.
+The ALB is the only public Wally resource. Public TCP/443 terminates TLS for `wallyanalytics.app` and forwards only to TCP/80 on private ECS tasks. Public TCP/80 performs a permanent redirect to HTTPS and never serves the application. ECS tasks remain in isolated subnets without public IPs or NAT. RDS PostgreSQL, RDS Proxy, Cognito, and S3 remain non-public. Tasks use the S3 gateway endpoint with AWS-managed prefix-list HTTPS egress for ECR image layers, plus interface endpoints for ECR, CloudWatch Logs, Secrets Manager, Cognito IDP, SES, Lambda, Step Functions, and Systems Manager APIs.
 
-The temporary URL is HTTP only and sends traffic without TLS encryption. Do not use it on untrusted networks or enter sensitive production data. Its ALB hostname is not a replacement for the final hostname `wallyanalytics.app`. Do not add NAT or widen ingress without an approved architecture change.
+## Custom domain and HTTPS
 
-## Custom domain phase 1: ACM DNS validation
+The ACM certificate for `wallyanalytics.app` is regional and DNS-validated. The HTTPS listener uses it directly. The external DNS provider must point the zone apex to the ALB with an `ALIAS`, `ANAME`, or CNAME-flattening record; a standard apex CNAME is not valid unless the provider supplies flattening.
 
-The first custom-domain deployment creates a regional ACM public certificate for `wallyanalytics.app` with manual DNS validation. It does **not** attach the certificate to the ALB, create a port-443 listener, change the HTTP listener, change ALB security-group rules, or create an application DNS record. The existing restricted `47.150.127.7/32:80` path remains unchanged.
+After deployment, retrieve the exact ALB target and configure the external DNS record:
+
+```bash
+export AWS_PROFILE=wallyanalyzer AWS_REGION=us-east-1
+STACK=WallyPlatform-production
+aws cloudformation describe-stacks --stack-name "$STACK" \
+  --query "Stacks[0].Outputs[?OutputKey=='ApplicationLoadBalancerDnsName'].OutputValue | [0]" --output text
+```
+
+Create the DNS record at the provider:
+
+```text
+Name:  wallyanalytics.app (or @)
+Type:  ALIAS, ANAME, or CNAME flattening
+Target: <ApplicationLoadBalancerDnsName output>
+```
+
+Validate after DNS propagation:
+
+```bash
+curl --fail --location --head http://wallyanalytics.app
+curl --fail --head https://wallyanalytics.app/health
+curl --fail https://wallyanalytics.app/runtime-config.js
+```
+
+Rollback: remove the apex ALIAS/ANAME/flattened record to stop domain traffic. Do not repoint it to the old HTTP ALB path. For an infrastructure rollback, restore the prior stack template; this removes the HTTPS listener and reinstates no application listener on port 80, so DNS must be removed first.
+
+## ACM DNS validation
+
+The ACM DNS-validation CNAME is separate from the apex application record. Do not use an ALIAS, URL redirect, or proxy record for certificate validation.
 
 After the approved deployment completes, retrieve the CNAME required by ACM and create it at the external DNS provider exactly as returned. Do not use an ALIAS, URL redirect, or proxy record for certificate validation:
 
@@ -33,7 +62,7 @@ aws acm describe-certificate --certificate-arn "$CERTIFICATE_ARN" \
 aws acm wait certificate-validated --certificate-arn "$CERTIFICATE_ARN"
 ```
 
-The domain provider must publish the returned `Name`, `Type` (`CNAME`), and `Value`. Confirm `ISSUED` before approving phase 2. Phase 2 will attach this certificate to an HTTPS listener, redirect port 80 to HTTPS, make the final application DNS record point to the ALB, and replace the temporary CIDR-only HTTP access with approved HTTPS ingress. It requires a separate review and approval.
+The domain provider must publish the returned `Name`, `Type` (`CNAME`), and `Value`. Confirm `ISSUED` before attaching the certificate to the HTTPS listener.
 
 The attempted in-place Cognito email-mutability update failed because Cognito rejects standard-attribute mutability changes. CloudFormation entered `UPDATE_ROLLBACK_FAILED`; rollback was continued with the failed logical UserPool resource skipped. The failed pool has zero Cognito users and there is no customer data.
 
@@ -43,7 +72,7 @@ The remediation creates a replacement `MutableEmailUserPool` with mutable standa
 
 The bastion has no public IP and no inbound SSH rule. Access it only with an IAM principal authorized for Session Manager, then use the SSM port-forwarding document to the RDS Proxy endpoint. Its security group can reach only the dedicated SSM, SSM Messages, and EC2 Messages interface endpoints on TCP/443, plus RDS Proxy on TCP/5432. The bastion cannot reach the ECS workload endpoints (ECR, Logs, Secrets Manager, Cognito, SES, Lambda, or Step Functions). ECS tasks retain their separate proxy and workload-endpoint rules. Do not expose the bastion, RDS, or RDS Proxy publicly.
 
-Before production deployment, synthesize the template and confirm: endpoint services support `us-east-1c` and `us-east-1d`; application-task egress includes TCP/443 to the S3 managed prefix list and endpoint SG only; tasks are Linux/x86_64; ALB ingress is only `47.150.127.7/32:80`; RDS, ECS tasks, and bastion have no public IP; and any failed retained RDS instance is deleted or explicitly adopted before its VPC is removed.
+Before production deployment, synthesize the template and confirm: endpoint services support `us-east-1c` and `us-east-1d`; application-task egress includes TCP/443 to the S3 managed prefix list and endpoint SG only; tasks are Linux/x86_64; ALB ingress is public TCP/80 for redirect and public TCP/443 for HTTPS; ALB-to-ECS traffic is TCP/80 only; RDS, ECS tasks, and bastion have no public IP; and any failed retained RDS instance is deleted or explicitly adopted before its VPC is removed.
 
 ## ECS diagnostic deployment
 

@@ -50,9 +50,13 @@ export class WallyPlatformStack extends cdk.Stack {
     const loadBalancerSecurityGroup = new ec2.SecurityGroup(this, 'TemporaryBrowserLoadBalancerSecurityGroup', {
       vpc,
       allowAllOutbound: false,
+      // Kept stable to avoid replacing the existing ALB security group.
       description: 'Temporary restricted HTTP browser access',
     });
-    loadBalancerSecurityGroup.addIngressRule(ec2.Peer.ipv4('47.150.127.7/32'), ec2.Port.tcp(80), 'Temporary browser access');
+    // The ALB is the only public resource. Port 80 exists only to redirect every
+    // request to TLS; application traffic is served only from the HTTPS listener.
+    loadBalancerSecurityGroup.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(80), 'Public HTTP to HTTPS redirect');
+    loadBalancerSecurityGroup.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(443), 'Public HTTPS application access');
 
     const serviceSecurityGroup = new ec2.SecurityGroup(this, 'ApplicationServiceSecurityGroup', {
       vpc,
@@ -263,6 +267,11 @@ export class WallyPlatformStack extends cdk.Stack {
         NODE_ENV: 'production',
         COGNITO_USER_POOL_ID: userPool.userPoolId,
         COGNITO_WEB_CLIENT_ID: webClient.userPoolClientId,
+        // Public identifiers are rendered into runtime-config.js by the container
+        // entrypoint. They are not secrets and do not require an image rebuild.
+        PUBLIC_COGNITO_USER_POOL_ID: userPool.userPoolId,
+        PUBLIC_COGNITO_WEB_CLIENT_ID: webClient.userPoolClientId,
+        PUBLIC_API_BASE_URL: `https://${applicationHostname}/api`,
         DATABASE_PROXY_HOST: databaseProxy.endpoint,
         DATABASE_NAME: 'wally',
         DATABASE_SSL: 'require',
@@ -305,12 +314,23 @@ export class WallyPlatformStack extends cdk.Stack {
       securityGroup: loadBalancerSecurityGroup,
       vpcSubnets: { subnetType: ec2.SubnetType.PUBLIC },
     });
-    const temporaryBrowserListener = temporaryBrowserLoadBalancer.addListener('TemporaryHttpListener', {
+    temporaryBrowserLoadBalancer.addListener('TemporaryHttpListener', {
       port: 80,
       protocol: elbv2.ApplicationProtocol.HTTP,
       open: false,
+      defaultAction: elbv2.ListenerAction.redirect({
+        protocol: 'HTTPS',
+        port: '443',
+        permanent: true,
+      }),
     });
-    temporaryBrowserListener.addTargets('PrivateApplicationTargets', {
+    const httpsListener = temporaryBrowserLoadBalancer.addListener('ApplicationHttpsListener', {
+      port: 443,
+      protocol: elbv2.ApplicationProtocol.HTTPS,
+      certificates: [elbv2.ListenerCertificate.fromArn(applicationCertificate.ref)],
+      open: false,
+    });
+    httpsListener.addTargets('PrivateApplicationTargets', {
       port: 80,
       protocol: elbv2.ApplicationProtocol.HTTP,
       targets: [applicationService],
@@ -418,7 +438,7 @@ export class WallyPlatformStack extends cdk.Stack {
 
     new cdk.CfnOutput(this, 'ApplicationHostname', {
       value: applicationHostname,
-      description: 'Final HTTPS hostname. A later approved phase attaches the issued certificate to an HTTPS ALB listener.',
+      description: 'Public application hostname. Configure the external DNS apex ALIAS, ANAME, or CNAME-flattening record to the ALB DNS output.',
     });
     new cdk.CfnOutput(this, 'ApplicationCertificateArn', {
       value: applicationCertificate.ref,
@@ -434,9 +454,13 @@ export class WallyPlatformStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'ApplicationTaskDefinitionArn', { value: taskDefinition.taskDefinitionArn });
     new cdk.CfnOutput(this, 'ApplicationClusterArn', { value: cluster.clusterArn });
     new cdk.CfnOutput(this, 'ApplicationLogGroupName', { value: applicationLogGroup.logGroupName });
-    new cdk.CfnOutput(this, 'TemporaryBrowserHttpUrl', {
-      value: `http://${temporaryBrowserLoadBalancer.loadBalancerDnsName}`,
-      description: 'Temporary restricted HTTP browser URL. Replace with HTTPS after DNS and ACM are configured.',
+    new cdk.CfnOutput(this, 'ApplicationHttpsUrl', {
+      value: `https://${applicationHostname}`,
+      description: 'Canonical public HTTPS application URL.',
+    });
+    new cdk.CfnOutput(this, 'ApplicationLoadBalancerDnsName', {
+      value: temporaryBrowserLoadBalancer.loadBalancerDnsName,
+      description: 'External DNS target for the wallyanalytics.app apex ALIAS, ANAME, or CNAME-flattening record.',
     });
     new cdk.CfnOutput(this, 'PrivateTaskSecurityGroupId', { value: serviceSecurityGroup.securityGroupId });
     new cdk.CfnOutput(this, 'DatabaseBastionInstanceId', { value: bastion.instanceId });
