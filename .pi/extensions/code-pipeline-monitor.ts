@@ -48,12 +48,7 @@ export default function codePipelineMonitor(pi: ExtensionAPI) {
       }
 
       const state = JSON.parse(result.stdout) as PipelineState;
-      const stages = ['Source', 'Validate', 'Deploy'].map((name) => ({
-        name,
-        status: stageStatus(state.stageStates, name),
-      }));
-      const rendered = stages.map((stage) => renderStage(ctx, stage.name, stage.status)).join(' · ');
-      ctx.ui.setStatus(statusKey, `pipeline: ${rendered}`);
+      ctx.ui.setStatus(statusKey, renderCurrentState(ctx, state.stageStates));
     } catch (error) {
       ctx.ui.setStatus(statusKey, ctx.ui.theme.fg('error', 'pipeline: unavailable'));
       if (notifyOnError) {
@@ -95,19 +90,15 @@ function stageStatus(stages: StageState[] | undefined, stageName: string): strin
     ?? stage?.actionStates?.map((action) => action.latestExecution?.status).find(Boolean);
 }
 
-function renderStage(ctx: ExtensionContext, name: string, status: string | undefined): string {
-  const shortName = name === 'Validate' ? 'Validate' : name;
-  switch (status) {
-    case 'Succeeded':
-      return ctx.ui.theme.fg('success', `${shortName} ✓`);
-    case 'InProgress':
-      return ctx.ui.theme.fg('warning', `${shortName} …`);
-    case 'Failed':
-      return ctx.ui.theme.fg('error', `${shortName} ✗`);
-    case 'Stopped':
-    case 'Abandoned':
-      return ctx.ui.theme.fg('warning', `${shortName} ${status.toLowerCase()}`);
-    default:
-      return ctx.ui.theme.fg('dim', `${shortName} —`);
-  }
+function renderCurrentState(ctx: ExtensionContext, stages: StageState[] | undefined): string {
+  const ordered = ['Deploy', 'Validate', 'Source'];
+  const current = ordered
+    .map((name) => ({ name, status: stageStatus(stages, name) }))
+    .find((stage) => stage.status && stage.status !== 'Succeeded');
+
+  if (!current) return ctx.ui.theme.fg('success', 'pipeline: succeeded');
+  const label = `pipeline: ${current.name.toLowerCase()} ${current.status?.toLowerCase()}`;
+  if (current.status === 'Failed') return ctx.ui.theme.fg('error', label);
+  if (current.status === 'InProgress') return ctx.ui.theme.fg('warning', label);
+  return ctx.ui.theme.fg('dim', label);
 }

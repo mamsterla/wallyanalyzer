@@ -21,12 +21,12 @@ create type cognito_reconciliation_status as enum ('pending', 'completed');
 
 alter table users alter column cognito_subject drop not null;
 alter table users add column lifecycle customer_lifecycle;
-update users set lifecycle = case account_status
+update users set lifecycle = (case account_status
   when 'active' then 'active'
   when 'suspended' then 'suspended'
   when 'cancelled' then 'cancelled'
   else 'invited'
-end;
+end)::customer_lifecycle;
 alter table users alter column lifecycle set not null;
 alter table users alter column account_status drop not null;
 alter table users alter column account_status drop default;
