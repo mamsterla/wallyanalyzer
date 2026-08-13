@@ -31,20 +31,34 @@ export class WallyPlatformStack extends cdk.Stack {
     super(scope, id, props);
 
     const retention = cdk.RemovalPolicy.RETAIN;
-    // Wix remains registrar. Route 53 becomes authoritative only after the operator
-    // copies all existing DNS records and delegates Wix nameservers to this zone.
     const applicationHostname = 'wally-analytics.app';
     const wwwApplicationHostname = `www.${applicationHostname}`;
-    const applicationHostedZone = new route53.PublicHostedZone(this, 'ApplicationHostedZone', {
-      zoneName: applicationHostname,
-    });
-    // Replaces the apex-only certificate. The existing certificate has no identity
-    // data and Route 53 writes validation records for both names automatically.
-    const applicationCertificate = new acm.Certificate(this, 'ApplicationCertificate', {
-      domainName: applicationHostname,
-      subjectAlternativeNames: [wwwApplicationHostname],
-      validation: acm.CertificateValidation.fromDns(applicationHostedZone),
-    });
+    const applicationHostedZoneId = requiredContext(this, 'applicationHostedZoneId');
+    const expectedDomainNameServers = requiredContext(this, 'applicationExpectedNameServers')
+      .split(',').map((value) => value.trim().replace(/\.$/, '')).filter(Boolean).sort();
+    const domainActivation = contextBoolean(this, 'applicationActivation');
+    // One-time recovery bridge only. It preserves CloudFormation-managed resources
+    // created by cancelled updates before the default deployment detaches them.
+    const retainManagedDomainResources = contextBoolean(this, 'retainManagedDomainResources');
+    const legacyCertificateArn = requiredContext(this, 'legacyApplicationCertificateArn');
+    const legacyCertificate = retainManagedDomainResources
+      ? legacyCertificateBridge(this, applicationHostname)
+      : acm.Certificate.fromCertificateArn(this, 'LegacyApplicationCertificate', legacyCertificateArn);
+    const applicationHostedZone = retainManagedDomainResources
+      ? retainedHostedZoneBridge(this, applicationHostname)
+      : route53.HostedZone.fromHostedZoneAttributes(this, 'ExistingApplicationHostedZone', {
+        hostedZoneId: applicationHostedZoneId,
+        zoneName: applicationHostname,
+      });
+    // Foundation never requests a certificate. Activation is an explicit manual
+    // deployment after the CodeBuild delegation preflight has passed.
+    const applicationCertificate = domainActivation
+      ? new acm.Certificate(this, 'ApplicationActivationCertificate', {
+        domainName: applicationHostname,
+        subjectAlternativeNames: [wwwApplicationHostname],
+        validation: acm.CertificateValidation.fromDns(applicationHostedZone),
+      })
+      : legacyCertificate;
     const diagnosticMode = this.node.tryGetContext('diagnosticMode') === true || this.node.tryGetContext('diagnosticMode') === 'true';
     const vpc = new ec2.Vpc(this, 'ProductionVpc', {
       availabilityZones: ['us-east-1c', 'us-east-1d'],
@@ -323,64 +337,61 @@ export class WallyPlatformStack extends cdk.Stack {
       securityGroup: loadBalancerSecurityGroup,
       vpcSubnets: { subnetType: ec2.SubnetType.PUBLIC },
     });
-    temporaryBrowserLoadBalancer.addListener('TemporaryHttpListener', {
+    const httpListener = temporaryBrowserLoadBalancer.addListener('TemporaryHttpListener', {
       port: 80,
       protocol: elbv2.ApplicationProtocol.HTTP,
       open: false,
-      defaultAction: elbv2.ListenerAction.redirect({
-        protocol: 'HTTPS',
-        port: '443',
-        permanent: true,
-      }),
     });
-    const httpsListener = temporaryBrowserLoadBalancer.addListener('ApplicationHttpsListener', {
-      port: 443,
-      protocol: elbv2.ApplicationProtocol.HTTPS,
-      certificates: [elbv2.ListenerCertificate.fromCertificateManager(applicationCertificate)],
-      defaultAction: elbv2.ListenerAction.fixedResponse(404, { contentType: 'text/plain', messageBody: 'Not found' }),
-      open: false,
-    });
-    httpsListener.addAction('RedirectWwwToApex', {
-      priority: 10,
-      conditions: [elbv2.ListenerCondition.hostHeaders([wwwApplicationHostname])],
-      action: elbv2.ListenerAction.redirect({
-        host: applicationHostname,
-        protocol: 'HTTPS',
-        port: '443',
-        path: '/#{path}',
-        query: '#{query}',
-        permanent: true,
-      }),
-    });
-    httpsListener.addTargets('CanonicalApplicationTargets', {
-      priority: 20,
-      conditions: [elbv2.ListenerCondition.hostHeaders([applicationHostname])],
-      port: 80,
-      protocol: elbv2.ApplicationProtocol.HTTP,
-      targets: [applicationService],
-      healthCheck: {
-        path: '/health',
-        healthyHttpCodes: '200',
-      },
-    });
-    new route53.ARecord(this, 'ApplicationApexAliasRecord', {
-      zone: applicationHostedZone,
-      target: route53.RecordTarget.fromAlias(new route53targets.LoadBalancerTarget(temporaryBrowserLoadBalancer)),
-    });
-    new route53.AaaaRecord(this, 'ApplicationApexAliasIpv6Record', {
-      zone: applicationHostedZone,
-      target: route53.RecordTarget.fromAlias(new route53targets.LoadBalancerTarget(temporaryBrowserLoadBalancer)),
-    });
-    new route53.ARecord(this, 'ApplicationWwwAliasRecord', {
-      zone: applicationHostedZone,
-      recordName: 'www',
-      target: route53.RecordTarget.fromAlias(new route53targets.LoadBalancerTarget(temporaryBrowserLoadBalancer)),
-    });
-    new route53.AaaaRecord(this, 'ApplicationWwwAliasIpv6Record', {
-      zone: applicationHostedZone,
-      recordName: 'www',
-      target: route53.RecordTarget.fromAlias(new route53targets.LoadBalancerTarget(temporaryBrowserLoadBalancer)),
-    });
+    if (domainActivation) {
+      httpListener.addAction('RedirectHttpToHttps', {
+        action: elbv2.ListenerAction.redirect({ protocol: 'HTTPS', port: '443', permanent: true }),
+      });
+      const httpsListener = temporaryBrowserLoadBalancer.addListener('ApplicationHttpsListener', {
+        port: 443,
+        protocol: elbv2.ApplicationProtocol.HTTPS,
+        certificates: [elbv2.ListenerCertificate.fromCertificateManager(applicationCertificate)],
+        defaultAction: elbv2.ListenerAction.fixedResponse(404, { contentType: 'text/plain', messageBody: 'Not found' }),
+        open: false,
+      });
+      httpsListener.addAction('RedirectWwwToApex', {
+        priority: 10,
+        conditions: [elbv2.ListenerCondition.hostHeaders([wwwApplicationHostname])],
+        action: elbv2.ListenerAction.redirect({ host: applicationHostname, protocol: 'HTTPS', port: '443', path: '/#{path}', query: '#{query}', permanent: true }),
+      });
+      httpsListener.addTargets('CanonicalApplicationTargets', {
+        priority: 20,
+        conditions: [elbv2.ListenerCondition.hostHeaders([applicationHostname])],
+        port: 80,
+        protocol: elbv2.ApplicationProtocol.HTTP,
+        targets: [applicationService],
+        healthCheck: { path: '/health', healthyHttpCodes: '200' },
+      });
+      new route53.ARecord(this, 'ApplicationApexAliasRecord', {
+        zone: applicationHostedZone,
+        target: route53.RecordTarget.fromAlias(new route53targets.LoadBalancerTarget(temporaryBrowserLoadBalancer)),
+      });
+      new route53.AaaaRecord(this, 'ApplicationApexAliasIpv6Record', {
+        zone: applicationHostedZone,
+        target: route53.RecordTarget.fromAlias(new route53targets.LoadBalancerTarget(temporaryBrowserLoadBalancer)),
+      });
+      new route53.ARecord(this, 'ApplicationWwwAliasRecord', {
+        zone: applicationHostedZone,
+        recordName: 'www',
+        target: route53.RecordTarget.fromAlias(new route53targets.LoadBalancerTarget(temporaryBrowserLoadBalancer)),
+      });
+      new route53.AaaaRecord(this, 'ApplicationWwwAliasIpv6Record', {
+        zone: applicationHostedZone,
+        recordName: 'www',
+        target: route53.RecordTarget.fromAlias(new route53targets.LoadBalancerTarget(temporaryBrowserLoadBalancer)),
+      });
+    } else {
+      httpListener.addTargets('TemporaryBrowserTargets', {
+        port: 80,
+        protocol: elbv2.ApplicationProtocol.HTTP,
+        targets: [applicationService],
+        healthCheck: { path: '/health', healthyHttpCodes: '200' },
+      });
+    }
 
     const bootstrapTaskDefinition = new ecs.FargateTaskDefinition(this, 'BootstrapAdministratorTaskDefinition', {
       cpu: 256,
@@ -416,6 +427,7 @@ export class WallyPlatformStack extends cdk.Stack {
     }));
 
     let pipeline: codepipeline.Pipeline | undefined;
+    let activationProjectName = 'not-created-in-diagnostic-mode';
     if (!diagnosticMode) {
       const sourceOutput = new codepipeline.Artifact('SourceOutput');
       const validationProject = pipelineProject(this, 'ValidationProject', {
@@ -432,24 +444,39 @@ export class WallyPlatformStack extends cdk.Stack {
           version: '0.2',
           phases: {
             install: { commands: ['npm ci'] },
-            build: { commands: ['npm run check', 'npm run build', 'npm run test', 'cd infra && npx cdk deploy WallyPlatform-production -c environment=production --require-approval never'] },
+            build: { commands: ['npm run check', 'npm run build', 'npm run test', 'cd infra && npx cdk deploy WallyPlatform-production -c environment=production -c applicationHostedZoneId=Z0640322GREKLUZ06W3O -c applicationExpectedNameServers=ns-723.awsdns-26.net,ns-386.awsdns-48.com,ns-1026.awsdns-00.org,ns-1580.awsdns-05.co.uk -c legacyApplicationCertificateArn=arn:aws:acm:us-east-1:265404809336:certificate/52ff0b5a-79fb-4504-ac2e-9c5ce89f303c --require-approval never'] },
+            post_build: { commands: ['echo "Foundation deployment complete. Domain activation is a separately approved manual command."'] },
           },
         }),
       });
+      const activationProject = pipelineProject(this, 'DomainActivationProject', {
+        buildSpec: codebuild.BuildSpec.fromObject({
+          version: '0.2',
+          phases: {
+            install: { commands: ['npm ci'] },
+            pre_build: { commands: ['bash infra/scripts/domain-activation-preflight.sh'] },
+            build: { commands: ['npm run check', 'npm run build', 'npm run test', 'cd infra && npx cdk deploy WallyPlatform-production -c environment=production -c applicationHostedZoneId=Z0640322GREKLUZ06W3O -c applicationExpectedNameServers=ns-723.awsdns-26.net,ns-386.awsdns-48.com,ns-1026.awsdns-00.org,ns-1580.awsdns-05.co.uk -c legacyApplicationCertificateArn=arn:aws:acm:us-east-1:265404809336:certificate/52ff0b5a-79fb-4504-ac2e-9c5ce89f303c -c applicationActivation=true --require-approval never'] },
+          },
+        }),
+        environment: {
+          APPLICATION_DOMAIN: applicationHostname,
+          EXPECTED_NAME_SERVERS: expectedDomainNameServers.join(','),
+        },
+      });
+      activationProjectName = activationProject.projectName;
       const bootstrapRoleArns = [
         'deploy-role',
         'file-publishing-role',
         'image-publishing-role',
         'lookup-role',
       ].map((role) => `arn:aws:iam::265404809336:role/cdk-hnb659fds-${role}-265404809336-us-east-1`);
-      deploymentProject.addToRolePolicy(new iam.PolicyStatement({
-        actions: ['sts:AssumeRole'],
-        resources: bootstrapRoleArns,
-      }));
-      deploymentProject.addToRolePolicy(new iam.PolicyStatement({
-        actions: ['ssm:GetParameter'],
-        resources: ['arn:aws:ssm:us-east-1:265404809336:parameter/cdk-bootstrap/hnb659fds/version'],
-      }));
+      for (const project of [deploymentProject, activationProject]) {
+        project.addToRolePolicy(new iam.PolicyStatement({ actions: ['sts:AssumeRole'], resources: bootstrapRoleArns }));
+        project.addToRolePolicy(new iam.PolicyStatement({
+          actions: ['ssm:GetParameter'],
+          resources: ['arn:aws:ssm:us-east-1:265404809336:parameter/cdk-bootstrap/hnb659fds/version'],
+        }));
+      }
 
       pipeline = new codepipeline.Pipeline(this, 'ProductionPipeline', {
         pipelineName: 'wally-analyzer-production',
@@ -486,13 +513,13 @@ export class WallyPlatformStack extends cdk.Stack {
       value: applicationHostedZone.hostedZoneId,
       description: 'Route 53 hosted-zone ID for wally-analytics.app.',
     });
-    new cdk.CfnOutput(this, 'ApplicationAuthoritativeNameServers', {
-      value: cdk.Fn.join(',', applicationHostedZone.hostedZoneNameServers!),
-      description: 'All four Route 53 authoritative name servers. Set these at Wix only after copying all existing DNS records.',
+    new cdk.CfnOutput(this, 'ApplicationExpectedNameServers', {
+      value: expectedDomainNameServers.join(','),
+      description: 'Expected Route 53 delegation, verified by the activation preflight.',
     });
     new cdk.CfnOutput(this, 'ApplicationCertificateArn', {
       value: applicationCertificate.certificateArn,
-      description: 'DNS-validated ACM certificate for apex and www. Route 53 publishes validation CNAME records automatically.',
+      description: domainActivation ? 'Activation ACM certificate for apex and www.' : 'Existing legacy certificate retained until explicit activation.',
     });
     new cdk.CfnOutput(this, 'UserPoolId', { value: userPool.userPoolId });
     new cdk.CfnOutput(this, 'WebClientId', { value: webClient.userPoolClientId });
@@ -515,8 +542,43 @@ export class WallyPlatformStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'PrivateTaskSecurityGroupId', { value: serviceSecurityGroup.securityGroupId });
     new cdk.CfnOutput(this, 'DatabaseBastionInstanceId', { value: bastion.instanceId });
     new cdk.CfnOutput(this, 'PrivateSubnetIds', { value: vpc.isolatedSubnets.map((subnet) => subnet.subnetId).join(',') });
+    new cdk.CfnOutput(this, 'DomainActivationProjectName', {
+      value: activationProjectName,
+      description: 'Manual approved CodeBuild project for DNS-preflighted domain activation.',
+    });
     if (pipeline) new cdk.CfnOutput(this, 'ProductionPipelineName', { value: pipeline.pipelineName });
   }
+}
+
+function requiredContext(scope: Construct, key: string): string {
+  const value = scope.node.tryGetContext(key);
+  if (typeof value !== 'string' || !value.trim()) throw new Error(`Missing required CDK context: ${key}`);
+  return value.trim();
+}
+
+function contextBoolean(scope: Construct, key: string): boolean {
+  const value = scope.node.tryGetContext(key);
+  return value === true || value === 'true';
+}
+
+function retainedHostedZoneBridge(scope: Construct, zoneName: string): route53.IHostedZone {
+  const resource = new route53.CfnHostedZone(scope, 'ApplicationHostedZone', { name: zoneName });
+  resource.cfnOptions.deletionPolicy = cdk.CfnDeletionPolicy.RETAIN;
+  resource.cfnOptions.updateReplacePolicy = cdk.CfnDeletionPolicy.RETAIN;
+  return route53.HostedZone.fromHostedZoneAttributes(scope, 'RetainedApplicationHostedZone', {
+    hostedZoneId: resource.ref,
+    zoneName,
+  });
+}
+
+function legacyCertificateBridge(scope: Construct, domainName: string): acm.ICertificate {
+  const resource = new acm.CfnCertificate(scope, 'ApplicationCertificate', {
+    domainName,
+    validationMethod: 'DNS',
+  });
+  resource.cfnOptions.deletionPolicy = cdk.CfnDeletionPolicy.RETAIN;
+  resource.cfnOptions.updateReplacePolicy = cdk.CfnDeletionPolicy.RETAIN;
+  return acm.Certificate.fromCertificateArn(scope, 'RetainedApplicationCertificate', resource.ref);
 }
 
 function privateArtifactBucket(scope: Construct, id: string, _purpose: string, removalPolicy: cdk.RemovalPolicy): s3.Bucket {
@@ -531,11 +593,12 @@ function privateArtifactBucket(scope: Construct, id: string, _purpose: string, r
   });
 }
 
-function pipelineProject(scope: Construct, id: string, props: { buildSpec: codebuild.BuildSpec }): codebuild.PipelineProject {
+function pipelineProject(scope: Construct, id: string, props: { buildSpec: codebuild.BuildSpec; environment?: Record<string, string> }): codebuild.PipelineProject {
   return new codebuild.PipelineProject(scope, id, {
     environment: {
       buildImage: codebuild.LinuxBuildImage.STANDARD_7_0,
       privileged: true,
+      environmentVariables: Object.fromEntries(Object.entries(props.environment ?? {}).map(([name, value]) => [name, { value }])),
     },
     buildSpec: props.buildSpec,
     timeout: cdk.Duration.minutes(60),
