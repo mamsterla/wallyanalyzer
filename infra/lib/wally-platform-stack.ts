@@ -33,7 +33,7 @@ export class WallyPlatformStack extends cdk.Stack {
     const retention = cdk.RemovalPolicy.RETAIN;
     // Wix remains registrar. Route 53 becomes authoritative only after the operator
     // copies all existing DNS records and delegates Wix nameservers to this zone.
-    const applicationHostname = 'wallyanalytics.app';
+    const applicationHostname = 'wally-analytics.app';
     const wwwApplicationHostname = `www.${applicationHostname}`;
     const applicationHostedZone = new route53.PublicHostedZone(this, 'ApplicationHostedZone', {
       zoneName: applicationHostname,
@@ -484,7 +484,7 @@ export class WallyPlatformStack extends cdk.Stack {
     });
     new cdk.CfnOutput(this, 'ApplicationHostedZoneId', {
       value: applicationHostedZone.hostedZoneId,
-      description: 'Route 53 hosted-zone ID for wallyanalytics.app.',
+      description: 'Route 53 hosted-zone ID for wally-analytics.app.',
     });
     new cdk.CfnOutput(this, 'ApplicationAuthoritativeNameServers', {
       value: cdk.Fn.join(',', applicationHostedZone.hostedZoneNameServers!),
@@ -510,7 +510,7 @@ export class WallyPlatformStack extends cdk.Stack {
     });
     new cdk.CfnOutput(this, 'ApplicationLoadBalancerDnsName', {
       value: temporaryBrowserLoadBalancer.loadBalancerDnsName,
-      description: 'External DNS target for the wallyanalytics.app apex ALIAS, ANAME, or CNAME-flattening record.',
+      description: 'External DNS target for the wally-analytics.app apex ALIAS, ANAME, or CNAME-flattening record.'
     });
     new cdk.CfnOutput(this, 'PrivateTaskSecurityGroupId', { value: serviceSecurityGroup.securityGroupId });
     new cdk.CfnOutput(this, 'DatabaseBastionInstanceId', { value: bastion.instanceId });

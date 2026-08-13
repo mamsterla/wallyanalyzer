@@ -13,11 +13,11 @@ AWS_PROFILE=wallyanalyzer AWS_REGION=us-east-1 npm run synth
 
 ## Production network posture
 
-The ALB is the only public Wally resource. Public TCP/443 terminates TLS for `wallyanalytics.app` and forwards only to TCP/80 on private ECS tasks. Public TCP/80 performs a permanent redirect to HTTPS and never serves the application. ECS tasks remain in isolated subnets without public IPs or NAT. RDS PostgreSQL, RDS Proxy, Cognito, and S3 remain non-public. Tasks use the S3 gateway endpoint with AWS-managed prefix-list HTTPS egress for ECR image layers, plus interface endpoints for ECR, CloudWatch Logs, Secrets Manager, Cognito IDP, SES, Lambda, Step Functions, and Systems Manager APIs.
+The ALB is the only public Wally resource. Public TCP/443 terminates TLS for `wally-analytics.app` and forwards only to TCP/80 on private ECS tasks. Public TCP/80 performs a permanent redirect to HTTPS and never serves the application. ECS tasks remain in isolated subnets without public IPs or NAT. RDS PostgreSQL, RDS Proxy, Cognito, and S3 remain non-public. Tasks use the S3 gateway endpoint with AWS-managed prefix-list HTTPS egress for ECR image layers, plus interface endpoints for ECR, CloudWatch Logs, Secrets Manager, Cognito IDP, SES, Lambda, Step Functions, and Systems Manager APIs.
 
 ## Route 53 authoritative DNS, Wix registration, and HTTPS
 
-Wix remains the registrar for `wallyanalytics.app`. This stack creates the Route 53 public hosted zone, uses it to automatically validate the replacement ACM certificate for both `wallyanalytics.app` and `www.wallyanalytics.app`, and creates apex and `www` A/AAAA Alias records to the regional ALB. The ALB is still the only public resource: HTTP redirects to canonical HTTPS; `www` redirects permanently to `https://wallyanalytics.app`; only the apex hostname reaches ECS.
+Wix remains the registrar for `wally-analytics.app`. This stack creates the Route 53 public hosted zone, uses it to automatically validate the replacement ACM certificate for both `wally-analytics.app` and `www.wally-analytics.app`, and creates apex and `www` A/AAAA Alias records to the regional ALB. The ALB is still the only public resource: HTTP redirects to canonical HTTPS; `www` redirects permanently to `https://wally-analytics.app`; only the apex hostname reaches ECS.
 
 ### Cutover procedure
 
@@ -38,13 +38,13 @@ aws cloudformation describe-stacks --stack-name "$STACK" \
 ```bash
 for ns in $(aws cloudformation describe-stacks --stack-name "$STACK" \
   --query "Stacks[0].Outputs[?OutputKey=='ApplicationAuthoritativeNameServers'].OutputValue | [0]" --output text | tr ',' ' '); do
-  dig +short "$ns" wallyanalytics.app A
-  dig +short "$ns" www.wallyanalytics.app A
+  dig +short "$ns" wally-analytics.app A
+  dig +short "$ns" www.wally-analytics.app A
 done
-curl --fail --location --head http://wallyanalytics.app
-curl --fail --head https://wallyanalytics.app/health
-curl --fail --location --head https://www.wallyanalytics.app
-curl --fail https://wallyanalytics.app/runtime-config.js
+curl --fail --location --head http://wally-analytics.app
+curl --fail --head https://wally-analytics.app/health
+curl --fail --location --head https://www.wally-analytics.app
+curl --fail https://wally-analytics.app/runtime-config.js
 ```
 
 Expected results: HTTP `301` to HTTPS; apex HTTPS `200` at `/health`; `www` HTTPS `301` to apex; ACM `ISSUED`.

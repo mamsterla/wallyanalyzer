@@ -14,7 +14,7 @@ Use the `wallyanalyzer` AWS profile and review `docs/production-runbook.md` befo
 
 ## Public HTTPS application and Route 53 DNS
 
-The ALB is the only public resource. It accepts public HTTPS on TCP/443 for canonical `wallyanalytics.app` and forwards HTTP only to private ECS tasks in isolated subnets. TCP/80 is public only to redirect to HTTPS; `www.wallyanalytics.app` redirects permanently to the apex. Tasks have no public IP or NAT. RDS, RDS Proxy, Cognito, and S3 remain private.
+The ALB is the only public resource. It accepts public HTTPS on TCP/443 for canonical `wally-analytics.app` and forwards HTTP only to private ECS tasks in isolated subnets. TCP/80 is public only to redirect to HTTPS; `www.wally-analytics.app` redirects permanently to the apex. Tasks have no public IP or NAT. RDS, RDS Proxy, Cognito, and S3 remain private.
 
 The stack creates the public Route 53 hosted zone, apex and `www` A/AAAA ALB Alias records, and ACM DNS validation records for both hostnames. Wix remains registrar. After deployment, copy every required existing Wix record to Route 53, then replace Wix nameservers with the four values from the `ApplicationAuthoritativeNameServers` output. Do not assume missing public lookup records means email or third-party records are absent. See `docs/production-runbook.md` for cutover, validation, and rollback.
 
