@@ -15,7 +15,27 @@ AWS_PROFILE=wallyanalyzer AWS_REGION=us-east-1 npm run synth
 
 The temporary browser path is a public Application Load Balancer (ALB) HTTP listener. Its security group permits port 80 only from `47.150.127.7/32`. The ALB is the only public Wally resource; it forwards only to port 80 on private ECS tasks. ECS tasks remain in isolated subnets without public IPs or NAT. RDS PostgreSQL, RDS Proxy, Cognito, and S3 remain non-public. Tasks use the S3 gateway endpoint with AWS-managed prefix-list HTTPS egress for ECR image layers, plus interface endpoints for ECR, CloudWatch Logs, Secrets Manager, Cognito IDP, SES, Lambda, Step Functions, and Systems Manager APIs.
 
-The temporary URL is HTTP only and sends traffic without TLS encryption. Do not use it on untrusted networks or enter sensitive production data. Its ALB hostname is not a replacement for a custom domain. Add an ACM certificate and HTTPS listener after the DNS domain is ready, then remove the temporary port-80 listener and its `47.150.127.7/32` ingress rule. Do not add NAT or widen ingress without an approved architecture change.
+The temporary URL is HTTP only and sends traffic without TLS encryption. Do not use it on untrusted networks or enter sensitive production data. Its ALB hostname is not a replacement for the final hostname `wallyanalytics.app`. Do not add NAT or widen ingress without an approved architecture change.
+
+## Custom domain phase 1: ACM DNS validation
+
+The first custom-domain deployment creates a regional ACM public certificate for `wallyanalytics.app` with manual DNS validation. It does **not** attach the certificate to the ALB, create a port-443 listener, change the HTTP listener, change ALB security-group rules, or create an application DNS record. The existing restricted `47.150.127.7/32:80` path remains unchanged.
+
+After the approved deployment completes, retrieve the CNAME required by ACM and create it at the external DNS provider exactly as returned. Do not use an ALIAS, URL redirect, or proxy record for certificate validation:
+
+```bash
+export AWS_PROFILE=wallyanalyzer AWS_REGION=us-east-1
+STACK=WallyPlatform-production
+CERTIFICATE_ARN=$(aws cloudformation describe-stacks --stack-name "$STACK" \
+  --query "Stacks[0].Outputs[?OutputKey=='ApplicationCertificateArn'].OutputValue | [0]" --output text)
+aws acm describe-certificate --certificate-arn "$CERTIFICATE_ARN" \
+  --query 'Certificate.DomainValidationOptions[0].ResourceRecord.{Name:Name,Type:Type,Value:Value}' --output table
+aws acm wait certificate-validated --certificate-arn "$CERTIFICATE_ARN"
+```
+
+The domain provider must publish the returned `Name`, `Type` (`CNAME`), and `Value`. Confirm `ISSUED` before approving phase 2. Phase 2 will attach this certificate to an HTTPS listener, redirect port 80 to HTTPS, make the final application DNS record point to the ALB, and replace the temporary CIDR-only HTTP access with approved HTTPS ingress. It requires a separate review and approval.
+
+The existing Cognito pool had zero users when this phase was approved, so its standard `email` attribute is now mutable. The synthesized CDK diff identifies this as an in-place UserPool schema update, not a replacement. Review the CloudFormation change set before deployment and do not create users until the update completes.
 
 ## Private database operator access
 
@@ -117,7 +137,7 @@ Production uses standard RDS for PostgreSQL 18.3, encrypted storage, private sub
 
 ## Identity and fulfillment
 
-Cognito self-service signup is disabled. Accounts are created by admin fulfillment only. Fulfillment persists a Cognito subject, user account state, PSIU serial/opaque UID assignment history, and immutable audit event in Postgres. It does not store PSIU credentials or LAN addresses.
+Cognito self-service signup is disabled. Accounts are created by admin fulfillment only. Fulfillment persists a Cognito subject, user account state, PSIU serial/opaque UID assignment history, and immutable audit event in Postgres. It does not store PSIU credentials or LAN addresses. The current zero-user pool is configured with a mutable standard `email` attribute so an authenticated customer can change email after the HTTPS release.
 
 SES production delivery is deferred. `AdminCreateUser` is suppressed until `wallyanalyzer.com` has an approved SES identity, DKIM/SPF/DMARC, and production SES access. Do not send fulfillment invitations from the stack before then.
 

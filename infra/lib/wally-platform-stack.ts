@@ -1,5 +1,6 @@
 import * as path from 'node:path';
 import * as cdk from 'aws-cdk-lib';
+import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as codebuild from 'aws-cdk-lib/aws-codebuild';
 import * as codepipeline from 'aws-cdk-lib/aws-codepipeline';
 import * as codepipelineActions from 'aws-cdk-lib/aws-codepipeline-actions';
@@ -28,6 +29,13 @@ export class WallyPlatformStack extends cdk.Stack {
     super(scope, id, props);
 
     const retention = cdk.RemovalPolicy.RETAIN;
+    // The externally managed DNS zone must publish ACM's CNAME after this phase
+    // deploys. The certificate is intentionally unattached until it is ISSUED.
+    const applicationHostname = 'wallyanalytics.app';
+    const applicationCertificate = new acm.CfnCertificate(this, 'ApplicationCertificate', {
+      domainName: applicationHostname,
+      validationMethod: 'DNS',
+    });
     const diagnosticMode = this.node.tryGetContext('diagnosticMode') === true || this.node.tryGetContext('diagnosticMode') === 'true';
     const vpc = new ec2.Vpc(this, 'ProductionVpc', {
       availabilityZones: ['us-east-1c', 'us-east-1d'],
@@ -186,7 +194,9 @@ export class WallyPlatformStack extends cdk.Stack {
       selfSignUpEnabled: false,
       signInAliases: { email: true },
       autoVerify: { email: true },
-      standardAttributes: { email: { required: true, mutable: false } },
+      // The current pool has no users, so mutable email can be enabled before
+      // account creation rather than requiring a later identity migration.
+      standardAttributes: { email: { required: true, mutable: true } },
       accountRecovery: cognito.AccountRecovery.EMAIL_ONLY,
       passwordPolicy: {
         minLength: 14,
@@ -404,6 +414,14 @@ export class WallyPlatformStack extends cdk.Stack {
       });
     }
 
+    new cdk.CfnOutput(this, 'ApplicationHostname', {
+      value: applicationHostname,
+      description: 'Final HTTPS hostname. A later approved phase attaches the issued certificate to an HTTPS ALB listener.',
+    });
+    new cdk.CfnOutput(this, 'ApplicationCertificateArn', {
+      value: applicationCertificate.ref,
+      description: 'DNS-validated ACM certificate ARN. Add its ACM-provided validation CNAME at the external DNS provider before the HTTPS ALB phase.',
+    });
     new cdk.CfnOutput(this, 'UserPoolId', { value: userPool.userPoolId });
     new cdk.CfnOutput(this, 'WebClientId', { value: webClient.userPoolClientId });
     new cdk.CfnOutput(this, 'SampleBucketName', { value: sampleBucket.bucketName });
