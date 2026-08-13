@@ -449,7 +449,17 @@ export class WallyPlatformStack extends cdk.Stack {
           },
         }),
       });
-      const activationProject = pipelineProject(this, 'DomainActivationProject', {
+      // Standalone activation is intentionally not a CodePipeline action. It must
+      // be startable only after an operator-approved public-DNS preflight.
+      const activationProject = new codebuild.Project(this, 'DomainActivationProject', {
+        environment: {
+          buildImage: codebuild.LinuxBuildImage.STANDARD_7_0,
+          privileged: true,
+          environmentVariables: {
+            APPLICATION_DOMAIN: { value: applicationHostname },
+            EXPECTED_NAME_SERVERS: { value: expectedDomainNameServers.join(',') },
+          },
+        },
         buildSpec: codebuild.BuildSpec.fromObject({
           version: '0.2',
           phases: {
@@ -458,10 +468,7 @@ export class WallyPlatformStack extends cdk.Stack {
             build: { commands: ['npm run check', 'npm run build', 'npm run test', 'cd infra && npx cdk deploy WallyPlatform-production -c environment=production -c applicationHostedZoneId=Z0640322GREKLUZ06W3O -c applicationExpectedNameServers=ns-723.awsdns-26.net,ns-386.awsdns-48.com,ns-1026.awsdns-00.org,ns-1580.awsdns-05.co.uk -c legacyApplicationCertificateArn=arn:aws:acm:us-east-1:265404809336:certificate/52ff0b5a-79fb-4504-ac2e-9c5ce89f303c -c applicationActivation=true --require-approval never'] },
           },
         }),
-        environment: {
-          APPLICATION_DOMAIN: applicationHostname,
-          EXPECTED_NAME_SERVERS: expectedDomainNameServers.join(','),
-        },
+        timeout: cdk.Duration.minutes(60),
       });
       activationProjectName = activationProject.projectName;
       const bootstrapRoleArns = [
