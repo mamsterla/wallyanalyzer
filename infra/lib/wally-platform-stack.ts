@@ -190,7 +190,9 @@ export class WallyPlatformStack extends cdk.Stack {
     const sampleBucket = privateArtifactBucket(this, 'SampleBucket', 'raw audio uploads', retention);
     const reportBucket = privateArtifactBucket(this, 'ReportBucket', 'immutable report artifacts', retention);
 
-    const userPool = new cognito.UserPool(this, 'UserPool', {
+    // Cognito cannot change standard email mutability in place. This replacement pool
+    // is safe only because the failed pool has no identities or customer data.
+    const userPool = new cognito.UserPool(this, 'MutableEmailUserPool', {
       selfSignUpEnabled: false,
       signInAliases: { email: true },
       autoVerify: { email: true },

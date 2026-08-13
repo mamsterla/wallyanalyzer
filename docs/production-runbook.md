@@ -35,7 +35,9 @@ aws acm wait certificate-validated --certificate-arn "$CERTIFICATE_ARN"
 
 The domain provider must publish the returned `Name`, `Type` (`CNAME`), and `Value`. Confirm `ISSUED` before approving phase 2. Phase 2 will attach this certificate to an HTTPS listener, redirect port 80 to HTTPS, make the final application DNS record point to the ALB, and replace the temporary CIDR-only HTTP access with approved HTTPS ingress. It requires a separate review and approval.
 
-The existing Cognito pool had zero users when this phase was approved, so its standard `email` attribute is now mutable. The synthesized CDK diff identifies this as an in-place UserPool schema update, not a replacement. Review the CloudFormation change set before deployment and do not create users until the update completes.
+The attempted in-place Cognito email-mutability update failed because Cognito rejects standard-attribute mutability changes. CloudFormation entered `UPDATE_ROLLBACK_FAILED`; rollback was continued with the failed logical UserPool resource skipped. The failed pool has zero Cognito users and there is no customer data.
+
+The remediation creates a replacement `MutableEmailUserPool` with mutable standard email, a replacement client, and replacement groups. ECS task definitions, bootstrap task definition, Cognito management IAM policies, and stack outputs reference the replacement pool/client. The old empty pool remains retained after the replacement deployment; do not delete it until the replacement stack update completes, the new pool/client/groups are verified, and no task definition references the old pool. The replacement does not change RDS, RDS Proxy, VPC, ALB, security groups, or artifacts. Do not create users until the replacement deployment completes.
 
 ## Private database operator access
 
