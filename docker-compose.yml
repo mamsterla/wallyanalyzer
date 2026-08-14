@@ -10,6 +10,7 @@ services:
       NODE_ENV: development
       NODE_SERVER_PATH: /app/local.js
       PSIU_BASE_URL: "${PSIU_BASE_URL:-http://psiu.local}"
+      PSIU_CREDENTIAL_SECRET_ARN: "${PSIU_CREDENTIAL_SECRET_ARN:?PSIU_CREDENTIAL_SECRET_ARN must reference an AWS Secrets Manager secret}"
       DATABASE_SECRET_ARN: "${DATABASE_SECRET_ARN:?DATABASE_SECRET_ARN must reference an AWS Secrets Manager secret}"
       DATABASE_PROXY_HOST: postgres
       DATABASE_NAME: "${POSTGRES_DB:-wally}"
