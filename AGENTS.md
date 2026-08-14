@@ -10,3 +10,4 @@ Read `docs/architecture.md`, `docs/agentic-workflow.md`, `docs/development-workf
 - One writer edits project files. Parallel subagents only scout or review.
 - Use Docker Compose for local services. Keep local development to the approved two containers unless explicit approval expands it.
 - Do not deploy, expose AWS resources publicly, or change production retention/CORS without explicit approval.
+- Store all passwords and secrets in AWS Secrets Manager. Do not place secret values in environment variables, source control, CI/CD variables, logs, chat, or browser bundles. ECS/CodeBuild may receive only secret ARNs/references and must retrieve values through workload-scoped AWS SDK access at runtime.
