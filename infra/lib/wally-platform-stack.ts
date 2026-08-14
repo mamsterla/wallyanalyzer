@@ -427,7 +427,7 @@ export class WallyPlatformStack extends cdk.Stack {
     }));
 
     let pipeline: codepipeline.Pipeline | undefined;
-    let activationProjectName = 'not-created-in-diagnostic-mode';
+    let domainActivationPipeline: codepipeline.Pipeline | undefined;
     if (!diagnosticMode) {
       const sourceOutput = new codepipeline.Artifact('SourceOutput');
       const validationProject = pipelineProject(this, 'ValidationProject', {
@@ -449,17 +449,9 @@ export class WallyPlatformStack extends cdk.Stack {
           },
         }),
       });
-      // Standalone activation is intentionally not a CodePipeline action. It must
-      // be startable only after an operator-approved public-DNS preflight.
-      const activationProject = new codebuild.Project(this, 'DomainActivationProject', {
-        environment: {
-          buildImage: codebuild.LinuxBuildImage.STANDARD_7_0,
-          privileged: true,
-          environmentVariables: {
-            APPLICATION_DOMAIN: { value: applicationHostname },
-            EXPECTED_NAME_SERVERS: { value: expectedDomainNameServers.join(',') },
-          },
-        },
+      // Activation has its own manually-started pipeline: source is pinned to a
+      // reviewed main revision, then a human must approve the DNS-preflighted deploy.
+      const activationProject = pipelineProject(this, 'DomainActivationProject', {
         buildSpec: codebuild.BuildSpec.fromObject({
           version: '0.2',
           phases: {
@@ -468,9 +460,11 @@ export class WallyPlatformStack extends cdk.Stack {
             build: { commands: ['npm run check', 'npm run build', 'npm run test', 'cd infra && npx cdk deploy WallyPlatform-production -c environment=production -c applicationHostedZoneId=Z0640322GREKLUZ06W3O -c applicationExpectedNameServers=ns-723.awsdns-26.net,ns-386.awsdns-48.com,ns-1026.awsdns-00.org,ns-1580.awsdns-05.co.uk -c legacyApplicationCertificateArn=arn:aws:acm:us-east-1:265404809336:certificate/52ff0b5a-79fb-4504-ac2e-9c5ce89f303c -c applicationActivation=true --require-approval never'] },
           },
         }),
-        timeout: cdk.Duration.minutes(60),
+        environment: {
+          APPLICATION_DOMAIN: applicationHostname,
+          EXPECTED_NAME_SERVERS: expectedDomainNameServers.join(','),
+        },
       });
-      activationProjectName = activationProject.projectName;
       const bootstrapRoleArns = [
         'deploy-role',
         'file-publishing-role',
@@ -509,6 +503,40 @@ export class WallyPlatformStack extends cdk.Stack {
       pipeline.addStage({
         stageName: 'Deploy',
         actions: [new codepipelineActions.CodeBuildAction({ actionName: 'DeployProduction', project: deploymentProject, input: sourceOutput })],
+      });
+
+      const activationSourceOutput = new codepipeline.Artifact('DomainActivationSourceOutput');
+      domainActivationPipeline = new codepipeline.Pipeline(this, 'DomainActivationPipeline', {
+        pipelineName: 'wally-analyzer-domain-activation',
+        pipelineType: codepipeline.PipelineType.V1,
+        restartExecutionOnUpdate: false,
+      });
+      domainActivationPipeline.addStage({
+        stageName: 'Source',
+        actions: [new codepipelineActions.CodeStarConnectionsSourceAction({
+          actionName: 'GitHubMain',
+          connectionArn: props.githubConnectionArn,
+          owner: props.githubOwner,
+          repo: props.githubRepository,
+          branch: 'main',
+          output: activationSourceOutput,
+          triggerOnPush: false,
+        })],
+      });
+      domainActivationPipeline.addStage({
+        stageName: 'Approval',
+        actions: [new codepipelineActions.ManualApprovalAction({
+          actionName: 'ApproveDomainActivation',
+          additionalInformation: 'Confirm public DNS delegation and approve the ACM/HTTPS activation deployment.',
+        })],
+      });
+      domainActivationPipeline.addStage({
+        stageName: 'Activate',
+        actions: [new codepipelineActions.CodeBuildAction({
+          actionName: 'PreflightAndActivate',
+          project: activationProject,
+          input: activationSourceOutput,
+        })],
       });
     }
 
@@ -549,11 +577,11 @@ export class WallyPlatformStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'PrivateTaskSecurityGroupId', { value: serviceSecurityGroup.securityGroupId });
     new cdk.CfnOutput(this, 'DatabaseBastionInstanceId', { value: bastion.instanceId });
     new cdk.CfnOutput(this, 'PrivateSubnetIds', { value: vpc.isolatedSubnets.map((subnet) => subnet.subnetId).join(',') });
-    new cdk.CfnOutput(this, 'DomainActivationProjectName', {
-      value: activationProjectName,
-      description: 'Manual approved CodeBuild project for DNS-preflighted domain activation.',
-    });
     if (pipeline) new cdk.CfnOutput(this, 'ProductionPipelineName', { value: pipeline.pipelineName });
+    if (domainActivationPipeline) new cdk.CfnOutput(this, 'DomainActivationPipelineName', {
+      value: domainActivationPipeline.pipelineName,
+      description: 'Manually-started, approval-gated DNS-preflighted domain activation pipeline.',
+    });
   }
 }
 

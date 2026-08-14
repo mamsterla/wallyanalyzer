@@ -13,7 +13,7 @@ Canonical domain: `wally-analytics.app`. OpenSRS is registrar. Route 53 hosted z
 
 The normal CodePipeline deployment is **foundation only**. During the current recovery it passes `retainManagedDomainResources=true` to retain the existing CloudFormation logical hosted-zone/certificate resources while preserving their physical resources. It does not request ACM and cannot wait for DNS validation. The CodePipeline deploy action must not receive `applicationActivation=true`.
 
-Domain activation is a separate manual, approved command. It is safe to run only after both public resolvers return exactly these nameservers:
+Domain activation is a separate manually-started CodePipeline. Its GitHub `main` source action has push triggers disabled, then a human approval gate precedes the DNS-preflighted activation build. It is safe to start only after both public resolvers return exactly these nameservers:
 
 ```text
 ns-723.awsdns-26.net
@@ -48,22 +48,18 @@ npx cdk deploy WallyPlatform-production -c environment=production \
 
 ## Explicit HTTPS activation
 
-Run this only with separate approval after the foundation deployment succeeds. The preflight fails fast if either Cloudflare `1.1.1.1` or Google `8.8.8.8` returns a different NS set. This avoids a CodeBuild/CDK ACM wait timeout.
+Run this only with separate approval after the foundation deployment succeeds. The activation build fails fast if either Cloudflare `1.1.1.1` or Google `8.8.8.8` returns a different NS set. This avoids a CodeBuild/CDK ACM wait timeout.
 
 ```bash
-export APPLICATION_DOMAIN=wally-analytics.app
-export EXPECTED_NAME_SERVERS=ns-723.awsdns-26.net,ns-386.awsdns-48.com,ns-1026.awsdns-00.org,ns-1580.awsdns-05.co.uk
-bash infra/scripts/domain-activation-preflight.sh
-
-cd infra
-npx cdk deploy WallyPlatform-production -c environment=production \
-  -c applicationHostedZoneId=Z0640322GREKLUZ06W3O \
-  -c applicationExpectedNameServers="$EXPECTED_NAME_SERVERS" \
-  -c legacyApplicationCertificateArn=arn:aws:acm:us-east-1:265404809336:certificate/52ff0b5a-79fb-4504-ac2e-9c5ce89f303c \
-  -c applicationActivation=true --require-approval never
+ACTIVATION_PIPELINE=wally-analyzer-domain-activation
+EXECUTION_ID=$(aws codepipeline start-pipeline-execution --name "$ACTIVATION_PIPELINE" \
+  --client-request-token "domain-activation-$(date +%s)" --query pipelineExecutionId --output text)
+printf 'Approve execution %s in the CodePipeline console after verifying DNS delegation.\n' "$EXECUTION_ID"
 ```
 
-Activation requests an ACM certificate for apex and `www`, creates Route 53 aliases, redirects HTTP to HTTPS and `www` to apex, and changes browser runtime configuration to the canonical hostname. Do not detach or delete the old certificate/listener until the new certificate is `ISSUED`, the listener is healthy, and `https://wally-analytics.app/health` returns `200`.
+In the CodePipeline console, approve `ApproveDomainActivation`. The build uses the source artifact from the manually started execution, runs `infra/scripts/domain-activation-preflight.sh`, then deploys with `applicationActivation=true`. It never starts automatically from a `main` push.
+
+Activation requests an ACM certificate for apex and `www`, creates Route 53 aliases, redirects HTTP to HTTPS and `www` to apex, and changes browser runtime configuration to the canonical hostname. If the certificate is already issued and the listener/aliases already match the desired state, CDK reports no changes and the activation execution succeeds. Do not detach or delete the old certificate/listener until the new certificate is `ISSUED`, the listener is healthy, and `https://wally-analytics.app/health` returns `200`.
 
 ## Private database operator access
 
