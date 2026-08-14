@@ -1,13 +1,7 @@
 import type { ExtensionAPI, ExtensionContext } from '@earendil-works/pi-coding-agent';
 
-type ActionExecution = { status?: string };
-type StageState = {
-  stageName?: string;
-  latestExecution?: ActionExecution;
-  actionStates?: Array<{ latestExecution?: ActionExecution }>;
-};
-
-type PipelineState = { stageStates?: StageState[] };
+type PipelineExecution = { pipelineExecutionId?: string; status?: string };
+type PipelineExecutionList = { pipelineExecutionSummaries?: PipelineExecution[] };
 
 const statusKey = 'code-pipeline-monitor';
 const defaultPipelineName = 'wally-analyzer-production';
@@ -35,8 +29,9 @@ export default function codePipelineMonitor(pi: ExtensionAPI) {
         '--profile', profile,
         '--region', region,
         'codepipeline',
-        'get-pipeline-state',
-        '--name', pipelineName,
+        'list-pipeline-executions',
+        '--pipeline-name', pipelineName,
+        '--max-results', '1',
         '--output', 'json',
       ], { timeout: 8_000 });
 
@@ -47,8 +42,8 @@ export default function codePipelineMonitor(pi: ExtensionAPI) {
         return;
       }
 
-      const state = JSON.parse(result.stdout) as PipelineState;
-      ctx.ui.setStatus(statusKey, renderCurrentState(ctx, state.stageStates));
+      const executions = JSON.parse(result.stdout) as PipelineExecutionList;
+      ctx.ui.setStatus(statusKey, renderExecution(ctx, executions.pipelineExecutionSummaries?.[0]));
     } catch (error) {
       ctx.ui.setStatus(statusKey, ctx.ui.theme.fg('error', 'pipeline: unavailable'));
       if (notifyOnError) {
@@ -84,21 +79,11 @@ export default function codePipelineMonitor(pi: ExtensionAPI) {
   });
 }
 
-function stageStatus(stages: StageState[] | undefined, stageName: string): string | undefined {
-  const stage = stages?.find((candidate) => candidate.stageName === stageName);
-  return stage?.latestExecution?.status
-    ?? stage?.actionStates?.map((action) => action.latestExecution?.status).find(Boolean);
-}
-
-function renderCurrentState(ctx: ExtensionContext, stages: StageState[] | undefined): string {
-  const ordered = ['Deploy', 'Validate', 'Source'];
-  const current = ordered
-    .map((name) => ({ name, status: stageStatus(stages, name) }))
-    .find((stage) => stage.status && stage.status !== 'Succeeded');
-
-  if (!current) return ctx.ui.theme.fg('success', 'pipeline: succeeded');
-  const label = `pipeline: ${current.name.toLowerCase()} ${current.status?.toLowerCase()}`;
-  if (current.status === 'Failed') return ctx.ui.theme.fg('error', label);
-  if (current.status === 'InProgress') return ctx.ui.theme.fg('warning', label);
-  return ctx.ui.theme.fg('dim', label);
+function renderExecution(ctx: ExtensionContext, execution: PipelineExecution | undefined): string {
+  const status = execution?.status;
+  if (status === 'Succeeded') return ctx.ui.theme.fg('success', 'pipeline: succeeded');
+  if (status === 'InProgress') return ctx.ui.theme.fg('warning', 'pipeline: running');
+  if (status === 'Failed') return ctx.ui.theme.fg('error', 'pipeline: failed');
+  if (status === 'Stopped' || status === 'Stopping') return ctx.ui.theme.fg('warning', `pipeline: ${status.toLowerCase()}`);
+  return ctx.ui.theme.fg('dim', 'pipeline: unavailable');
 }
