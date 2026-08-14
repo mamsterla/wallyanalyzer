@@ -138,7 +138,7 @@ export async function runBootstrapAdminTask(dependencies: Partial<{
   const secrets = dependencies.secrets ?? new SecretsManagerClient({});
   const secretResponse = await secrets.send(new GetSecretValueCommand({ SecretId: secretArn }));
   if (!secretResponse.SecretString) throw new Error('Bootstrap secret must use SecretString.');
-  const pool = dependencies.repository ? undefined : new Pool(databaseSettings());
+  const pool = dependencies.repository ? undefined : new Pool(await databaseSettings());
   try {
     return await bootstrapInitialAdmin(parseBootstrapAdminSecret(secretResponse.SecretString), {
       userPoolId: requiredEnvironment('COGNITO_USER_POOL_ID'),

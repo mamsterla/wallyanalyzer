@@ -5,7 +5,7 @@ if [ "${1:-}" = "bootstrap-admin" ]; then
   exec node /app/bootstrapAdmin.js
 fi
 
-if [ -n "${DATABASE_URL:-}${DATABASE_PROXY_HOST:-}" ]; then
+if [ -n "${DATABASE_SECRET_ARN:-}" ]; then
   node /app/migrate.js
 fi
 

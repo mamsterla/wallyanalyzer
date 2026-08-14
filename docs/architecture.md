@@ -44,7 +44,7 @@ Wally Analyzer is an AWS SaaS platform for commerce, PSIU-assisted recording, an
 - Cognito group precedence does not replace product entitlements or credit ledger checks.
 - S3 never exposes public read/write. Signed URLs are scope- and time-limited.
 - Store only opaque device IDs and approved run metadata. Do not persist LAN reachability or device credentials.
-- Encrypt secrets with Secrets Manager/KMS; never build them into UI or Lambda environment configuration.
+- Store every password and secret in AWS Secrets Manager/KMS. Workloads receive only nonsecret ARNs/references and retrieve values at runtime through workload-scoped AWS SDK permissions; never inject secret values into environment variables, source, CI/CD, logs, chat, UI, Lambda, or browser configuration.
 - RDS and RDS Proxy remain private. Only ECS task, approved future VPC-attached Lambda, and the private SSM bastion security groups may open TLS PostgreSQL connections to RDS Proxy.
 - Step Functions has no security group. ECS invokes Lambda and Step Functions through least-privilege IAM and private endpoints; future VPC-attached Lambda functions receive their own security group and an explicit RDS Proxy rule.
 - Add WAF, audit logs, retention policies, and production frontend origin before public launch.

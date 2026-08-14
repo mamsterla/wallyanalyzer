@@ -15,17 +15,10 @@ trap cleanup EXIT INT TERM
 
 docker build -t "$image_name" -f app-server/Dockerfile .
 image_built=true
-# Run the production module directly so no database is required for this
-# dependency-resolution and health-route smoke test.
+# Construct the server with a stub pool. The unauthenticated health route does
+# not query Postgres, so this checks module resolution without test credentials.
 docker run -d --name "$container_name" -p 127.0.0.1::3000 \
-  -e DATABASE_PROXY_HOST=127.0.0.1 \
-  -e DATABASE_NAME=wally \
-  -e DATABASE_USERNAME=wally \
-  -e DATABASE_PASSWORD=smoke-test-password \
-  -e DATABASE_SSL=require \
-  -e COGNITO_USER_POOL_ID=us-east-1_smoketest \
-  -e COGNITO_WEB_CLIENT_ID=smoke-test-client \
-  --entrypoint node "$image_name" /app/production.js >/dev/null
+  --entrypoint node "$image_name" --input-type=module -e "import { createProductionServer } from '/app/production.js'; createProductionServer({ pool: {} }).listen(3000, '0.0.0.0');" >/dev/null
 port=$(docker port "$container_name" 3000/tcp | sed 's/.*://')
 
 for _ in $(seq 1 20); do

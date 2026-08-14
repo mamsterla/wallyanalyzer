@@ -298,16 +298,14 @@ export class WallyPlatformStack extends cdk.Stack {
         DATABASE_PROXY_HOST: databaseProxy.endpoint,
         DATABASE_NAME: 'wally',
         DATABASE_SSL: 'require',
-      },
-      secrets: {
-        DATABASE_USERNAME: ecs.Secret.fromSecretsManager(database.secret!, 'username'),
-        DATABASE_PASSWORD: ecs.Secret.fromSecretsManager(database.secret!, 'password'),
+        DATABASE_SECRET_ARN: database.secret!.secretArn,
       },
     });
     container.addPortMappings({ containerPort: 80 });
     // No S3 application permissions exist until an ownership-checked upload or
     // report route is implemented. In particular, this API task has no delete
     // permission for private raw audio or immutable report artifacts.
+    database.secret!.grantRead(taskDefinition.taskRole);
     taskDefinition.taskRole.addToPrincipalPolicy(new iam.PolicyStatement({
       actions: [
         'cognito-idp:AdminCreateUser',
@@ -408,13 +406,11 @@ export class WallyPlatformStack extends cdk.Stack {
         DATABASE_PROXY_HOST: databaseProxy.endpoint,
         DATABASE_NAME: 'wally',
         DATABASE_SSL: 'require',
+        DATABASE_SECRET_ARN: database.secret!.secretArn,
         BOOTSTRAP_ADMIN_SECRET_ARN: bootstrapAdminSecret.secretArn,
       },
-      secrets: {
-        DATABASE_USERNAME: ecs.Secret.fromSecretsManager(database.secret!, 'username'),
-        DATABASE_PASSWORD: ecs.Secret.fromSecretsManager(database.secret!, 'password'),
-      },
     });
+    database.secret!.grantRead(bootstrapTaskDefinition.taskRole);
     bootstrapAdminSecret.grantRead(bootstrapTaskDefinition.taskRole);
     bootstrapTaskDefinition.taskRole.addToPrincipalPolicy(new iam.PolicyStatement({
       actions: [

@@ -1,12 +1,22 @@
 import { createHash } from 'node:crypto';
 import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { Client } from 'pg';
+import { GetSecretValueCommand, SecretsManagerClient } from '@aws-sdk/client-secrets-manager';
+import { Client, type ClientConfig } from 'pg';
 
 const migrationsDirectory = process.env.MIGRATIONS_DIRECTORY ?? '/app/migrations';
 
-export async function runMigrations(settings = databaseSettings()): Promise<void> {
-  const client = new Client(settings);
+export interface DatabaseSecretClient {
+  send(command: GetSecretValueCommand): Promise<{ SecretString?: string }>;
+}
+
+export interface DatabaseSettingsDependencies {
+  secrets?: DatabaseSecretClient;
+  environment?: NodeJS.ProcessEnv;
+}
+
+export async function runMigrations(settings?: ClientConfig): Promise<void> {
+  const client = new Client(settings ?? await databaseSettings());
   await client.connect();
   try {
     await client.query('select pg_advisory_lock(hashtext($1))', ['wally-schema-migrations']);
@@ -54,27 +64,48 @@ async function tableExists(client: Client, table: string): Promise<boolean> {
   return result.rows[0]?.exists === true;
 }
 
-export function databaseSettings(): { connectionString?: string; host?: string; port?: number; database?: string; user?: string; password?: string; ssl?: { rejectUnauthorized: boolean } } {
-  if (process.env.DATABASE_URL) return { connectionString: process.env.DATABASE_URL };
-  const host = requiredEnvironment('DATABASE_PROXY_HOST');
+/** Resolves database credentials at runtime; secret values never enter task definitions. */
+export async function databaseSettings(dependencies: DatabaseSettingsDependencies = {}): Promise<ClientConfig> {
+  const environment = dependencies.environment ?? process.env;
+  const secretArn = requiredEnvironment(environment, 'DATABASE_SECRET_ARN');
+  const secrets = dependencies.secrets ?? new SecretsManagerClient({});
+  const response = await secrets.send(new GetSecretValueCommand({ SecretId: secretArn }));
+  if (!response.SecretString) throw new Error('Database secret must use SecretString.');
+  const secret = parseDatabaseSecret(response.SecretString);
   return {
-    host,
-    port: Number(process.env.DATABASE_PORT ?? 5432),
-    database: requiredEnvironment('DATABASE_NAME'),
-    user: requiredEnvironment('DATABASE_USERNAME'),
-    password: requiredEnvironment('DATABASE_PASSWORD'),
-    ssl: process.env.DATABASE_SSL === 'require' ? { rejectUnauthorized: true } : undefined,
+    host: environment.DATABASE_PROXY_HOST || secret.host,
+    port: Number(environment.DATABASE_PORT ?? secret.port ?? 5432),
+    database: environment.DATABASE_NAME || secret.dbname,
+    user: secret.username,
+    password: secret.password,
+    ssl: environment.DATABASE_SSL === 'require' ? { rejectUnauthorized: true } : undefined,
   };
 }
 
-function requiredEnvironment(name: string): string {
-  const value = process.env[name];
+export function parseDatabaseSecret(value: string): { username: string; password: string; host?: string; port?: number; dbname?: string } {
+  let parsed: unknown;
+  try { parsed = JSON.parse(value); } catch { throw new Error('Database secret must contain valid JSON.'); }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('Database secret must be an object.');
+  const secret = parsed as Record<string, unknown>;
+  if (typeof secret.username !== 'string' || !secret.username || typeof secret.password !== 'string' || !secret.password) {
+    throw new Error('Database secret must contain non-empty username and password strings.');
+  }
+  if (secret.host !== undefined && (typeof secret.host !== 'string' || !secret.host)) throw new Error('Database secret host must be a non-empty string.');
+  if (secret.dbname !== undefined && (typeof secret.dbname !== 'string' || !secret.dbname)) throw new Error('Database secret dbname must be a non-empty string.');
+  if (secret.port !== undefined && (!Number.isInteger(secret.port) || (secret.port as number) < 1 || (secret.port as number) > 65535)) throw new Error('Database secret port must be a valid integer.');
+  return { username: secret.username, password: secret.password, host: secret.host as string | undefined, port: secret.port as number | undefined, dbname: secret.dbname as string | undefined };
+}
+
+function requiredEnvironment(environment: NodeJS.ProcessEnv, name: string): string {
+  const value = environment[name];
   if (!value) throw new Error(`Missing required database environment variable: ${name}`);
   return value;
 }
 
 if (process.argv[1]?.endsWith('migrate.js')) {
-  runMigrations().then(() => console.info('Database migrations complete.')).catch((error: unknown) => {
+  runMigrations().then(() => {
+    console.info('Database migrations complete.');
+  }).catch((error: unknown) => {
     console.error('Database migration failed.', error);
     process.exitCode = 1;
   });

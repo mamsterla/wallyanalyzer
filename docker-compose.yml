@@ -10,7 +10,13 @@ services:
       NODE_ENV: development
       NODE_SERVER_PATH: /app/local.js
       PSIU_BASE_URL: "${PSIU_BASE_URL:-http://psiu.local}"
-      DATABASE_URL: "postgresql://${POSTGRES_USER:-wally}:${POSTGRES_PASSWORD:-wally_local_password}@postgres:5432/${POSTGRES_DB:-wally}"
+      DATABASE_SECRET_ARN: "${DATABASE_SECRET_ARN:?DATABASE_SECRET_ARN must reference an AWS Secrets Manager secret}"
+      DATABASE_PROXY_HOST: postgres
+      DATABASE_NAME: "${POSTGRES_DB:-wally}"
+      AWS_REGION: "${AWS_REGION:-us-east-1}"
+      AWS_PROFILE: "${AWS_PROFILE:-default}"
+    volumes:
+      - "${HOME}/.aws:/root/.aws:ro"
     ports:
       - "127.0.0.1:${APP_PORT:-8081}:80"
     depends_on:
@@ -18,15 +24,20 @@ services:
         condition: service_healthy
 
   postgres:
-    image: postgres:16-alpine
+    build:
+      context: .
+      dockerfile: app-server/docker/postgres.Dockerfile
     environment:
       POSTGRES_DB: "${POSTGRES_DB:-wally}"
       POSTGRES_USER: "${POSTGRES_USER:-wally}"
-      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-wally_local_password}"
-    ports:
-      - "127.0.0.1:${POSTGRES_PORT:-5431}:5432"
+      DATABASE_SECRET_ARN: "${DATABASE_SECRET_ARN:?DATABASE_SECRET_ARN must reference an AWS Secrets Manager secret}"
+      AWS_REGION: "${AWS_REGION:-us-east-1}"
+      AWS_PROFILE: "${AWS_PROFILE:-default}"
     volumes:
       - postgres-data:/var/lib/postgresql/data
+      - "${HOME}/.aws:/root/.aws:ro"
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5431}:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
