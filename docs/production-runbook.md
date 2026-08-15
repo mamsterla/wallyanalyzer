@@ -11,7 +11,7 @@ Use `AWS_PROFILE=wallyanalyzer AWS_REGION=us-east-1` for every operator command.
 
 Canonical domain: `wally-analytics.app`. OpenSRS is registrar. Route 53 hosted zone `Z0640322GREKLUZ06W3O` is already delegated and must never be deleted or recreated.
 
-The normal CodePipeline deployment is **foundation only**. During the current recovery it passes `retainManagedDomainResources=true` to retain the existing CloudFormation logical hosted-zone/certificate resources while preserving their physical resources. It does not request ACM and cannot wait for DNS validation. The CodePipeline deploy action must not receive `applicationActivation=true`.
+After the first successful activation, the normal CodePipeline deployment includes `applicationActivation=true` to preserve the established HTTPS listener, ACM certificate, and aliases in the delegated hosted zone. It must use `applicationHostedZoneId=Z0640322GREKLUZ06W3O` and must not use `retainManagedDomainResources=true`; that recovery bridge creates a different hosted zone and can cause public DNS outage. New certificate issuance remains a separately approved manual activation action.
 
 Domain activation is a separate manually-started CodePipeline. Its GitHub `main` source action has push triggers disabled, then a human approval gate precedes the DNS-preflighted activation build. It is safe to start only after both public resolvers return exactly these nameservers:
 
