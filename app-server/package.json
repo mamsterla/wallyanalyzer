@@ -7,7 +7,8 @@
     "build": "tsc -p tsconfig.json",
     "check": "tsc --noEmit -p tsconfig.json",
     "test": "node --test dist/*.test.js dist/**/*.test.js",
-    "dev": "tsx watch src/local.ts"
+    "dev": "tsx watch src/local.ts",
+    "probe:psiu-audio": "node scripts/probe-psiu-audio.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-cognito-identity-provider": "^3.1107.0",
