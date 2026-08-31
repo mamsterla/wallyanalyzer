@@ -52,11 +52,12 @@ export interface EquipmentItem { id: string; type: EquipmentType; manufacturer: 
 export type AnalysisStatus = 'uploaded' | 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
 export interface SampleUploadRequest { fileName: string; contentType: string; byteLength: number; sha256?: string; psuDeviceId?: string; metadata: { recordedAt: string; testTrackId?: string; equipmentIds: string[]; }; }
 export interface SampleUploadResponse { sampleId: string; objectKey: string; uploadUrl: string; expiresAt: string; }
-export interface SampleUploadFile { clientFileId: string; fileName: string; contentType: string; byteLength: number; sha256Base64?: string; recordedAt: string; }
-export interface CreateSampleUploadBatchRequest { idempotencyKey: string; psiuUnitId: string; source: 'manual' | 'psiu_capture'; observedPsiuUid?: string; files: SampleUploadFile[]; }
+export type SampleSource = 'manual_file' | 'psiu_capture';
+export interface SampleUploadFile { clientFileId: string; fileName: string; contentType: string; byteLength: number; sha256Base64?: string; recordedAt: string; source: SampleSource; }
+export interface CreateSampleUploadBatchRequest { idempotencyKey: string; psiuUnitId: string; source: SampleSource; observedPsiuUid?: string; files: SampleUploadFile[]; }
 export interface SampleUploadIntent { sampleId: string; clientFileId: string; fileName: string; uploadUrl: string; expiresAt: string; requiredHeaders: Record<string, string>; }
 export interface CreateSampleUploadBatchResponse { batchId: string; uploads: SampleUploadIntent[]; }
-export interface SampleSummary { id: string; batchId: string; psiuUnitId: string; fileName: string; contentType: string; byteLength: number; sha256Base64?: string; recordedAt: string; uploadState: 'intent' | 'uploaded' | 'failed'; sampleRateHz?: number; channels?: number; bitsPerSample?: number; durationMs?: number; createdAt: string; uploadedAt?: string; }
+export interface SampleSummary { id: string; batchId: string; psiuUnitId: string; source: SampleSource; observedPsiuUid?: string; fileName: string; contentType: string; byteLength: number; sha256Base64?: string; recordedAt: string; uploadState: 'intent' | 'uploaded' | 'failed'; sampleRateHz?: number; channels?: number; bitsPerSample?: number; durationMs?: number; createdAt: string; uploadedAt?: string; }
 export interface CompleteSampleUploadResponse { sample: SampleSummary; }
 export interface SampleDownloadResponse { downloadUrl: string; expiresAt: string; }
 export interface AnalysisReportSummary { id: string; sampleId: string; algorithmVersion: string; status: AnalysisStatus; createdAt: string; completedAt?: string; }

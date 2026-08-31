@@ -9,10 +9,11 @@ export type UploadIntentRow = { sampleId:string; clientFileId:string; fileName:s
 
 export function validateUploadBatch(request: CreateSampleUploadBatchRequest): void {
   if (!/^[A-Za-z0-9_-]{16,128}$/.test(request.idempotencyKey)) throw new HttpError(400, 'A valid idempotency key is required.');
-  if (!request.psiuUnitId || !['manual','psiu_capture'].includes(request.source) || !Array.isArray(request.files) || request.files.length < 1 || request.files.length > 25) throw new HttpError(400, 'Upload batch must contain a source and 1 to 25 files.');
+  if (!request.psiuUnitId || !['manual_file','psiu_capture'].includes(request.source) || !Array.isArray(request.files) || request.files.length < 1 || request.files.length > 25) throw new HttpError(400, 'Upload batch must contain a source and 1 to 25 files.');
   if (request.source === 'psiu_capture' && !request.observedPsiuUid) throw new HttpError(400, 'PSIU capture uploads require an observed PSIU UID.');
   const fileIds = new Set<string>();
   for (const file of request.files) {
+    if (file.source !== request.source) throw new HttpError(400, 'Upload batch files must share one source.');
     if (!/^[A-Za-z0-9_-]{16,128}$/.test(file.clientFileId) || fileIds.has(file.clientFileId)) throw new HttpError(400, 'Each upload file requires a unique stable client file ID.');
     fileIds.add(file.clientFileId);
     if (!file.fileName.toLowerCase().endsWith('.wav') || !['audio/wav', 'audio/wave', 'audio/x-wav'].includes(file.contentType.toLowerCase())) throw new HttpError(400, 'Only WAV files are accepted.');

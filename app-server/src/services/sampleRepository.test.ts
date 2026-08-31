@@ -6,13 +6,17 @@ const source = await readFile(new URL('./sampleRepository.js', import.meta.url),
 const freshUploadMigrations = await Promise.all([
   readFile(new URL('../../migrations/0004_sample_uploads.sql', import.meta.url), 'utf8'),
   readFile(new URL('../../migrations/0005_sample_upload_idempotency_fingerprint.sql', import.meta.url), 'utf8'),
+  readFile(new URL('../../migrations/0006_multi_psiu_upload_provenance.sql', import.meta.url), 'utf8'),
 ]);
 
-test('fresh upload schema adds request_fingerprint before repository upload intent inserts it', () => {
-  const [uploadSchema, fingerprintMigration] = freshUploadMigrations;
+test('fresh upload schema adds idempotency and source provenance before repository upload intent inserts it', () => {
+  const [uploadSchema, fingerprintMigration, provenanceMigration] = freshUploadMigrations;
   assert.match(uploadSchema, /create table sample_upload_batches/i);
   assert.match(fingerprintMigration, /add column request_fingerprint text not null/i);
-  assert.match(source, /insert into sample_upload_batches\(id,owner_id,psiu_unit_id,idempotency_key,request_fingerprint\)/i);
+  assert.match(provenanceMigration, /drop index if exists psiu_assignments_one_active_user_idx/i);
+  assert.match(provenanceMigration, /add column source text not null default 'manual_file'/i);
+  assert.match(provenanceMigration, /add column observed_psiu_uid text/i);
+  assert.match(source, /insert into sample_upload_batches\(id,owner_id,psiu_unit_id,idempotency_key,request_fingerprint,source,observed_psiu_uid\)/i);
 });
 
 test('concurrent idempotency claims use atomic insert-on-conflict before reloading the winning batch', () => {
