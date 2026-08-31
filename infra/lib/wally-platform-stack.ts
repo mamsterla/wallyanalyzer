@@ -215,6 +215,7 @@ export class WallyPlatformStack extends cdk.Stack {
     });
 
     const sampleBucket = privateArtifactBucket(this, 'SampleBucket', 'raw audio uploads', retention);
+    sampleBucket.addCorsRule({ allowedOrigins: [`https://${applicationHostname}`], allowedMethods: [s3.HttpMethods.PUT, s3.HttpMethods.GET], allowedHeaders: ['content-type', 'x-amz-checksum-sha256', 'x-amz-content-sha256', 'x-amz-date', 'x-amz-security-token'], exposedHeaders: ['etag', 'x-amz-checksum-sha256'], maxAge: 300 });
     const reportBucket = privateArtifactBucket(this, 'ReportBucket', 'immutable report artifacts', retention);
 
     // Cognito cannot change standard email mutability in place. This replacement pool
@@ -299,6 +300,7 @@ export class WallyPlatformStack extends cdk.Stack {
         DATABASE_NAME: 'wally',
         DATABASE_SSL: 'require',
         DATABASE_SECRET_ARN: database.secret!.secretArn,
+        SAMPLE_BUCKET_NAME: sampleBucket.bucketName,
       },
     });
     container.addPortMappings({ containerPort: 80 });
@@ -306,6 +308,7 @@ export class WallyPlatformStack extends cdk.Stack {
     // report route is implemented. In particular, this API task has no delete
     // permission for private raw audio or immutable report artifacts.
     database.secret!.grantRead(taskDefinition.taskRole);
+    taskDefinition.taskRole.addToPrincipalPolicy(new iam.PolicyStatement({ actions: ['s3:PutObject', 's3:GetObject'], resources: [sampleBucket.arnForObjects('raw/*')] }));
     taskDefinition.taskRole.addToPrincipalPolicy(new iam.PolicyStatement({
       actions: [
         'cognito-idp:AdminCreateUser',

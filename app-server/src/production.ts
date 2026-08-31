@@ -1,21 +1,28 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { AdminAddUserToGroupCommand, AdminCreateUserCommand, AdminDeleteUserCommand, AdminDisableUserCommand, AdminEnableUserCommand, AdminResetUserPasswordCommand, CognitoIdentityProviderClient } from '@aws-sdk/client-cognito-identity-provider';
-import type { AdminFulfillmentRequest, AssignPsiuRequest, CreateCustomerRequest, CreatePsiuRequest, PsiuUnitStatus } from '@wally/contracts';
+import type { AdminFulfillmentRequest, AssignPsiuRequest, CreateCustomerRequest, CreatePsiuRequest, CreateSampleUploadBatchRequest } from '@wally/contracts';
+import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { Pool } from 'pg';
 import { HttpError, verifyCognitoAccessToken, type AuthenticatedPrincipal } from './services/auth.js';
 import { requireAdmin, requirePrincipal } from './services/accountAuthorization.js';
 import { PostgresAccountRepository, type AccountRepository, type CognitoReconciliationJob } from './services/accountRepository.js';
 import { databaseSettings } from './migrate.js';
+import { PostgresSampleRepository, type SampleRepository } from './services/sampleRepository.js';
+import { presignUpload, validateUploadBatch, verifyWavObject } from './services/sampleUploads.js';
 
 const port = Number(process.env.PORT ?? 3000);
 export function createProductionServer(dependencies: ProductionDependencies) {
   const pool = dependencies.pool; const repository = dependencies.repository ?? new PostgresAccountRepository(pool);
+  const samples = dependencies.samples ?? new PostgresSampleRepository(pool);
+  const s3 = dependencies.s3 ?? new S3Client({}); const bucketName = dependencies.sampleBucketName ?? process.env.SAMPLE_BUCKET_NAME ?? '';
   const cognito = dependencies.cognito ?? new CognitoIdentityProviderClient({}); const verify = dependencies.verify ?? verifyCognitoAccessToken;
   return createServer(async (request,response) => { try {
     if (request.method==='GET' && request.url==='/health') return sendJson(response,200,{status:'ok',service:'wally-app-server'});
     const path=new URL(request.url??'/', 'http://wally.local').pathname; const principal=await verify(bearerToken(request),cognitoSettings()); const actor=await requirePrincipal(principal,repository);
     if(request.method==='GET' && path==='/v1/me') return sendJson(response,200,await repository.me(actor.id));
     if(request.method==='GET' && path==='/v1/me/units') return sendJson(response,200,(await repository.me(actor.id))?.units??[]);
+    if(path.startsWith('/v1/samples')) return await sampleRoute(request,response,path,actor.id,samples,s3,bucketName);
     if(path.startsWith('/v1/admin/')) { requireAdmin(actor); return await adminRoute(request,response,path,actor.id,repository,cognito); }
     return sendJson(response,404,{message:'Route not found.'});
   } catch(error) { if(error instanceof HttpError)return sendJson(response,error.statusCode,{message:error.message}); console.error('Unhandled production API error',error);return sendJson(response,500,{message:'Internal server error.'}); }});
@@ -52,7 +59,15 @@ async function invite(id:string,actor:string,repo:AccountRepository,cognito:Cogn
 }
 async function deleteCognito(job:CognitoReconciliationJob,cognito:CognitoIdentityProviderClient){try{await cognito.send(new AdminDeleteUserCommand({UserPoolId:poolId(),Username:job.email}));}catch(error){if(!(typeof error==='object'&&error!==null&&'name' in error&&(error as {name?:string}).name==='UserNotFoundException'))throw error;}}
 async function reset(id:string,repo:AccountRepository,cognito:CognitoIdentityProviderClient,response:ServerResponse){const customer=await repo.customer(id);if(!customer?.invitedAt)throw new HttpError(409,'Invited customer required.');await cognito.send(new AdminResetUserPasswordCommand({UserPoolId:poolId(),Username:customer.email}));sendJson(response,202,{status:'reset_requested'});}
-interface ProductionDependencies { pool:Pool; repository?:AccountRepository; cognito?:CognitoIdentityProviderClient; verify?: (token:string,settings:{userPoolId:string;clientId:string})=>Promise<AuthenticatedPrincipal>; }
+async function sampleRoute(request:IncomingMessage,response:ServerResponse,path:string,ownerId:string,samples:SampleRepository,s3:S3Client,bucketName:string):Promise<void>{
+  if(request.method==='POST'&&path==='/v1/samples/upload-batches'){const value=await parseJson<CreateSampleUploadBatchRequest>(request);validateUploadBatch(value);const batch=await samples.createBatch(ownerId,value);return sendJson(response,201,{batchId:batch.batchId,uploads:await Promise.all(batch.intents.map(intent=>presignUpload(intent,bucketName,s3)))});}
+  const match=path.match(/^\/v1\/samples\/([^/]+)\/(complete|download)$/);if(!match) {if(request.method==='GET'&&path==='/v1/samples')return sendJson(response,200,await samples.list(ownerId));throw new HttpError(404,'Route not found.');}
+  const [,sampleId,action]=match;
+  if(request.method==='POST'&&action==='complete'){const intent=await samples.intent(ownerId,sampleId);if(!intent)throw new HttpError(404,'Upload intent not found.');const metadata=await verifyWavObject(intent,bucketName,s3);return sendJson(response,200,{sample:await samples.complete(ownerId,sampleId,metadata)});}
+  if(request.method==='GET'&&action==='download'){const objectKey=await samples.objectKey(ownerId,sampleId);if(!objectKey)throw new HttpError(404,'Sample not found.');const downloadUrl=await getSignedUrl(s3,new GetObjectCommand({Bucket:bucketName,Key:objectKey}),{expiresIn:900});return sendJson(response,200,{downloadUrl,expiresAt:new Date(Date.now()+900000).toISOString()});}
+  throw new HttpError(404,'Route not found.');
+}
+interface ProductionDependencies { pool:Pool; repository?:AccountRepository; samples?:SampleRepository; s3?:S3Client; sampleBucketName?:string; cognito?:CognitoIdentityProviderClient; verify?: (token:string,settings:{userPoolId:string;clientId:string})=>Promise<AuthenticatedPrincipal>; }
 export async function createProductionServerFromEnvironment() { return createProductionServer({ pool: new Pool(await databaseSettings()) }); }
 function bearerToken(r:IncomingMessage){const v=r.headers.authorization;if(!v?.startsWith('Bearer '))throw new HttpError(401,'Bearer access token required.');const token=v.slice(7).trim();if(!token)throw new HttpError(401,'Bearer access token required.');return token;}
 async function parseJson<T>(r:IncomingMessage):Promise<T>{const chunks:Buffer[]=[];let n=0;for await(const x of r){const b=Buffer.from(x);if((n+=b.length)>16_384)throw new HttpError(413,'Request body too large.');chunks.push(b);}try{return JSON.parse(Buffer.concat(chunks).toString()) as T;}catch{throw new HttpError(400,'Valid JSON request body required.');}}
