@@ -47,7 +47,7 @@ Required response behavior:
 
 ## Milestone 1 local-capture exception
 
-Milestone 1 uses PSIU-v1's verified `admin:admin` Basic Auth credential for `POST /api/sampling` only. It is held in the local Compose proxy, never persisted, and never sent to AWS. Replace it with user-associated device credentials before release.
+Milestone 1 uses a verified PSIU Basic Auth credential for `POST /api/sampling` only. The local Compose proxy retrieves it at runtime from the `PSIU_CREDENTIAL_SECRET_ARN` AWS Secrets Manager reference; it is never persisted, logged, or sent to AWS by the proxy. Replace it with per-unit device credentials before release.
 
 ## Safety constraints
 

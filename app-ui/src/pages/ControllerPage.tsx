@@ -23,11 +23,11 @@ import { createPsuClient, PsiuUnavailableError } from '../features/controller/ps
 
 type CapturePhase = 'checking' | 'unavailable' | 'ready' | 'starting' | 'capturing' | 'stopping' | 'completed';
 
-export interface CapturedPsiuFile { file: File; clientFileId: string; psiuUnitId: string; recordedAt: string; }
+export interface CapturedPsiuFile { file: File; clientFileId: string; psiuUnitId: string; observedPsiuUid: string; recordedAt: string; }
 
-export function queueCapturedPsiuWav(file: File, psiuUnitId: string): CapturedPsiuFile {
-  if (!psiuUnitId) throw new PsiuUnavailableError();
-  return { file, clientFileId: crypto.randomUUID().replaceAll('-', ''), psiuUnitId, recordedAt: new Date(file.lastModified).toISOString() };
+export function queueCapturedPsiuWav(file: File, psiuUnitId: string, observedPsiuUid: string, units: CustomerUnit[]): CapturedPsiuFile {
+  if (!psiuUnitId || !observedPsiuUid || !units.some((unit) => unit.id === psiuUnitId && unit.uid === observedPsiuUid && unit.status === 'enabled')) throw new PsiuUnavailableError();
+  return { file, clientFileId: crypto.randomUUID().replaceAll('-', ''), psiuUnitId, observedPsiuUid, recordedAt: new Date(file.lastModified).toISOString() };
 }
 
 export function ControllerPage({ units, onCaptureQueued }: { units: CustomerUnit[]; onCaptureQueued: (capture: CapturedPsiuFile) => void }) {
@@ -178,7 +178,7 @@ export function ControllerPage({ units, onCaptureQueued }: { units: CustomerUnit
             )}
             {phase === 'capturing' && status && <LiveCaptureProgress status={status} />}
             {capture && <CaptureSummary file={capture} />}
-            <Dialog open={showUploadPrompt} onClose={() => setShowUploadPrompt(false)}><DialogTitle>Add capture to upload batch</DialogTitle><DialogContent><Stack spacing={2} mt={1}><DialogContentText>The WAV file remains in this browser until you upload it from your account page.</DialogContentText><TextField select SelectProps={{ native: true }} label="Assigned enabled PSIU" value={selectedUnitId} onChange={(event) => setSelectedUnitId(event.target.value)}><option value="">Select PSIU</option>{units.filter((unit) => unit.status === 'enabled').map((unit) => <option key={unit.id} value={unit.id}>{unit.serialNumber} · {unit.uid}</option>)}</TextField></Stack></DialogContent><DialogActions><Button onClick={() => setShowUploadPrompt(false)}>Not now</Button><Button variant="contained" disabled={!capture || !selectedUnitId} onClick={() => { if (!capture || !selectedUnitId) return; onCaptureQueued(queueCapturedPsiuWav(capture, selectedUnitId)); setShowUploadPrompt(false); setCapture(null); setPhase('ready'); setNotice('Capture added to your upload batch. Upload it from your account page.'); }}>Add to batch</Button></DialogActions></Dialog>
+            <Dialog open={showUploadPrompt} onClose={() => setShowUploadPrompt(false)}><DialogTitle>Add capture to upload batch</DialogTitle><DialogContent><Stack spacing={2} mt={1}><DialogContentText>The capture can only be attached to the enabled assigned PSIU whose UID matches the local status response.</DialogContentText><TextField select SelectProps={{ native: true }} label="Assigned enabled PSIU" value={selectedUnitId} onChange={(event) => setSelectedUnitId(event.target.value)}><option value="">Select PSIU</option>{units.filter((unit) => unit.status === 'enabled' && unit.uid === status?.uid).map((unit) => <option key={unit.id} value={unit.id}>{unit.serialNumber} · {unit.uid}</option>)}</TextField></Stack></DialogContent><DialogActions><Button onClick={() => setShowUploadPrompt(false)}>Not now</Button><Button variant="contained" disabled={!capture || !selectedUnitId || !status} onClick={() => { if (!capture || !selectedUnitId || !status) return; onCaptureQueued(queueCapturedPsiuWav(capture, selectedUnitId, status.uid, units)); setShowUploadPrompt(false); setCapture(null); setPhase('ready'); setNotice('Capture added to your upload batch. Upload it from your account page.'); }}>Add to batch</Button></DialogActions></Dialog>
           </Stack></CardContent></Card>
         </Grid>
       </Grid>

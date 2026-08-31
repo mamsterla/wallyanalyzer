@@ -215,7 +215,7 @@ export class WallyPlatformStack extends cdk.Stack {
     });
 
     const sampleBucket = privateArtifactBucket(this, 'SampleBucket', 'raw audio uploads', retention);
-    sampleBucket.addCorsRule({ allowedOrigins: [`https://${applicationHostname}`], allowedMethods: [s3.HttpMethods.PUT, s3.HttpMethods.GET], allowedHeaders: ['content-type', 'x-amz-checksum-sha256', 'x-amz-content-sha256', 'x-amz-date', 'x-amz-security-token'], exposedHeaders: ['etag', 'x-amz-checksum-sha256'], maxAge: 300 });
+    sampleBucket.addCorsRule({ allowedOrigins: [`https://${applicationHostname}`], allowedMethods: [s3.HttpMethods.PUT, s3.HttpMethods.GET, s3.HttpMethods.HEAD], allowedHeaders: ['content-type', 'x-amz-checksum-sha256', 'x-amz-content-sha256', 'x-amz-date', 'x-amz-security-token'], exposedHeaders: ['etag', 'x-amz-checksum-sha256'], maxAge: 300 });
     const reportBucket = privateArtifactBucket(this, 'ReportBucket', 'immutable report artifacts', retention);
 
     // Cognito cannot change standard email mutability in place. This replacement pool
