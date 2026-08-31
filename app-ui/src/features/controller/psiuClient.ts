@@ -1,4 +1,4 @@
-import type { PsiuCaptureInfo, PsiuStatus } from '@wally/contracts';
+import type { PsiuStatus } from '@wally/contracts';
 
 export class PsiuUnavailableError extends Error {
   constructor() {
@@ -10,7 +10,7 @@ export interface PsiuClient {
   getStatus(): Promise<PsiuStatus>;
   startCapture(): Promise<PsiuStatus>;
   stopCapture(): Promise<PsiuStatus>;
-  getCompletedCapture(completedAt: string): Promise<PsiuCaptureInfo | null>;
+  getCompletedCapture(): Promise<Blob | null>; 
 }
 
 export type FetchLike = typeof fetch;
@@ -31,7 +31,7 @@ export function createPsuClient(fetchImplementation: FetchLike = fetch): PsiuCli
     async stopCapture() {
       return requestStatus(fetchImplementation, '/api/psiu/capture', captureRequest(false));
     },
-    async getCompletedCapture(completedAt: string) {
+    async getCompletedCapture() {
       let response: Response;
       try {
         response = await fetchImplementation('/api/psiu/wav');
@@ -39,8 +39,8 @@ export function createPsuClient(fetchImplementation: FetchLike = fetch): PsiuCli
         throw new PsiuUnavailableError();
       }
       if (response.status === 404) return null;
-      if (!response.ok) throw new PsiuUnavailableError();
-      return parseCapture(await response.json(), completedAt);
+      if (!response.ok || !response.headers.get('content-type')?.toLowerCase().startsWith('audio/wav')) throw new PsiuUnavailableError();
+      return response.blob();
     },
   };
 }
@@ -76,20 +76,6 @@ function parseStatus(value: unknown): PsiuStatus {
     dmaErrors: asNumber(status.dma_errors),
     i2sErrors: asNumber(status.i2s_errors),
     recordingCount: asNumber(status.recording_count),
-  };
-}
-
-function parseCapture(value: unknown, completedAt: string): PsiuCaptureInfo {
-  const capture = asRecord(value);
-  return {
-    sampleRateHz: asNumber(capture.sample_rate_hz),
-    channels: asNumber(capture.channels),
-    bits: asNumber(capture.bits),
-    dataBytes: asNumber(capture.data_bytes),
-    durationMs: asNumber(capture.duration_ms),
-    droppedHalves: asNumber(capture.dropped_halves),
-    recordingCount: asNumber(capture.recording_count),
-    completedAt,
   };
 }
 

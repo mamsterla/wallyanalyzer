@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { GetSecretValueCommand } from '@aws-sdk/client-secrets-manager';
-import { parsePsiuCredential, resolvePsiuAuthorization } from './local.js';
+import { createLocalServer, parsePsiuCredential, resolvePsiuAuthorization } from './local.js';
 
 test('resolves PSIU authorization from a Secrets Manager ARN', async () => {
   let requestedSecretId: string | undefined;
@@ -14,6 +14,31 @@ test('resolves PSIU authorization from a Secrets Manager ARN', async () => {
   });
   assert.equal(requestedSecretId, 'arn:aws:secretsmanager:us-east-1:123456789012:secret:psiu');
   assert.equal(authorization, `Basic ${Buffer.from('operator:not-in-source').toString('base64')}`);
+});
+
+test('forwards authenticated audio.wav bytes and content headers through local WAV proxy', async () => {
+  const wav = Buffer.from('RIFF____WAVEpayload');
+  const server = await createLocalServer({
+    authorization: 'Basic test',
+    environment: { PSIU_BASE_URL: 'http://psiu.local' },
+    fetchImplementation: (async (input, init) => {
+      assert.equal(String(input), 'http://psiu.local/audio.wav');
+      assert.equal(new Headers(init?.headers).get('authorization'), 'Basic test');
+      return new Response(wav, { status: 206, headers: { 'content-type': 'audio/wav', 'content-length': String(wav.length), 'content-range': `bytes 0-${wav.length - 1}/${wav.length}`, 'accept-ranges': 'bytes' } });
+    }) as typeof fetch,
+  });
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const address = server.address();
+  assert.ok(address && typeof address === 'object');
+  try {
+    const response = await fetch(`http://127.0.0.1:${address.port}/psiu/wav`);
+    assert.equal(response.status, 206);
+    assert.equal(response.headers.get('content-type'), 'audio/wav');
+    assert.equal(response.headers.get('content-range'), `bytes 0-${wav.length - 1}/${wav.length}`);
+    assert.deepEqual(Buffer.from(await response.arrayBuffer()), wav);
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  }
 });
 
 test('accepts an opaque authorization value for future firmware authentication', () => {

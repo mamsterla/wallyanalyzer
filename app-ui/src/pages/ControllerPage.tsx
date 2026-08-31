@@ -13,19 +13,28 @@ import {
   Divider,
   Grid,
   Stack,
+  TextField,
   Typography,
 } from '@mui/material';
-import type { PsiuCaptureInfo, PsiuStatus } from '@wally/contracts';
+import type { CustomerUnit, PsiuStatus } from '@wally/contracts';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { RecordArtwork } from '../features/controller/RecordArtwork.js';
 import { createPsuClient, PsiuUnavailableError } from '../features/controller/psiuClient.js';
 
 type CapturePhase = 'checking' | 'unavailable' | 'ready' | 'starting' | 'capturing' | 'stopping' | 'completed';
 
-export function ControllerPage() {
+export interface CapturedPsiuFile { file: File; clientFileId: string; psiuUnitId: string; recordedAt: string; }
+
+export function queueCapturedPsiuWav(file: File, psiuUnitId: string): CapturedPsiuFile {
+  if (!psiuUnitId) throw new PsiuUnavailableError();
+  return { file, clientFileId: crypto.randomUUID().replaceAll('-', ''), psiuUnitId, recordedAt: new Date(file.lastModified).toISOString() };
+}
+
+export function ControllerPage({ units, onCaptureQueued }: { units: CustomerUnit[]; onCaptureQueued: (capture: CapturedPsiuFile) => void }) {
   const [phase, setPhase] = useState<CapturePhase>('checking');
   const [status, setStatus] = useState<PsiuStatus | null>(null);
-  const [capture, setCapture] = useState<PsiuCaptureInfo | null>(null);
+  const [capture, setCapture] = useState<File | null>(null);
+  const [selectedUnitId, setSelectedUnitId] = useState('');
   const [showUploadPrompt, setShowUploadPrompt] = useState(false);
   const [notice, setNotice] = useState('Checking for PSIU on your local network.');
 
@@ -78,13 +87,14 @@ export function ControllerPage() {
     setNotice('Completing capture…');
     try {
       const nextStatus = await client.stopCapture();
-      const completedAt = new Date().toISOString();
-      const completedCapture = await client.getCompletedCapture(completedAt);
+      const completedAt = new Date();
+      const completedCapture = await client.getCompletedCapture();
+      const file = completedCapture ? new File([completedCapture], `psiu-${nextStatus.uid}-${completedAt.toISOString().replaceAll(':', '-')}.wav`, { type: 'audio/wav', lastModified: completedAt.getTime() }) : null;
       setStatus(nextStatus);
-      setCapture(completedCapture);
-      setShowUploadPrompt(Boolean(completedCapture));
-      setPhase(completedCapture ? 'completed' : 'ready');
-      setNotice(completedCapture ? 'Capture complete. Recording details are ready.' : 'Capture stopped. PSIU has no completed recording metadata yet.');
+      setCapture(file);
+      setShowUploadPrompt(Boolean(file));
+      setPhase(file ? 'completed' : 'ready');
+      setNotice(file ? 'Capture complete. Select its assigned PSIU to add the WAV file to your upload batch.' : 'Capture stopped. PSIU has no completed WAV file yet.');
     } catch {
       setPhase('unavailable');
       setNotice('PSIU unit unavailable while completing capture.');
@@ -142,7 +152,7 @@ export function ControllerPage() {
     <Stack spacing={3}>
       <Box>
         <Typography variant="h3">PSIU local capture</Typography>
-        <Typography color="text.secondary">Connect to a PSIU on this network. Nothing is uploaded in this milestone.</Typography>
+        <Typography color="text.secondary">Capture stays on your local network until you add the completed WAV file to your account upload batch.</Typography>
       </Box>
 
       <Alert severity={isUnavailable ? 'info' : 'success'}>{notice}</Alert>
@@ -167,8 +177,8 @@ export function ControllerPage() {
               <Button variant="contained" size="large" onClick={() => void startCapture()} disabled={isBusy || isUnavailable}>Start capture</Button>
             )}
             {phase === 'capturing' && status && <LiveCaptureProgress status={status} />}
-            {capture && <CaptureSummary capture={capture} />}
-            <Dialog open={showUploadPrompt} onClose={() => setShowUploadPrompt(false)}><DialogTitle>Upload this capture?</DialogTitle><DialogContent><DialogContentText>This capture is complete. Upload is not enabled in this milestone, so no recording will be sent from this application.</DialogContentText></DialogContent><DialogActions><Button onClick={() => setShowUploadPrompt(false)}>Not now</Button><Button variant="contained" onClick={() => setShowUploadPrompt(false)}>Upload when available</Button></DialogActions></Dialog>
+            {capture && <CaptureSummary file={capture} />}
+            <Dialog open={showUploadPrompt} onClose={() => setShowUploadPrompt(false)}><DialogTitle>Add capture to upload batch</DialogTitle><DialogContent><Stack spacing={2} mt={1}><DialogContentText>The WAV file remains in this browser until you upload it from your account page.</DialogContentText><TextField select SelectProps={{ native: true }} label="Assigned enabled PSIU" value={selectedUnitId} onChange={(event) => setSelectedUnitId(event.target.value)}><option value="">Select PSIU</option>{units.filter((unit) => unit.status === 'enabled').map((unit) => <option key={unit.id} value={unit.id}>{unit.serialNumber} · {unit.uid}</option>)}</TextField></Stack></DialogContent><DialogActions><Button onClick={() => setShowUploadPrompt(false)}>Not now</Button><Button variant="contained" disabled={!capture || !selectedUnitId} onClick={() => { if (!capture || !selectedUnitId) return; onCaptureQueued(queueCapturedPsiuWav(capture, selectedUnitId)); setShowUploadPrompt(false); setCapture(null); setPhase('ready'); setNotice('Capture added to your upload batch. Upload it from your account page.'); }}>Add to batch</Button></DialogActions></Dialog>
           </Stack></CardContent></Card>
         </Grid>
       </Grid>
@@ -199,9 +209,8 @@ function LiveCaptureProgress({ status }: { status: PsiuStatus }) {
   return <Box width="100%" pt={1}><Divider sx={{ mb: 2 }} /><Typography variant="subtitle1" gutterBottom>Live capture progress</Typography><Grid container spacing={1}><Grid size={6}><Detail label="Pages written" value={formatNumber(status.pagesWritten)} /></Grid><Grid size={6}><Detail label="Estimated bytes captured" value={formatBytes(bytesWritten)} /></Grid><Grid size={6}><Detail label="Buffer wraps" value={formatNumber(status.bufferCount)} /></Grid><Grid size={6}><Detail label="Dropped halves" value={formatNumber(status.droppedHalves)} /></Grid><Grid size={6}><Detail label="DMA errors" value={formatNumber(status.dmaErrors)} /></Grid><Grid size={6}><Detail label="I²S errors" value={formatNumber(status.i2sErrors)} /></Grid></Grid><Typography variant="caption" color="text.secondary">Calculated as 2,048 words per page × 2 bytes per word.</Typography></Box>;
 }
 
-function CaptureSummary({ capture }: { capture: PsiuCaptureInfo }) {
-  const bitrate = capture.sampleRateHz * capture.channels * capture.bits;
-  return <Box width="100%" pt={1}><Divider sx={{ mb: 2 }} /><Typography variant="subtitle1" gutterBottom>Capture details</Typography><Grid container spacing={1}><Grid size={6}><Detail label="Duration" value={formatDuration(capture.durationMs)} /></Grid><Grid size={6}><Detail label="Bytes captured" value={formatBytes(capture.dataBytes)} /></Grid><Grid size={6}><Detail label="Bit rate" value={`${(bitrate / 1_000_000).toFixed(2)} Mbps`} /></Grid><Grid size={6}><Detail label="Format" value={`${capture.sampleRateHz / 1000} kHz · ${capture.bits}-bit · ${capture.channels} ch`} /></Grid><Grid size={12}><Detail label="Completed" value={new Date(capture.completedAt).toLocaleString()} /></Grid></Grid></Box>;
+function CaptureSummary({ file }: { file: File }) {
+  return <Box width="100%" pt={1}><Divider sx={{ mb: 2 }} /><Typography variant="subtitle1" gutterBottom>Capture ready</Typography><Grid container spacing={1}><Grid size={8}><Detail label="File" value={file.name} /></Grid><Grid size={4}><Detail label="Bytes" value={formatBytes(file.size)} /></Grid><Grid size={12}><Detail label="Captured" value={new Date(file.lastModified).toLocaleString()} /></Grid></Grid></Box>;
 }
 
 function Detail({ label, value }: { label: string; value: string }) {

@@ -39,19 +39,22 @@ describe('PSIU client', () => {
     expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/psiu/capture', expect.objectContaining({ method: 'POST', body: '{"running":false}' }));
   });
 
-  it('maps completed recording metadata and treats no recording as empty state', async () => {
+  it('returns completed WAV bytes and treats no recording as empty state', async () => {
+    const wav = new Blob(['RIFF____WAVE'], { type: 'audio/wav' });
     const fetchMock = vi.fn()
-      .mockResolvedValueOnce(jsonResponse({ available: true, sample_rate_hz: 192_000, channels: 2, bits: 32, data_bytes: 1_000, duration_ms: 2_500, dropped_halves: 0, recording_count: 3 }))
+      .mockResolvedValueOnce(new Response(wav, { status: 206, headers: { 'content-type': 'audio/wav', 'content-range': 'bytes 0-11/12' } }))
       .mockResolvedValueOnce(new Response(null, { status: 404 }));
     const client = createPsuClient(fetchMock);
 
-    await expect(client.getCompletedCapture('2026-08-09T14:00:00.000Z')).resolves.toMatchObject({ durationMs: 2_500, channels: 2, completedAt: '2026-08-09T14:00:00.000Z' });
-    await expect(client.getCompletedCapture('2026-08-09T14:00:00.000Z')).resolves.toBeNull();
+    await expect(client.getCompletedCapture()).resolves.toMatchObject({ type: 'audio/wav', size: 12 });
+    await expect(client.getCompletedCapture()).resolves.toBeNull();
   });
 
-  it('normalizes proxy absence to unavailable', async () => {
+  it('normalizes proxy absence and invalid audio content to unavailable', async () => {
     const client = createPsuClient(vi.fn().mockRejectedValue(new TypeError('Failed to fetch')));
     await expect(client.getStatus()).rejects.toBeInstanceOf(PsiuUnavailableError);
+    const invalidAudio = createPsuClient(vi.fn().mockResolvedValue(jsonResponse({ message: 'unavailable' })));
+    await expect(invalidAudio.getCompletedCapture()).rejects.toBeInstanceOf(PsiuUnavailableError);
   });
 });
 
