@@ -32,7 +32,7 @@ function samples(): SampleRepository {
   };
 }
 
-const upload = { idempotencyKey: 'valid-key-0000001', psiuUnitId: 'unit-a', files: [{ clientFileId: 'file-id-00000001', fileName: 'capture.wav', contentType: 'audio/wav', byteLength: 44, recordedAt: '2026-01-01T00:00:00.000Z' }] };
+const upload = { idempotencyKey: 'valid-key-0000001', psiuUnitId: 'unit-a', source: 'manual' as const, files: [{ clientFileId: 'file-id-00000001', fileName: 'capture.wav', contentType: 'audio/wav', byteLength: 44, recordedAt: '2026-01-01T00:00:00.000Z' }] };
 
 test('sample routes deny cross-owner create, completion, download, and list access', async () => {
   const server = serverFor(samples()); await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));

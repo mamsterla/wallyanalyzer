@@ -23,11 +23,11 @@ import { createPsuClient, PsiuUnavailableError } from '../features/controller/ps
 
 type CapturePhase = 'checking' | 'unavailable' | 'ready' | 'starting' | 'capturing' | 'stopping' | 'completed';
 
-export interface CapturedPsiuFile { file: File; clientFileId: string; psiuUnitId: string; observedPsiuUid: string; recordedAt: string; }
+export interface CapturedPsiuFile { file: File; clientFileId: string; psiuUnitId: string; observedPsiuUid: string; recordedAt: string; source: 'psiu_capture'; }
 
 export function queueCapturedPsiuWav(file: File, psiuUnitId: string, observedPsiuUid: string, units: CustomerUnit[]): CapturedPsiuFile {
   if (!psiuUnitId || !observedPsiuUid || !units.some((unit) => unit.id === psiuUnitId && unit.uid === observedPsiuUid && unit.status === 'enabled')) throw new PsiuUnavailableError();
-  return { file, clientFileId: crypto.randomUUID().replaceAll('-', ''), psiuUnitId, observedPsiuUid, recordedAt: new Date(file.lastModified).toISOString() };
+  return { file, clientFileId: crypto.randomUUID().replaceAll('-', ''), psiuUnitId, observedPsiuUid, recordedAt: new Date(file.lastModified).toISOString(), source: 'psiu_capture' };
 }
 
 export function ControllerPage({ units, onCaptureQueued }: { units: CustomerUnit[]; onCaptureQueued: (capture: CapturedPsiuFile) => void }) {
