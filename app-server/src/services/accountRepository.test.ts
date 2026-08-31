@@ -22,3 +22,20 @@ test('assigning a second enabled PSIU retains existing customer assignments', as
   assert.equal(queries.some((sql) => sql.includes('where psiu_unit_id=$1 and unassigned_at is null')), true);
   assert.equal(queries.some((sql) => sql.includes('insert into psiu_assignments')), true);
 });
+
+test('customer unit queries exclude disabled assignments while admin inventory remains unchanged', async () => {
+  const queries: string[] = [];
+  const pool = {
+    async query(sql: string) {
+      queries.push(sql);
+      if (sql.includes('from users where id=$1')) return { rowCount: 1, rows: [{ id: 'customer-a', email: 'customer@example.com', role: 'user', lifecycle: 'active', invited_at: null }] };
+      if (sql.includes('from psiu_units p join psiu_assignments')) return { rowCount: 0, rows: [] };
+      return { rowCount: 0, rows: [] };
+    },
+  };
+  const repository = new PostgresAccountRepository(pool as never);
+
+  assert.deepEqual((await repository.me('customer-a'))?.units, []);
+  assert.equal(queries.some((sql) => sql.includes("where a.user_id=$1 and p.status='enabled'")), true);
+  assert.equal(queries.some((sql) => sql.includes('from psiu_units p left join psiu_assignments')), false);
+});

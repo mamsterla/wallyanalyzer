@@ -9,8 +9,10 @@ export type UploadIntentRow = { sampleId:string; clientFileId:string; fileName:s
 
 export function validateUploadBatch(request: CreateSampleUploadBatchRequest): void {
   if (!/^[A-Za-z0-9_-]{16,128}$/.test(request.idempotencyKey)) throw new HttpError(400, 'A valid idempotency key is required.');
-  if (!request.psiuUnitId || !['manual_file','psiu_capture'].includes(request.source) || !Array.isArray(request.files) || request.files.length < 1 || request.files.length > 25) throw new HttpError(400, 'Upload batch must contain a source and 1 to 25 files.');
-  if (request.source === 'psiu_capture' && !request.observedPsiuUid) throw new HttpError(400, 'PSIU capture uploads require an observed PSIU UID.');
+  if (!request.psiuUnitId || !Array.isArray(request.files) || request.files.length < 1 || request.files.length > 25) throw new HttpError(400, 'Upload batch must contain 1 to 25 files.');
+  // PSIU capture provenance requires an approved local bridge attestation. Until
+  // that bridge exists, only user-selected WAV files may enter production.
+  if (request.source !== 'manual_file') throw new HttpError(400, 'PSIU capture uploads require the approved local bridge.');
   const fileIds = new Set<string>();
   for (const file of request.files) {
     if (file.source !== request.source) throw new HttpError(400, 'Upload batch files must share one source.');
