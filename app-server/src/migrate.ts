@@ -92,8 +92,9 @@ export function parseDatabaseSecret(value: string): { username: string; password
   }
   if (secret.host !== undefined && (typeof secret.host !== 'string' || !secret.host)) throw new Error('Database secret host must be a non-empty string.');
   if (secret.dbname !== undefined && (typeof secret.dbname !== 'string' || !secret.dbname)) throw new Error('Database secret dbname must be a non-empty string.');
-  if (secret.port !== undefined && (!Number.isInteger(secret.port) || (secret.port as number) < 1 || (secret.port as number) > 65535)) throw new Error('Database secret port must be a valid integer.');
-  return { username: secret.username, password: secret.password, host: secret.host as string | undefined, port: secret.port as number | undefined, dbname: secret.dbname as string | undefined };
+  const port = typeof secret.port === 'string' && /^\d+$/.test(secret.port) ? Number(secret.port) : secret.port;
+  if (port !== undefined && (!Number.isInteger(port) || (port as number) < 1 || (port as number) > 65535)) throw new Error('Database secret port must be a valid integer.');
+  return { username: secret.username, password: secret.password, host: secret.host as string | undefined, port: port as number | undefined, dbname: secret.dbname as string | undefined };
 }
 
 function requiredEnvironment(environment: NodeJS.ProcessEnv, name: string): string {

@@ -13,6 +13,10 @@ test('databaseSettings resolves standard RDS JSON with only a secret ARN referen
   assert.deepEqual(settings, { host: 'proxy.internal', port: 5432, database: 'wally', user: 'dbuser', password: 'not-logged', ssl: { rejectUnauthorized: true } });
 });
 
+test('database secret parsing accepts the string port form returned by Secrets Manager', () => {
+  assert.equal(parseDatabaseSecret('{"username":"dbuser","password":"not-logged","port":"5432"}').port, 5432);
+});
+
 test('database secret parsing rejects missing credentials without disclosing secret content', () => {
   assert.throws(() => parseDatabaseSecret('{"username":"dbuser"}'), /username and password/);
   assert.throws(() => parseDatabaseSecret('not-json'), /valid JSON/);
