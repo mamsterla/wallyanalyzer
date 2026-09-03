@@ -7,6 +7,7 @@ export class PsiuUnavailableError extends Error {
 }
 
 export interface PsiuClient {
+  scanUid(): Promise<string>;
   getStatus(): Promise<PsiuStatus>;
   startCapture(): Promise<PsiuStatus>;
   stopCapture(): Promise<PsiuStatus>;
@@ -22,6 +23,20 @@ export type FetchLike = typeof fetch;
  */
 export function createPsuClient(fetchImplementation: FetchLike = fetch): PsiuClient {
   return {
+    async scanUid() {
+      let response: Response;
+      try {
+        response = await fetchImplementation('/api/psiu/uid');
+      } catch {
+        throw new PsiuUnavailableError();
+      }
+      if (!response.ok) throw new PsiuUnavailableError();
+      const value = await response.json() as unknown;
+      if (!value || typeof value !== 'object' || Array.isArray(value)) throw new PsiuUnavailableError();
+      const uid = (value as Record<string, unknown>).uid;
+      if (typeof uid !== 'string' || !uid.trim() || uid.trim().length > 256) throw new PsiuUnavailableError();
+      return uid.trim();
+    },
     async getStatus() {
       return requestStatus(fetchImplementation, '/api/psiu/status');
     },

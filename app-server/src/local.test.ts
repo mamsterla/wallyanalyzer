@@ -41,6 +41,46 @@ test('forwards authenticated audio.wav bytes and content headers through local W
   }
 });
 
+test('proxies only a valid unauthenticated PSIU UID without telemetry or cache persistence', async () => {
+  const server = await createLocalServer({
+    environment: { PSIU_BASE_URL: 'http://psiu.local' },
+    fetchImplementation: (async (input, init) => {
+      assert.equal(String(input), 'http://psiu.local/uid');
+      assert.equal(new Headers(init?.headers).get('authorization'), null);
+      return new Response(JSON.stringify({ uid: 'psiu-uid-001', telemetry: 'discarded' }), { status: 200, headers: { 'content-type': 'application/json' } });
+    }) as typeof fetch,
+  });
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const address = server.address();
+  assert.ok(address && typeof address === 'object');
+  try {
+    const response = await fetch(`http://127.0.0.1:${address.port}/psiu/uid`);
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get('cache-control'), 'no-store');
+    assert.deepEqual(await response.json(), { uid: 'psiu-uid-001' });
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  }
+});
+
+test('rejects malformed UID responses and unavailable PSIU scan targets', async () => {
+  for (const [fetchImplementation, expectedStatus] of [
+    [(async () => new Response(JSON.stringify({ telemetry: true }), { status: 200 })) as typeof fetch, 502],
+    [(async () => { throw new TypeError('network unavailable'); }) as typeof fetch, 503],
+  ] as const) {
+    const server = await createLocalServer({ environment: { PSIU_BASE_URL: 'http://psiu.local' }, fetchImplementation });
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const address = server.address();
+    assert.ok(address && typeof address === 'object');
+    try {
+      const response = await fetch(`http://127.0.0.1:${address.port}/psiu/uid`);
+      assert.equal(response.status, expectedStatus);
+    } finally {
+      await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+    }
+  }
+});
+
 test('accepts an opaque authorization value for future firmware authentication', () => {
   assert.equal(parsePsiuCredential(JSON.stringify({ authorization: 'Bearer opaque-firmware-token' })), 'Bearer opaque-firmware-token');
 });

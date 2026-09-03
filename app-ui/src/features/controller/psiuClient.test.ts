@@ -18,6 +18,19 @@ const status = {
 };
 
 describe('PSIU client', () => {
+  it('scans only a valid local PSIU UID', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ uid: 'psiu-uid-001', telemetry: 'discarded' }));
+    const client = createPsuClient(fetchMock);
+
+    await expect(client.scanUid()).resolves.toBe('psiu-uid-001');
+    expect(fetchMock).toHaveBeenCalledWith('/api/psiu/uid');
+  });
+
+  it('rejects missing local PSIU UID values', async () => {
+    const client = createPsuClient(vi.fn().mockResolvedValue(jsonResponse({ telemetry: true })));
+    await expect(client.scanUid()).rejects.toBeInstanceOf(PsiuUnavailableError);
+  });
+
   it('reads proxied status and maps firmware fields', async () => {
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse(status));
     const client = createPsuClient(fetchMock);

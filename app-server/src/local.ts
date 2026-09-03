@@ -31,7 +31,9 @@ export function parsePsiuCredential(value: string): string {
 export async function createLocalServer(dependencies: { authorization?: string; environment?: NodeJS.ProcessEnv; fetchImplementation?: typeof fetch; secrets?: PsiuCredentialClient } = {}): Promise<Server> {
   const environment = dependencies.environment ?? process.env;
   const psiuBaseUrl = normalizePsiuBaseUrl(environment.PSIU_BASE_URL ?? 'http://psiu.local');
-  const psiuAuthorization = dependencies.authorization ?? await resolvePsiuAuthorization({ secrets: dependencies.secrets, environment });
+  const psiuAuthorization = dependencies.authorization ?? (environment.PSIU_CREDENTIAL_SECRET_ARN
+    ? await resolvePsiuAuthorization({ secrets: dependencies.secrets, environment })
+    : undefined);
   const fetchImplementation = dependencies.fetchImplementation ?? fetch;
 
   // Local-only PSIU proxy. Production uses production.ts and always verifies Cognito
@@ -39,14 +41,26 @@ export async function createLocalServer(dependencies: { authorization?: string; 
   return createServer(async (request, response) => {
     const url = new URL(request.url ?? '/', `http://${request.headers.host ?? 'localhost'}`);
     if (request.method === 'GET' && url.pathname === '/health') return sendJson(response, 200, { status: 'ok', service: 'wally-app-server' });
+    if (request.method === 'GET' && url.pathname === '/psiu/uid') return scanPsiuUid(response, psiuBaseUrl, fetchImplementation);
     if (request.method === 'GET' && url.pathname === '/psiu/status') return forwardPsiu(response, '/status', psiuBaseUrl, psiuAuthorization, fetchImplementation);
     if (request.method === 'GET' && url.pathname === '/psiu/wav') return forwardPsiu(response, '/audio.wav', psiuBaseUrl, psiuAuthorization, fetchImplementation);
-    if (request.method === 'POST' && url.pathname === '/psiu/capture') try { const { running } = await parseCaptureRequest(request); await requestPsiu(psiuBaseUrl, psiuAuthorization, '/api/sampling', fetchImplementation, { method: 'POST', headers: { authorization: psiuAuthorization, 'content-type': 'application/json' }, body: JSON.stringify({ running }) }); return forwardPsiu(response, '/status', psiuBaseUrl, psiuAuthorization, fetchImplementation); } catch (error) { return sendPsiuError(response, error); }
+    if (request.method === 'POST' && url.pathname === '/psiu/capture') try { const { running } = await parseCaptureRequest(request); const headers = new Headers({ 'content-type': 'application/json' }); if (psiuAuthorization) headers.set('authorization', psiuAuthorization); await requestPsiu(psiuBaseUrl, psiuAuthorization, '/api/sampling', fetchImplementation, { method: 'POST', headers, body: JSON.stringify({ running }) }); return forwardPsiu(response, '/status', psiuBaseUrl, psiuAuthorization, fetchImplementation); } catch (error) { return sendPsiuError(response, error); }
     return sendJson(response, 404, { message: 'Route not found.' });
   });
 }
 
-async function forwardPsiu(response: import('node:http').ServerResponse, path: string, psiuBaseUrl: string, psiuAuthorization: string, fetchImplementation: typeof fetch) {
+async function scanPsiuUid(response: import('node:http').ServerResponse, psiuBaseUrl: string, fetchImplementation: typeof fetch) {
+  try {
+    const upstream = await requestPsiu(psiuBaseUrl, undefined, '/uid', fetchImplementation);
+    const body: unknown = await upstream.json();
+    if (!body || typeof body !== 'object' || Array.isArray(body)) throw new PsiuProxyError(502, 'PSIU returned an invalid UID response.');
+    const uid = (body as Record<string, unknown>).uid;
+    if (typeof uid !== 'string' || !uid.trim() || uid.trim().length > 256) throw new PsiuProxyError(502, 'PSIU returned an invalid UID response.');
+    sendJson(response, 200, { uid: uid.trim() }, { 'cache-control': 'no-store' });
+  } catch (error) { sendPsiuError(response, error); }
+}
+
+async function forwardPsiu(response: import('node:http').ServerResponse, path: string, psiuBaseUrl: string, psiuAuthorization: string | undefined, fetchImplementation: typeof fetch) {
   try {
     const upstream = await requestPsiu(psiuBaseUrl, psiuAuthorization, path, fetchImplementation, undefined, path === '/status' ? 3 : 1);
     const headers: Record<string, string> = { 'content-type': upstream.headers.get('content-type') ?? 'application/json; charset=utf-8' };
@@ -58,13 +72,13 @@ async function forwardPsiu(response: import('node:http').ServerResponse, path: s
     response.end(Buffer.from(await upstream.arrayBuffer()));
   } catch (error) { sendPsiuError(response, error); }
 }
-async function requestPsiu(psiuBaseUrl: string, psiuAuthorization: string, path: string, fetchImplementation: typeof fetch, init?: RequestInit, attempts = 1): Promise<Response> { let last: PsiuProxyError | undefined; for (let n = 0; n < attempts; n += 1) { try { const response = await fetchImplementation(`${psiuBaseUrl}${path}`, { ...init, headers: { authorization: psiuAuthorization, ...init?.headers }, signal: AbortSignal.timeout(5000) }); if (response.ok) return response; last = new PsiuProxyError(response.status, 'PSIU request failed.'); if (response.status < 500) throw last; } catch (error) { if (error instanceof PsiuProxyError) throw error; last = new PsiuProxyError(503, 'PSIU unit unavailable.'); } if (n < attempts - 1) await new Promise<void>((resolve) => setTimeout(resolve, 250)); } throw last ?? new PsiuProxyError(503, 'PSIU unit unavailable.'); }
+async function requestPsiu(psiuBaseUrl: string, psiuAuthorization: string | undefined, path: string, fetchImplementation: typeof fetch, init?: RequestInit, attempts = 1): Promise<Response> { let last: PsiuProxyError | undefined; for (let n = 0; n < attempts; n += 1) { try { const headers = new Headers(init?.headers); if (psiuAuthorization) headers.set('authorization', psiuAuthorization); const response = await fetchImplementation(`${psiuBaseUrl}${path}`, { ...init, headers, signal: AbortSignal.timeout(5000) }); if (response.ok) return response; last = new PsiuProxyError(response.status, 'PSIU request failed.'); if (response.status < 500) throw last; } catch (error) { if (error instanceof PsiuProxyError) throw error; last = new PsiuProxyError(503, 'PSIU unit unavailable.'); } if (n < attempts - 1) await new Promise<void>((resolve) => setTimeout(resolve, 250)); } throw last ?? new PsiuProxyError(503, 'PSIU unit unavailable.'); }
 async function parseCaptureRequest(request: import('node:http').IncomingMessage) { const chunks: Buffer[] = []; let size = 0; for await (const chunk of request) { const buffer = Buffer.from(chunk); if ((size += buffer.length) > 1024) throw new PsiuProxyError(400, 'Capture request too large.'); chunks.push(buffer); } try { const value = JSON.parse(Buffer.concat(chunks).toString()) as { running?: unknown }; if (typeof value.running !== 'boolean') throw new Error(); return { running: value.running }; } catch { throw new PsiuProxyError(400, 'Capture request requires boolean running.'); } }
 function normalizePsiuBaseUrl(value: string) { const url = new URL(value); if (url.protocol !== 'http:' && url.protocol !== 'https:') throw new Error('PSIU_BASE_URL must use HTTP or HTTPS.'); return url.toString().replace(/\/$/, ''); }
 function requiredEnvironment(environment: NodeJS.ProcessEnv, name: string): string { const value = environment[name]; if (!value) throw new Error(`Missing required ${name}.`); return value; }
 class PsiuProxyError extends Error { constructor(readonly statusCode: number, message: string) { super(message); } }
 function sendPsiuError(response: import('node:http').ServerResponse, error: unknown) { sendJson(response, error instanceof PsiuProxyError ? error.statusCode : 503, { status: 'unavailable', message: error instanceof PsiuProxyError ? error.message : 'PSIU unit unavailable.' }); }
-function sendJson(response: import('node:http').ServerResponse, statusCode: number, body: unknown) { response.writeHead(statusCode, { 'content-type': 'application/json; charset=utf-8' }); response.end(JSON.stringify(body)); }
+function sendJson(response: import('node:http').ServerResponse, statusCode: number, body: unknown, headers: Record<string, string> = {}) { response.writeHead(statusCode, { 'content-type': 'application/json; charset=utf-8', ...headers }); response.end(JSON.stringify(body)); }
 
 async function main() { const server = await createLocalServer(); server.listen(port, '127.0.0.1', () => console.info(`Wally local API listening on http://127.0.0.1:${port}`)); }
 if (process.argv[1]?.endsWith('local.js')) main().catch((error: unknown) => { console.error(error instanceof Error ? `Local PSIU proxy initialization failed: ${error.message}` : 'Local PSIU proxy initialization failed.'); process.exitCode = 1; });

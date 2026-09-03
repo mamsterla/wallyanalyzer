@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { queueCapturedPsiuWav } from './ControllerPage.js';
+import { localInventoryPreview, queueCapturedPsiuWav } from './ControllerPage.js';
+
+describe('local inventory scan panel', () => {
+  it('previews local UID and optional serial without cloud inventory claims', () => {
+    expect(localInventoryPreview('uid-1', '')).toContain('No cloud change has been made');
+    expect(localInventoryPreview('uid-1', 'Serial 7')).toContain('Serial 7 · uid-1');
+  });
+});
 
 describe('PSIU capture handoff', () => {
   it('adds a completed WAV with a stable client upload identity and assigned unit', () => {
