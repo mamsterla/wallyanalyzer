@@ -53,7 +53,7 @@ Milestone 1 uses a verified PSIU Basic Auth credential for `POST /api/sampling` 
 
 - **Hard delete** is limited to unused test inventory: a PSIU with no assignment, upload-batch, or sample history. This permits clean re-enrollment of its serial number and UID.
 - **Unavailable** preserves the unit, assignment history, samples, upload batches, and audit record. It closes any active assignment and permanently blocks enable, assignment, and new upload intents.
-- An already-issued S3 presigned PUT URL cannot be revoked. Completion rechecks enabled status, active owner assignment, and capture UID; a newly unavailable or unassigned unit is rejected, marked failed, and its raw object is deleted best-effort. The app task is scoped to delete only `raw/*` sample objects. A failed deletion can leave an unaccepted raw object for operator cleanup.
+- An already-issued S3 presigned PUT URL cannot be revoked. Completion locks and rechecks enabled status, the active owner assignment, and capture UID; a newly unavailable or unassigned unit is rejected and marked failed. New uploads carry an `unaccepted` object tag. Known rejected objects are deleted best-effort; late writes from an issued URL retain that tag and S3 expires them within one day. Only a verified accepted completion retags an object as `accepted`, so accepted raw samples are not selected by the expiration rule. The app task is scoped to `raw/*` objects only.
 
 ## Safety constraints
 

@@ -215,7 +215,8 @@ export class WallyPlatformStack extends cdk.Stack {
     });
 
     const sampleBucket = privateArtifactBucket(this, 'SampleBucket', 'raw audio uploads', retention);
-    sampleBucket.addCorsRule({ allowedOrigins: [`https://${applicationHostname}`], allowedMethods: [s3.HttpMethods.PUT, s3.HttpMethods.GET, s3.HttpMethods.HEAD], allowedHeaders: ['content-type', 'x-amz-checksum-sha256', 'x-amz-content-sha256', 'x-amz-date', 'x-amz-security-token'], exposedHeaders: ['ETag', 'x-amz-checksum-sha256'], maxAge: 300 });
+    sampleBucket.addCorsRule({ allowedOrigins: [`https://${applicationHostname}`], allowedMethods: [s3.HttpMethods.PUT, s3.HttpMethods.GET, s3.HttpMethods.HEAD], allowedHeaders: ['content-type', 'x-amz-checksum-sha256', 'x-amz-content-sha256', 'x-amz-date', 'x-amz-security-token', 'x-amz-tagging'], exposedHeaders: ['ETag', 'x-amz-checksum-sha256'], maxAge: 300 });
+    sampleBucket.addLifecycleRule({ id: 'ExpireUnacceptedRawUploads', tagFilters: { 'wally-upload-state': 'unaccepted' }, expiration: cdk.Duration.days(1) });
     const reportBucket = privateArtifactBucket(this, 'ReportBucket', 'immutable report artifacts', retention);
 
     // Cognito cannot change standard email mutability in place. This replacement pool
@@ -307,7 +308,7 @@ export class WallyPlatformStack extends cdk.Stack {
     // Raw upload cleanup is limited to verified ownership-scoped sample objects.
     // Report artifacts remain immutable and receive no delete permission.
     database.secret!.grantRead(taskDefinition.taskRole);
-    taskDefinition.taskRole.addToPrincipalPolicy(new iam.PolicyStatement({ actions: ['s3:PutObject', 's3:GetObject', 's3:DeleteObject'], resources: [sampleBucket.arnForObjects('raw/*')] }));
+    taskDefinition.taskRole.addToPrincipalPolicy(new iam.PolicyStatement({ actions: ['s3:PutObject', 's3:PutObjectTagging', 's3:GetObject', 's3:DeleteObject'], resources: [sampleBucket.arnForObjects('raw/*')] }));
     taskDefinition.taskRole.addToPrincipalPolicy(new iam.PolicyStatement({
       actions: [
         'cognito-idp:AdminCreateUser',

@@ -5,6 +5,9 @@ import { HttpError } from './auth.js';
 
 export const MAX_WAV_BYTES = 2 * 1024 * 1024 * 1024;
 const URL_TTL_SECONDS = 15 * 60;
+export const UPLOAD_LIFECYCLE_TAG_KEY = 'wally-upload-state';
+export const UNACCEPTED_UPLOAD_TAG = `${UPLOAD_LIFECYCLE_TAG_KEY}=unaccepted`;
+export const ACCEPTED_UPLOAD_TAG = `${UPLOAD_LIFECYCLE_TAG_KEY}=accepted`;
 export type UploadIntentRow = { sampleId:string; clientFileId:string; fileName:string; objectKey:string; contentType:string; byteLength:number; sha256Base64?:string };
 
 export function validateUploadBatch(request: CreateSampleUploadBatchRequest): void {
@@ -26,9 +29,9 @@ export function validateUploadBatch(request: CreateSampleUploadBatchRequest): vo
 }
 
 export async function presignUpload(intent: UploadIntentRow, bucketName:string, s3:S3Client) {
-  const command = new PutObjectCommand({ Bucket:bucketName, Key:intent.objectKey, ContentType:intent.contentType, ContentLength:intent.byteLength, ...(intent.sha256Base64 ? { ChecksumSHA256:intent.sha256Base64 } : {}) });
+  const command = new PutObjectCommand({ Bucket:bucketName, Key:intent.objectKey, ContentType:intent.contentType, ContentLength:intent.byteLength, Tagging:UNACCEPTED_UPLOAD_TAG, ...(intent.sha256Base64 ? { ChecksumSHA256:intent.sha256Base64 } : {}) });
   const uploadUrl = await getSignedUrl(s3, command, { expiresIn: URL_TTL_SECONDS });
-  return { sampleId:intent.sampleId, clientFileId:intent.clientFileId, fileName:intent.fileName, uploadUrl, expiresAt:new Date(Date.now()+URL_TTL_SECONDS*1000).toISOString(), requiredHeaders:{ 'content-type':intent.contentType, ...(intent.sha256Base64 ? { 'x-amz-checksum-sha256':intent.sha256Base64 } : {}) } };
+  return { sampleId:intent.sampleId, clientFileId:intent.clientFileId, fileName:intent.fileName, uploadUrl, expiresAt:new Date(Date.now()+URL_TTL_SECONDS*1000).toISOString(), requiredHeaders:{ 'content-type':intent.contentType, 'x-amz-tagging':UNACCEPTED_UPLOAD_TAG, ...(intent.sha256Base64 ? { 'x-amz-checksum-sha256':intent.sha256Base64 } : {}) } };
 }
 
 export async function verifyWavObject(intent: UploadIntentRow, bucketName:string, s3:S3Client): Promise<{ sampleRateHz:number; channels:number; bitsPerSample:number; durationMs:number }> {

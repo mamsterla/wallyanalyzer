@@ -38,6 +38,19 @@ curl http://localhost:8081/api/psiu/uid
 
 Open `http://localhost:8081/controller` to use the local scanner panel. Entering a serial label is preview-only. Do not use this HTTP local UI with a production Cognito session; cloud inventory validation and writes are a later HTTPS bridge milestone.
 
+## PSIU upload lifecycle lock test
+
+The normal unit tests use repository doubles. Run this explicit local Postgres integration test to prove that a completion transaction blocks concurrent deassignment and unavailable transitions. It creates and removes isolated fixture rows; it does not access S3.
+
+```bash
+export AWS_PROFILE=wallyanalyzer AWS_REGION=us-east-1
+export DATABASE_SECRET_ARN='your-local-Postgres-secret-ARN'
+export DATABASE_NAME=wally DATABASE_TEST_HOST=127.0.0.1 DATABASE_TEST_PORT=5431
+node app-server/scripts/test-psiu-upload-locking.mjs
+```
+
+The local database must have migrations through `0007_psiu_unavailable_lifecycle.sql` applied.
+
 The initial SQL migration mounts into PostgreSQL's standard init directory. It runs only when the named `postgres-data` volume is first created. Reset database data only when safe:
 
 ```bash

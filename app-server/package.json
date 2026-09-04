@@ -8,7 +8,8 @@
     "check": "tsc --noEmit -p tsconfig.json",
     "test": "node --test dist/*.test.js dist/**/*.test.js",
     "dev": "tsx watch src/local.ts",
-    "probe:psiu-audio": "node scripts/probe-psiu-audio.mjs"
+    "probe:psiu-audio": "node scripts/probe-psiu-audio.mjs",
+    "test:psiu-upload-locking": "node scripts/test-psiu-upload-locking.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-cognito-identity-provider": "^3.1107.0",

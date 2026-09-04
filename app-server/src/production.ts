@@ -1,7 +1,7 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { AdminAddUserToGroupCommand, AdminCreateUserCommand, AdminDeleteUserCommand, AdminDisableUserCommand, AdminEnableUserCommand, AdminResetUserPasswordCommand, CognitoIdentityProviderClient } from '@aws-sdk/client-cognito-identity-provider';
 import type { AdminFulfillmentRequest, AssignPsiuRequest, CreateCustomerRequest, CreatePsiuRequest, CreateSampleUploadBatchRequest } from '@wally/contracts';
-import { DeleteObjectCommand, GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { DeleteObjectCommand, GetObjectCommand, PutObjectTaggingCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { Pool } from 'pg';
 import { HttpError, verifyCognitoAccessToken, type AuthenticatedPrincipal } from './services/auth.js';
@@ -9,7 +9,7 @@ import { requireAdmin, requirePrincipal } from './services/accountAuthorization.
 import { PostgresAccountRepository, type AccountRepository, type CognitoReconciliationJob } from './services/accountRepository.js';
 import { databaseSettings } from './migrate.js';
 import { PostgresSampleRepository, type SampleRepository } from './services/sampleRepository.js';
-import { presignUpload, validateUploadBatch, verifyWavObject } from './services/sampleUploads.js';
+import { ACCEPTED_UPLOAD_TAG, UNACCEPTED_UPLOAD_TAG, UPLOAD_LIFECYCLE_TAG_KEY, presignUpload, validateUploadBatch, verifyWavObject } from './services/sampleUploads.js';
 
 const port = Number(process.env.PORT ?? 3000);
 export function createProductionServer(dependencies: ProductionDependencies) {
@@ -61,12 +61,14 @@ async function invite(id:string,actor:string,repo:AccountRepository,cognito:Cogn
 }
 async function deleteCognito(job:CognitoReconciliationJob,cognito:CognitoIdentityProviderClient){try{await cognito.send(new AdminDeleteUserCommand({UserPoolId:poolId(),Username:job.email}));}catch(error){if(!(typeof error==='object'&&error!==null&&'name' in error&&(error as {name?:string}).name==='UserNotFoundException'))throw error;}}
 async function deleteUnavailableUploadObjects(s3:S3Client,bucketName:string,objectKeys:string[]){if(!bucketName)return;for(const key of objectKeys)try{await s3.send(new DeleteObjectCommand({Bucket:bucketName,Key:key}));}catch(error){console.error('Failed to clean unavailable PSIU upload object.',error instanceof Error?error.name:'UnknownError');}}
+async function deleteFailedUploadObject(samples:SampleRepository,ownerId:string,sampleId:string,s3:S3Client,bucketName:string){const objectKey=await samples.failedObjectKey(ownerId,sampleId);if(objectKey)await deleteUnavailableUploadObjects(s3,bucketName,[objectKey]);return Boolean(objectKey);}
+async function setUploadLifecycleTag(s3:S3Client,bucketName:string,objectKey:string,value:'accepted'|'unaccepted'){const tag=value==='accepted'?ACCEPTED_UPLOAD_TAG:UNACCEPTED_UPLOAD_TAG;await s3.send(new PutObjectTaggingCommand({Bucket:bucketName,Key:objectKey,Tagging:{TagSet:[{Key:UPLOAD_LIFECYCLE_TAG_KEY,Value:tag.slice(UPLOAD_LIFECYCLE_TAG_KEY.length+1)}]}}));}
 async function reset(id:string,repo:AccountRepository,cognito:CognitoIdentityProviderClient,response:ServerResponse){const customer=await repo.customer(id);if(!customer?.invitedAt)throw new HttpError(409,'Invited customer required.');await cognito.send(new AdminResetUserPasswordCommand({UserPoolId:poolId(),Username:customer.email}));sendJson(response,202,{status:'reset_requested'});}
 async function sampleRoute(request:IncomingMessage,response:ServerResponse,path:string,ownerId:string,samples:SampleRepository,s3:S3Client,bucketName:string):Promise<void>{
   if(request.method==='POST'&&path==='/v1/samples/upload-batches'){const value=await parseJson<CreateSampleUploadBatchRequest>(request);validateUploadBatch(value);const batch=await samples.createBatch(ownerId,value);return sendJson(response,201,{batchId:batch.batchId,uploads:await Promise.all(batch.intents.map(intent=>presignUpload(intent,bucketName,s3)))});}
   const match=path.match(/^\/v1\/samples\/([^/]+)\/(complete|download)$/);if(!match) {if(request.method==='GET'&&path==='/v1/samples')return sendJson(response,200,await samples.list(ownerId));throw new HttpError(404,'Route not found.');}
   const [,sampleId,action]=match;
-  if(request.method==='POST'&&action==='complete'){const intent=await samples.intent(ownerId,sampleId);if(!intent)throw new HttpError(404,'Upload intent not found.');const metadata=await verifyWavObject(intent,bucketName,s3);try{return sendJson(response,200,{sample:await samples.complete(ownerId,sampleId,metadata)});}catch(error){if(error instanceof HttpError&&error.statusCode===403){try{await s3.send(new DeleteObjectCommand({Bucket:bucketName,Key:intent.objectKey}));}catch{ /* Object cleanup is best effort; failed state remains durable. */ }}throw error;}}
+  if(request.method==='POST'&&action==='complete'){const intent=await samples.intent(ownerId,sampleId);if(!intent){if(await deleteFailedUploadObject(samples,ownerId,sampleId,s3,bucketName))throw new HttpError(403,'PSIU unit is unavailable or no longer assigned; upload was rejected.');throw new HttpError(404,'Upload intent not found.');}let metadata;try{metadata=await verifyWavObject(intent,bucketName,s3);}catch(error){await deleteFailedUploadObject(samples,ownerId,sampleId,s3,bucketName);throw error;}let taggedAccepted=false;try{return sendJson(response,200,{sample:await samples.complete(ownerId,sampleId,metadata,async()=>{await setUploadLifecycleTag(s3,bucketName,intent.objectKey,'accepted');taggedAccepted=true;})});}catch(error){if(taggedAccepted)try{await setUploadLifecycleTag(s3,bucketName,intent.objectKey,'unaccepted');}catch{/* Lifecycle cleanup remains best effort after a failed database completion. */}if(error instanceof HttpError&&error.statusCode===403)await deleteUnavailableUploadObjects(s3,bucketName,[intent.objectKey]);throw error;}}
   if(request.method==='GET'&&action==='download'){const objectKey=await samples.objectKey(ownerId,sampleId);if(!objectKey)throw new HttpError(404,'Sample not found.');const downloadUrl=await getSignedUrl(s3,new GetObjectCommand({Bucket:bucketName,Key:objectKey}),{expiresIn:900});return sendJson(response,200,{downloadUrl,expiresAt:new Date(Date.now()+900000).toISOString()});}
   throw new HttpError(404,'Route not found.');
 }
