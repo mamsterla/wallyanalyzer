@@ -24,16 +24,17 @@ test('assigning a second enabled PSIU retains existing customer assignments', as
   assert.equal(queries.some((sql) => sql.includes('insert into psiu_assignments')), true);
 });
 
-test('marking a unit unavailable closes its active assignment and records an audit event', async () => {
+test('marking a unit unavailable closes its active assignment, fails pending intents, and records an audit event', async () => {
   const queries: string[] = [];
-  const client = { async query(sql: string) { queries.push(sql); if (sql.includes('select status from psiu_units')) return { rowCount: 1, rows: [{ status: 'enabled' }] }; return { rowCount: 1, rows: [] }; }, release() {} };
+  const client = { async query(sql: string) { queries.push(sql); if (sql.includes('select status from psiu_units')) return { rowCount: 1, rows: [{ status: 'enabled' }] }; if (sql.includes("update samples set upload_state='failed'")) return { rowCount: 1, rows: [{ object_key: 'raw/owner-a/pending.wav' }] }; return { rowCount: 1, rows: [] }; }, release() {} };
   const repository = new PostgresAccountRepository({ connect: async () => client } as never);
 
-  await repository.markUnitUnavailable('unit-a', 'admin-a');
+  const objectKeys = await repository.markUnitUnavailable('unit-a', 'admin-a');
 
+  assert.deepEqual(objectKeys, ['raw/owner-a/pending.wav']);
   assert.equal(queries.some((sql) => sql.includes("status='unavailable',unavailable_at=now(),unavailable_by=$2")), true);
+  assert.equal(queries.some((sql) => sql.includes("update samples set upload_state='failed'")), true);
   assert.equal(queries.some((sql) => sql.includes('where psiu_unit_id=$1 and unassigned_at is null')), true);
-  assert.equal(queries.some((sql) => sql.includes("'psiu.unavailable'")), false);
   assert.equal(queries.some((sql) => sql.includes('insert into audit_events')), true);
 });
 
@@ -42,6 +43,19 @@ test('hard deletion rejects a unit with retained assignment or sample history', 
   const repository = new PostgresAccountRepository({ connect: async () => client } as never);
 
   await assert.rejects(() => repository.hardDeleteUnit('unit-a', 'admin-a'), (error: unknown) => error instanceof HttpError && error.statusCode === 409 && error.message.includes('Mark unavailable'));
+});
+
+test('hard deletion permits a never-used test unit to be re-added', async () => {
+  const queries: string[] = [];
+  const client = { async query(sql: string) { queries.push(sql); if (sql.includes('select id from psiu_units')) return { rowCount: 1, rows: [{ id: 'unit-a' }] }; if (sql.includes('as has_history')) return { rowCount: 1, rows: [{ has_history: false }] }; if (sql.includes('insert into psiu_units')) return { rowCount: 1, rows: [{ id: 'unit-b', serial_number: 'serial-a', opaque_uid: 'uid-a', status: 'enabled', assigned_at: null, unavailable_at: null }] }; return { rowCount: 1, rows: [] }; }, release() {} };
+  const repository = new PostgresAccountRepository({ connect: async () => client, query: client.query } as never);
+
+  await repository.hardDeleteUnit('unit-a', 'admin-a');
+  const readded = await repository.createUnit('serial-a', 'uid-a', 'admin-a');
+
+  assert.equal(readded.id, 'unit-b');
+  assert.equal(queries.some((sql) => sql.includes('delete from psiu_units where id=$1')), true);
+  assert.equal(queries.some((sql) => sql.includes('insert into psiu_units')), true);
 });
 
 test('customer unit queries exclude disabled assignments while admin inventory remains unchanged', async () => {

@@ -23,11 +23,11 @@ export function createProductionServer(dependencies: ProductionDependencies) {
     if(request.method==='GET' && path==='/v1/me') return sendJson(response,200,await repository.me(actor.id));
     if(request.method==='GET' && path==='/v1/me/units') return sendJson(response,200,(await repository.me(actor.id))?.units??[]);
     if(path.startsWith('/v1/samples')) return await sampleRoute(request,response,path,actor.id,samples,s3,bucketName);
-    if(path.startsWith('/v1/admin/')) { requireAdmin(actor); return await adminRoute(request,response,path,actor.id,repository,cognito); }
+    if(path.startsWith('/v1/admin/')) { requireAdmin(actor); return await adminRoute(request,response,path,actor.id,repository,cognito,s3,bucketName); }
     return sendJson(response,404,{message:'Route not found.'});
   } catch(error) { if(error instanceof HttpError)return sendJson(response,error.statusCode,{message:error.message}); console.error('Unhandled production API error',error);return sendJson(response,500,{message:'Internal server error.'}); }});
 }
-async function adminRoute(request:IncomingMessage,response:ServerResponse,path:string,actor:string,repo:AccountRepository,cognito:CognitoIdentityProviderClient):Promise<void>{
+async function adminRoute(request:IncomingMessage,response:ServerResponse,path:string,actor:string,repo:AccountRepository,cognito:CognitoIdentityProviderClient,s3:S3Client,bucketName:string):Promise<void>{
   const id=path.split('/')[4]; const reqId=requestId(request);
   if(request.method==='GET'&&path==='/v1/admin/customers')return sendJson(response,200,await repo.customers());
   if(request.method==='POST'&&path==='/v1/admin/customers'){const x=await parseJson<CreateCustomerRequest>(request);return sendJson(response,201,await repo.createCustomer(email(x.email),actor,reqId));}
@@ -40,8 +40,8 @@ async function adminRoute(request:IncomingMessage,response:ServerResponse,path:s
   if(request.method==='POST'&&path.endsWith('/deassign')){await repo.deassign(id,actor,reqId);return sendJson(response,204);}
   if(request.method==='POST'&&path.endsWith('/enable')){await repo.setUnitStatus(id,'enabled',actor,reqId);return sendJson(response,204);}
   if(request.method==='POST'&&path.endsWith('/disable')){await repo.setUnitStatus(id,'disabled',actor,reqId);return sendJson(response,204);}
-  if(request.method==='POST'&&path.endsWith('/unavailable')){await repo.markUnitUnavailable(id,actor,reqId);return sendJson(response,204);}
-  if(request.method==='DELETE'&&path.startsWith('/v1/admin/psiu-units/')){await repo.hardDeleteUnit(id,actor,reqId);return sendJson(response,204);}
+  if(request.method==='POST'&&path.endsWith('/unavailable')){const objectKeys=await repo.markUnitUnavailable(id,actor,reqId);await deleteUnavailableUploadObjects(s3,bucketName,objectKeys);return sendJson(response,204);}
+  if(request.method==='DELETE'&&path===`/v1/admin/psiu-units/${id}`){await repo.hardDeleteUnit(id,actor,reqId);return sendJson(response,204);}
   if(request.method==='POST'&&path.endsWith('/invite'))return invite(id,actor,repo,cognito,reqId,response);
   if(request.method==='POST'&&path.endsWith('/reconcile')){const job=await repo.pendingCognitoJob(id,'archive_delete')??await repo.pendingCognitoJob(id,'invite_cleanup');if(!job)throw new HttpError(409,'No pending Cognito reconciliation.');await deleteCognito(job,cognito);await repo.completeCognitoJob(job,actor,reqId);return sendJson(response,204);}
   if(request.method==='POST'&&path.endsWith('/reset-password'))return reset(id,repo,cognito,response);
@@ -60,6 +60,7 @@ async function invite(id:string,actor:string,repo:AccountRepository,cognito:Cogn
   if(response)sendJson(response,202,{status:'invited'});
 }
 async function deleteCognito(job:CognitoReconciliationJob,cognito:CognitoIdentityProviderClient){try{await cognito.send(new AdminDeleteUserCommand({UserPoolId:poolId(),Username:job.email}));}catch(error){if(!(typeof error==='object'&&error!==null&&'name' in error&&(error as {name?:string}).name==='UserNotFoundException'))throw error;}}
+async function deleteUnavailableUploadObjects(s3:S3Client,bucketName:string,objectKeys:string[]){if(!bucketName)return;for(const key of objectKeys)try{await s3.send(new DeleteObjectCommand({Bucket:bucketName,Key:key}));}catch(error){console.error('Failed to clean unavailable PSIU upload object.',error instanceof Error?error.name:'UnknownError');}}
 async function reset(id:string,repo:AccountRepository,cognito:CognitoIdentityProviderClient,response:ServerResponse){const customer=await repo.customer(id);if(!customer?.invitedAt)throw new HttpError(409,'Invited customer required.');await cognito.send(new AdminResetUserPasswordCommand({UserPoolId:poolId(),Username:customer.email}));sendJson(response,202,{status:'reset_requested'});}
 async function sampleRoute(request:IncomingMessage,response:ServerResponse,path:string,ownerId:string,samples:SampleRepository,s3:S3Client,bucketName:string):Promise<void>{
   if(request.method==='POST'&&path==='/v1/samples/upload-batches'){const value=await parseJson<CreateSampleUploadBatchRequest>(request);validateUploadBatch(value);const batch=await samples.createBatch(ownerId,value);return sendJson(response,201,{batchId:batch.batchId,uploads:await Promise.all(batch.intents.map(intent=>presignUpload(intent,bucketName,s3)))});}

@@ -24,16 +24,16 @@ test('fresh upload schema adds idempotency and source provenance before reposito
   assert.match(unavailableMigration, /unavailable_at timestamptz/i);
 });
 
-test('completion rejects and marks failed an upload when its unit is no longer enabled and assigned', async () => {
+test('completion locks the PSIU row and fails a pending upload when unavailable wins the race', async () => {
   const queries: string[] = [];
-  const pool = { async query(sql: string) { queries.push(sql); if (sql.startsWith('update samples s set upload_state')) return { rowCount: 0, rows: [] }; if (sql.startsWith("update samples set upload_state='failed'")) return { rowCount: 1, rows: [{ object_key: 'raw/owner/sample.wav' }] }; return { rowCount: 0, rows: [] }; } };
-  const repository = new PostgresSampleRepository(pool as never);
+  const client = { async query(sql: string) { queries.push(sql); if (sql.startsWith('select s.*')) return { rowCount: 1, rows: [{ id: 'sample-a', upload_state: 'intent', observed_psiu_uid: 'uid-a', unit_status: 'unavailable', unit_uid: 'uid-a', assigned_owner_id: null }] }; if (sql.startsWith("update samples set upload_state='failed'")) return { rowCount: 1, rows: [{ object_key: 'raw/owner/sample.wav' }] }; return { rowCount: 1, rows: [] }; }, release() {} };
+  const repository = new PostgresSampleRepository({ connect: async () => client } as never);
 
   await assert.rejects(() => repository.complete('owner-a', 'sample-a', { sampleRateHz: 48000, channels: 2, bitsPerSample: 16, durationMs: 1 }), (error: unknown) => error instanceof HttpError && error.statusCode === 403);
-  assert.match(queries[0]!, /p\.status='enabled'/);
-  assert.match(queries[0]!, /a\.user_id=\$2/);
-  assert.match(queries[0]!, /observed_psiu_uid=p\.opaque_uid/);
-  assert.match(queries[1]!, /upload_state='failed'/);
+  assert.match(queries.find((sql) => sql.startsWith('select s.*'))!, /for key share of p/i);
+  assert.match(queries.find((sql) => sql.startsWith('select s.*'))!, /for update of s/i);
+  assert.match(queries.find((sql) => sql.startsWith("update samples set upload_state='failed'"))!, /upload_state='intent'/);
+  assert.equal(queries.filter((sql) => sql === 'commit').length, 1);
 });
 
 test('concurrent idempotency claims use atomic insert-on-conflict before reloading the winning batch', () => {
