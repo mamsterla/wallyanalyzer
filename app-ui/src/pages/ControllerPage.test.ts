@@ -1,5 +1,8 @@
 import { File as NodeFile } from 'node:buffer';
+import { webcrypto } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
+
+if (!globalThis.crypto) Object.defineProperty(globalThis, 'crypto', { value: webcrypto });
 import { localInventoryPreview, queueCapturedPsiuWav } from './ControllerPage.js';
 
 describe('local inventory scan panel', () => {
