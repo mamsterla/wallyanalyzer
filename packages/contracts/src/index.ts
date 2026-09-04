@@ -2,7 +2,7 @@ export type Role = 'user' | 'installer' | 'admin';
 
 export type UserAccountStatus = 'provisioned' | 'active' | 'suspended' | 'cancelled';
 export type CustomerLifecycle = 'draft' | 'ready' | 'invited' | 'active' | 'suspended' | 'cancelled';
-export type PsiuUnitStatus = 'enabled' | 'disabled';
+export type PsiuUnitStatus = 'enabled' | 'disabled' | 'unavailable';
 
 export interface CustomerSummary {
   id: string;
@@ -18,6 +18,7 @@ export interface CustomerUnit {
   uid: string;
   status: PsiuUnitStatus;
   assignedAt?: string;
+  unavailableAt?: string;
 }
 
 export interface MeResponse {

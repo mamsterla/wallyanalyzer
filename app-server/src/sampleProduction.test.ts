@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { request as httpRequest } from 'node:http';
+import { Readable } from 'node:stream';
 import { S3Client } from '@aws-sdk/client-s3';
 import type { CreateSampleUploadBatchRequest, SampleSummary } from '@wally/contracts';
 import { HttpError } from './services/auth.js';
@@ -53,6 +54,16 @@ test('sample routes allow a dealer to select either assigned unit for upload', a
     assert.equal((await request(server, 'owner-a', 'POST', '/v1/samples/upload-batches', upload)).status, 201);
     assert.equal((await request(server, 'owner-a', 'POST', '/v1/samples/upload-batches', { ...upload, idempotencyKey: 'second-unit-key-01', psiuUnitId: 'unit-b' })).status, 201);
   } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
+});
+
+test('completion deletes a newly blocked object after an unavailable or unassigned unit rejects it', async () => {
+  const blocked: SampleRepository = { ...samples(), async intent(owner, sampleId) { return owner === 'owner-a' && sampleId === 'sample-a' ? { ...intent, byteLength: 48 } : undefined; }, async complete() { throw new HttpError(403, 'PSIU unit is unavailable or no longer assigned; upload was rejected.'); } };
+  const accounts = { async findActivePrincipal() { return { id: 'owner-a', role: 'user' as const, lifecycle: 'active' as const }; }, async me() { return undefined; } };
+  const wav = Buffer.alloc(48); wav.write('RIFF'); wav.writeUInt32LE(40, 4); wav.write('WAVE', 8); wav.write('fmt ', 12); wav.writeUInt32LE(16, 16); wav.writeUInt16LE(1, 20); wav.writeUInt16LE(2, 22); wav.writeUInt32LE(48000, 24); wav.writeUInt32LE(192000, 28); wav.writeUInt16LE(4, 32); wav.writeUInt16LE(16, 34); wav.write('data', 36); wav.writeUInt32LE(4, 40);
+  const commands: string[] = []; const s3 = new S3Client({ region: 'us-east-1', credentials: { accessKeyId: 'test', secretAccessKey: 'test' } });
+  s3.send = async (command: { constructor: { name: string } }) => { commands.push(command.constructor.name); if (command.constructor.name === 'HeadObjectCommand') return { ContentLength: 48 } as never; if (command.constructor.name === 'GetObjectCommand') return { Body: Readable.from([wav]) } as never; return {} as never; };
+  const server = createProductionServer({ pool: {} as never, repository: accounts as never, samples: blocked, s3, sampleBucketName: 'bucket', verify: async () => ({ subject: 'owner-a', roles: ['user'] }) }); await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  try { assert.equal((await request(server, 'owner-a', 'POST', '/v1/samples/sample-a/complete')).status, 403); assert.deepEqual(commands, ['HeadObjectCommand', 'GetObjectCommand', 'DeleteObjectCommand']); } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
 });
 
 test('sample routes enforce idempotency conflict and object verification before completion', async () => {

@@ -49,6 +49,12 @@ Required response behavior:
 
 Milestone 1 uses a verified PSIU Basic Auth credential for `POST /api/sampling` only. The local Compose proxy retrieves it at runtime from the `PSIU_CREDENTIAL_SECRET_ARN` AWS Secrets Manager reference; it is never persisted, logged, or sent to AWS by the proxy. Replace it with per-unit device credentials before release.
 
+## Inventory lifecycle
+
+- **Hard delete** is limited to unused test inventory: a PSIU with no assignment, upload-batch, or sample history. This permits clean re-enrollment of its serial number and UID.
+- **Unavailable** preserves the unit, assignment history, samples, upload batches, and audit record. It closes any active assignment and permanently blocks enable, assignment, and new upload intents.
+- An already-issued S3 presigned PUT URL cannot be revoked. Completion rechecks enabled status, active owner assignment, and capture UID; a newly unavailable or unassigned unit is rejected, marked failed, and its raw object is deleted best-effort. The app task is scoped to delete only `raw/*` sample objects. A failed deletion can leave an unaccepted raw object for operator cleanup.
+
 ## Safety constraints
 
 - Do not guess endpoints from a PDF filename or proxy arbitrary device URLs through AWS.

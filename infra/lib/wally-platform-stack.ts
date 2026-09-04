@@ -304,11 +304,10 @@ export class WallyPlatformStack extends cdk.Stack {
       },
     });
     container.addPortMappings({ containerPort: 80 });
-    // No S3 application permissions exist until an ownership-checked upload or
-    // report route is implemented. In particular, this API task has no delete
-    // permission for private raw audio or immutable report artifacts.
+    // Raw upload cleanup is limited to verified ownership-scoped sample objects.
+    // Report artifacts remain immutable and receive no delete permission.
     database.secret!.grantRead(taskDefinition.taskRole);
-    taskDefinition.taskRole.addToPrincipalPolicy(new iam.PolicyStatement({ actions: ['s3:PutObject', 's3:GetObject'], resources: [sampleBucket.arnForObjects('raw/*')] }));
+    taskDefinition.taskRole.addToPrincipalPolicy(new iam.PolicyStatement({ actions: ['s3:PutObject', 's3:GetObject', 's3:DeleteObject'], resources: [sampleBucket.arnForObjects('raw/*')] }));
     taskDefinition.taskRole.addToPrincipalPolicy(new iam.PolicyStatement({
       actions: [
         'cognito-idp:AdminCreateUser',

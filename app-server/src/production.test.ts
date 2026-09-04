@@ -3,6 +3,7 @@ import test from 'node:test';
 import { request as httpRequest } from 'node:http';
 import { AdminAddUserToGroupCommand, AdminCreateUserCommand, AdminDeleteUserCommand } from '@aws-sdk/client-cognito-identity-provider';
 import { createProductionServer } from './production.js';
+import { HttpError } from './services/auth.js';
 
 process.env.COGNITO_USER_POOL_ID = 'pool';
 process.env.COGNITO_WEB_CLIENT_ID = 'client';
@@ -27,6 +28,13 @@ test('invite group failure persists cleanup work and deletes the created Cognito
   const cognito={send:async(command:unknown)=>{if(command instanceof AdminCreateUserCommand)return{User:{Attributes:[{Name:'sub',Value:'subject'}]}};if(command instanceof AdminAddUserToGroupCommand)throw Error('group failure');if(command instanceof AdminDeleteUserCommand){calls.push('deleted');return{}};return{}}};
   const server=createProductionServer({pool:{} as never,repository:repository as never,cognito:cognito as never,verify:async()=>({subject:'admin-subject',roles:['admin']})});await new Promise<void>(r=>server.listen(0,'127.0.0.1',r));
   try { const result=await call(server,'POST','/v1/admin/customers/customer/invite'); assert.equal(result.status,500); assert.deepEqual(calls,['queued','deleted','completed']); } finally {await new Promise<void>(r=>server.close(()=>r()));}
+});
+
+test('admin inventory lifecycle routes mark unavailable and surface hard-delete history conflicts', async () => {
+  const calls: string[] = [];
+  const repository = { async findActivePrincipal(){ return { id:'admin', role:'admin' as const, lifecycle:'active' }; }, async me(){ return undefined; }, async customers(){ return []; }, async customer(){ return undefined; }, async units(){ return []; }, async createCustomer(){ throw Error('unused'); }, async createUnit(){ throw Error('unused'); }, async assign(){}, async deassign(){}, async setUnitStatus(){}, async markUnitUnavailable(){ calls.push('unavailable'); }, async hardDeleteUnit(){ throw new HttpError(409,'PSIU unit has assignment or sample history. Mark unavailable to retain its history.'); }, async markInvited(){}, async recordInviteCleanup(){ throw Error('unused'); }, async pendingCognitoJob(){ return undefined; }, async completeCognitoJob(){}, async activate(){}, async setCustomerLifecycle(){ return { email:'x@example.com' }; }, async archive(){ return { email:'x@example.com' }; } };
+  const server = createProductionServer({ pool:{} as never, repository:repository as never, verify:async()=>({subject:'admin',roles:['admin']}) }); await new Promise<void>(r=>server.listen(0,'127.0.0.1',r));
+  try { assert.equal((await call(server,'POST','/v1/admin/psiu-units/unit-a/unavailable')).status,204); assert.deepEqual(calls,['unavailable']); const deleted=await call(server,'DELETE','/v1/admin/psiu-units/unit-a'); assert.equal(deleted.status,409); assert.match(deleted.body,/Mark unavailable/); } finally { await new Promise<void>(r=>server.close(()=>r())); }
 });
 
 function call(server: ReturnType<typeof createProductionServer>, method:string,path:string,body?:unknown):Promise<{status:number;body:string}>{const address=server.address();if(!address||typeof address==='string')throw Error('server unavailable');return new Promise((resolve,reject)=>{const req=httpRequest({host:'127.0.0.1',port:address.port,path,method,headers:{authorization:'Bearer token','content-type':'application/json'}},res=>{let text='';res.on('data',x=>text+=x);res.on('end',()=>resolve({status:res.statusCode??0,body:text}));});req.on('error',reject);if(body)req.write(JSON.stringify(body));req.end();});}

@@ -1,7 +1,7 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { AdminAddUserToGroupCommand, AdminCreateUserCommand, AdminDeleteUserCommand, AdminDisableUserCommand, AdminEnableUserCommand, AdminResetUserPasswordCommand, CognitoIdentityProviderClient } from '@aws-sdk/client-cognito-identity-provider';
 import type { AdminFulfillmentRequest, AssignPsiuRequest, CreateCustomerRequest, CreatePsiuRequest, CreateSampleUploadBatchRequest } from '@wally/contracts';
-import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { DeleteObjectCommand, GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { Pool } from 'pg';
 import { HttpError, verifyCognitoAccessToken, type AuthenticatedPrincipal } from './services/auth.js';
@@ -40,6 +40,8 @@ async function adminRoute(request:IncomingMessage,response:ServerResponse,path:s
   if(request.method==='POST'&&path.endsWith('/deassign')){await repo.deassign(id,actor,reqId);return sendJson(response,204);}
   if(request.method==='POST'&&path.endsWith('/enable')){await repo.setUnitStatus(id,'enabled',actor,reqId);return sendJson(response,204);}
   if(request.method==='POST'&&path.endsWith('/disable')){await repo.setUnitStatus(id,'disabled',actor,reqId);return sendJson(response,204);}
+  if(request.method==='POST'&&path.endsWith('/unavailable')){await repo.markUnitUnavailable(id,actor,reqId);return sendJson(response,204);}
+  if(request.method==='DELETE'&&path.startsWith('/v1/admin/psiu-units/')){await repo.hardDeleteUnit(id,actor,reqId);return sendJson(response,204);}
   if(request.method==='POST'&&path.endsWith('/invite'))return invite(id,actor,repo,cognito,reqId,response);
   if(request.method==='POST'&&path.endsWith('/reconcile')){const job=await repo.pendingCognitoJob(id,'archive_delete')??await repo.pendingCognitoJob(id,'invite_cleanup');if(!job)throw new HttpError(409,'No pending Cognito reconciliation.');await deleteCognito(job,cognito);await repo.completeCognitoJob(job,actor,reqId);return sendJson(response,204);}
   if(request.method==='POST'&&path.endsWith('/reset-password'))return reset(id,repo,cognito,response);
@@ -63,7 +65,7 @@ async function sampleRoute(request:IncomingMessage,response:ServerResponse,path:
   if(request.method==='POST'&&path==='/v1/samples/upload-batches'){const value=await parseJson<CreateSampleUploadBatchRequest>(request);validateUploadBatch(value);const batch=await samples.createBatch(ownerId,value);return sendJson(response,201,{batchId:batch.batchId,uploads:await Promise.all(batch.intents.map(intent=>presignUpload(intent,bucketName,s3)))});}
   const match=path.match(/^\/v1\/samples\/([^/]+)\/(complete|download)$/);if(!match) {if(request.method==='GET'&&path==='/v1/samples')return sendJson(response,200,await samples.list(ownerId));throw new HttpError(404,'Route not found.');}
   const [,sampleId,action]=match;
-  if(request.method==='POST'&&action==='complete'){const intent=await samples.intent(ownerId,sampleId);if(!intent)throw new HttpError(404,'Upload intent not found.');const metadata=await verifyWavObject(intent,bucketName,s3);return sendJson(response,200,{sample:await samples.complete(ownerId,sampleId,metadata)});}
+  if(request.method==='POST'&&action==='complete'){const intent=await samples.intent(ownerId,sampleId);if(!intent)throw new HttpError(404,'Upload intent not found.');const metadata=await verifyWavObject(intent,bucketName,s3);try{return sendJson(response,200,{sample:await samples.complete(ownerId,sampleId,metadata)});}catch(error){if(error instanceof HttpError&&error.statusCode===403){try{await s3.send(new DeleteObjectCommand({Bucket:bucketName,Key:intent.objectKey}));}catch{ /* Object cleanup is best effort; failed state remains durable. */ }}throw error;}}
   if(request.method==='GET'&&action==='download'){const objectKey=await samples.objectKey(ownerId,sampleId);if(!objectKey)throw new HttpError(404,'Sample not found.');const downloadUrl=await getSignedUrl(s3,new GetObjectCommand({Bucket:bucketName,Key:objectKey}),{expiresIn:900});return sendJson(response,200,{downloadUrl,expiresAt:new Date(Date.now()+900000).toISOString()});}
   throw new HttpError(404,'Route not found.');
 }
