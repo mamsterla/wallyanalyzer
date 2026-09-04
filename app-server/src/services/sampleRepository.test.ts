@@ -24,19 +24,24 @@ test('fresh upload schema adds idempotency and source provenance before reposito
   assert.match(unavailableMigration, /unavailable_at timestamptz/i);
 });
 
-test('completion locks the PSIU and active owner assignment before unavailable or deassign can win the race', async () => {
+test('completion locks PSIU, active owner assignment, then sample before unavailable or deassign can win the race', async () => {
   const queries: string[] = [];
-  const client = { async query(sql: string) { queries.push(sql); if (sql.startsWith('select s.*')) return { rowCount: 1, rows: [{ id: 'sample-a', upload_state: 'intent', observed_psiu_uid: 'uid-a', unit_status: 'unavailable', unit_uid: 'uid-a', assigned_owner_id: null }] }; if (sql.startsWith("update samples set upload_state='failed'")) return { rowCount: 1, rows: [{ object_key: 'raw/owner/sample.wav' }] }; return { rowCount: 1, rows: [] }; }, release() {} };
+  const client = { async query(sql: string) { queries.push(sql); if (sql.startsWith('select s.psiu_unit_id')) return { rowCount: 1, rows: [{ psiu_unit_id: 'unit-a', unit_status: 'unavailable', unit_uid: 'uid-a' }] }; if (sql.startsWith('select * from samples')) return { rowCount: 1, rows: [{ id: 'sample-a', upload_state: 'intent', observed_psiu_uid: 'uid-a' }] }; if (sql.startsWith("update samples set upload_state='failed'")) return { rowCount: 1, rows: [{ object_key: 'raw/owner/sample.wav' }] }; return { rowCount: 1, rows: [] }; }, release() {} };
   const repository = new PostgresSampleRepository({ connect: async () => client } as never);
 
   await assert.rejects(() => repository.complete('owner-a', 'sample-a', { sampleRateHz: 48000, channels: 2, bitsPerSample: 16, durationMs: 1 }), (error: unknown) => error instanceof HttpError && error.statusCode === 403);
-  assert.match(queries.find((sql) => sql.startsWith('select s.*'))!, /for update of s,p/i);
-  assert.match(queries.find((sql) => sql.startsWith('select user_id from psiu_assignments'))!, /unassigned_at is null for share/i);
+  const unitIndex = queries.findIndex((sql) => sql.startsWith('select s.psiu_unit_id'));
+  const assignmentIndex = queries.findIndex((sql) => sql.startsWith('select user_id from psiu_assignments'));
+  const sampleIndex = queries.findIndex((sql) => sql.startsWith('select * from samples'));
+  assert.match(queries[unitIndex]!, /for update of p/i);
+  assert.match(queries[assignmentIndex]!, /unassigned_at is null for share/i);
+  assert.match(queries[sampleIndex]!, /for update/i);
+  assert.ok(unitIndex < assignmentIndex && assignmentIndex < sampleIndex);
   assert.match(queries.find((sql) => sql.startsWith("update samples set upload_state='failed'"))!, /upload_state='intent'/);
   assert.equal(queries.filter((sql) => sql === 'commit').length, 1);
 });
 
-test('deassign and unavailable transitions are serialized by completion locks', () => {assert.match(source,/join psiu_units p on p\.id=s\.psiu_unit_id[\s\S]*for update of s,p/i);assert.match(source,/select user_id from psiu_assignments where psiu_unit_id=\$1 and user_id=\$2 and unassigned_at is null for share/i);assert.match(source,/update samples set upload_state='failed' where id=\$1 and upload_state='intent'/i);});
+test('completion locks PSIU, assignment, and sample in unavailable transition order', () => {assert.match(source,/select s\.psiu_unit_id,p\.status as unit_status,p\.opaque_uid as unit_uid[\s\S]*for update of p/i);assert.match(source,/select user_id from psiu_assignments where psiu_unit_id=\$1 and user_id=\$2 and unassigned_at is null for share/i);assert.match(source,/select \* from samples where id=\$1 and owner_id=\$2 and upload_state in \('intent','uploaded'\) for update/i);assert.match(source,/update samples set upload_state='failed' where id=\$1 and upload_state='intent'/i);});
 test('concurrent idempotency claims use atomic insert-on-conflict before reloading the winning batch', () => {
   assert.match(source, /on conflict \(owner_id,idempotency_key\) do nothing returning id,request_fingerprint/i);
   assert.match(source, /const batch\s*=\s*claimed\.rows\[0\]\s*\?\?\s*\(await c\.query/i);
