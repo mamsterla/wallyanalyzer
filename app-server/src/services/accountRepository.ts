@@ -6,7 +6,8 @@ import { HttpError } from './auth.js';
 export type CognitoReconciliationJob = { id: string; customerId: string; action: 'invite_cleanup' | 'archive_delete'; email: string; cognitoSubject?: string };
 
 export interface AccountRepository {
-  findActivePrincipal(subject: string): Promise<{ id: string; email: string; role: Role; lifecycle: string } | undefined>;
+  findActivePrincipal(subject: string): Promise<{ id: string; email: string; role: Role; lifecycle: string; emailConfirmedAt: Date | null } | undefined>;
+  findEmailConfirmationPrincipal(subject: string): Promise<{ id: string; email: string; role: Role; lifecycle: string } | undefined>;
   me(id: string): Promise<MeResponse | undefined>;
   customers(): Promise<CustomerSummary[]>;
   units(): Promise<CustomerUnit[]>;
@@ -35,7 +36,8 @@ type JobRow = { id: string; customer_id: string; action: CognitoReconciliationJo
 
 export class PostgresAccountRepository implements AccountRepository {
   constructor(private readonly pool: Pool) {}
-  async findActivePrincipal(subject: string) { const r = await this.pool.query<{ id: string; email: string; role: Role; lifecycle: string }>(`select id, email, role, lifecycle from users where cognito_subject=$1 and lifecycle in ('invited','active')`, [subject]); return r.rows[0]; }
+  async findActivePrincipal(subject: string) { const r = await this.pool.query<{ id: string; email: string; role: Role; lifecycle: string; email_confirmed_at: Date | null }>(`select id, email, role, lifecycle, email_confirmed_at from users where cognito_subject=$1 and lifecycle='active' and email_confirmed_at is not null`, [subject]); const user=r.rows[0]; return user&&{id:user.id,email:user.email,role:user.role,lifecycle:user.lifecycle,emailConfirmedAt:user.email_confirmed_at}; }
+  async findEmailConfirmationPrincipal(subject: string) { const r = await this.pool.query<{ id: string; email: string; role: Role; lifecycle: string }>(`select id, email, role, lifecycle from users where cognito_subject=$1 and lifecycle in ('invited','active')`, [subject]); return r.rows[0]; }
   async me(id: string): Promise<MeResponse | undefined> { const r = await this.pool.query<UserRow>(`select id,email,role,lifecycle,invited_at,first_name,last_name from users where id=$1`, [id]); if (!r.rowCount) return undefined; const u = r.rows[0]; return { id:u.id,email:u.email,role:u.role,lifecycle:u.lifecycle,units:await this.unitsFor(id),firstName:u.first_name??undefined,lastName:u.last_name??undefined,emailChangeAvailable:false }; }
   async customers(): Promise<CustomerSummary[]> { const r = await this.pool.query<UserRow>(`select id,email,role,lifecycle,invited_at from users where role='user' order by email`); return Promise.all(r.rows.map(u => this.summary(u))); }
   async customer(id: string): Promise<CustomerSummary | undefined> { const r = await this.pool.query<UserRow>(`select id,email,role,lifecycle,invited_at,first_name,last_name from users where id=$1 and role='user'`, [id]); return r.rowCount ? this.summary(r.rows[0]) : undefined; }

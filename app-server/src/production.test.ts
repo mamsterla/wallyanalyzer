@@ -41,7 +41,7 @@ test('admin inventory lifecycle cleans failed pending objects and hard-delete re
 
 test('email confirmation checks Cognito by durable email and completes durably once', async () => {
   const calls:string[]=[];
-  const repository={async findActivePrincipal(){return{id:'user',email:'user@example.com',role:'user' as const,lifecycle:'invited'}},async confirmEmail(subject:string){calls.push(`confirm:${subject}`)}};
+  const repository={async findEmailConfirmationPrincipal(){return{id:'user',email:'user@example.com',role:'user' as const,lifecycle:'invited'}},async confirmEmail(subject:string){calls.push(`confirm:${subject}`)}};
   const cognito={send:async(command:unknown)=>{if(command instanceof AdminGetUserCommand){calls.push(`lookup:${command.input.Username}`);return{UserAttributes:[{Name:'email_verified',Value:'true'}]};}return{}}};
   const server=createProductionServer({pool:{} as never,repository:repository as never,cognito:cognito as never,verify:async()=>({subject:'subject',roles:['user']})});await new Promise<void>(r=>server.listen(0,'127.0.0.1',r));
   try{assert.equal((await call(server,'POST','/v1/me/confirm-email')).status,204);assert.deepEqual(calls,['lookup:user@example.com','confirm:subject']);}finally{await new Promise<void>(r=>server.close(()=>r()));}
@@ -49,10 +49,27 @@ test('email confirmation checks Cognito by durable email and completes durably o
 
 test('email confirmation rejects an unverified Cognito email without durable activation', async () => {
   const calls: string[] = [];
-  const repository = { async findActivePrincipal(){ return { id:'user', email:'user@example.com', role:'user' as const, lifecycle:'invited' }; }, async confirmEmail(){ calls.push('confirm'); } };
+  const repository = { async findEmailConfirmationPrincipal(){ return { id:'user', email:'user@example.com', role:'user' as const, lifecycle:'invited' }; }, async confirmEmail(){ calls.push('confirm'); } };
   const cognito = { send: async (command: unknown) => { if (command instanceof AdminGetUserCommand) return { UserAttributes:[{ Name:'email_verified', Value:'false' }] }; return {}; } };
   const server = createProductionServer({ pool:{} as never, repository:repository as never, cognito:cognito as never, verify:async()=>({ subject:'subject', roles:['user'] }) }); await new Promise<void>(resolve => server.listen(0,'127.0.0.1',resolve));
   try { const result = await call(server,'POST','/v1/me/confirm-email'); assert.equal(result.status,403); assert.match(result.body,/Confirm your email/); assert.deepEqual(calls,[]); } finally { await new Promise<void>(resolve => server.close(()=>resolve())); }
+});
+
+test('active users without durable email confirmation cannot access normal APIs but can confirm', async () => {
+  const calls: string[] = [];
+  const repository = {
+    async findActivePrincipal() { return undefined; },
+    async findEmailConfirmationPrincipal() { return { id: 'admin', email: 'admin@example.com', role: 'admin' as const, lifecycle: 'active' }; },
+    async confirmEmail(subject: string) { calls.push(`confirm:${subject}`); },
+  };
+  const cognito = { send: async (command: unknown) => command instanceof AdminGetUserCommand ? { UserAttributes: [{ Name: 'email_verified', Value: 'true' }] } : {} };
+  const server = createProductionServer({ pool: {} as never, repository: repository as never, cognito: cognito as never, verify: async () => ({ subject: 'admin-subject', roles: ['admin'] }) });
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  try {
+    assert.equal((await call(server, 'GET', '/v1/me')).status, 403);
+    assert.equal((await call(server, 'POST', '/v1/me/confirm-email')).status, 204);
+    assert.deepEqual(calls, ['confirm:admin-subject']);
+  } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
 });
 
 test('restore uses repository lifecycle decision instead of forcing active', async () => {

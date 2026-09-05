@@ -5,7 +5,7 @@ import type { AccountRepository } from './accountRepository.js';
 export async function requirePrincipal(principal: AuthenticatedPrincipal, repository: AccountRepository): Promise<{ id: string; role: Role }> {
   const account = await repository.findActivePrincipal(principal.subject);
   if (!account || !principal.roles.includes(account.role)) throw new HttpError(403, 'Active account and matching role required.');
-  if (account.lifecycle !== 'active') throw new HttpError(403, 'Verified active account required.');
+  if (account.lifecycle !== 'active' || account.emailConfirmedAt === null) throw new HttpError(403, 'Verified active account required.');
   return { id: account.id, role: account.role };
 }
 
