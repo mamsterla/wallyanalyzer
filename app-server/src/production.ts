@@ -10,17 +10,19 @@ import { PostgresAccountRepository, type AccountRepository, type CognitoReconcil
 import { databaseSettings } from './migrate.js';
 import { PostgresSampleRepository, type SampleRepository } from './services/sampleRepository.js';
 import { PostgresUserExperienceRepository } from './services/userExperienceRepository.js';
+import { PostgresAdminDataRepository } from './services/adminDataRepository.js';
 import { ACCEPTED_UPLOAD_TAG, UNACCEPTED_UPLOAD_TAG, UPLOAD_LIFECYCLE_TAG_KEY, presignUpload, validateUploadBatch, verifyWavObject } from './services/sampleUploads.js';
 
 const port = Number(process.env.PORT ?? 3000);
 export function createProductionServer(dependencies: ProductionDependencies) {
   const pool = dependencies.pool; const repository = dependencies.repository ?? new PostgresAccountRepository(pool);
-  const samples = dependencies.samples ?? new PostgresSampleRepository(pool); const experience=new PostgresUserExperienceRepository(pool);
+  const samples = dependencies.samples ?? new PostgresSampleRepository(pool); const experience=new PostgresUserExperienceRepository(pool); const adminData=new PostgresAdminDataRepository(pool);
   const s3 = dependencies.s3 ?? new S3Client({}); const bucketName = dependencies.sampleBucketName ?? process.env.SAMPLE_BUCKET_NAME ?? '';
   const cognito = dependencies.cognito ?? new CognitoIdentityProviderClient({}); const verify = dependencies.verify ?? verifyCognitoAccessToken;
   return createServer(async (request,response) => { try {
     if (request.method==='GET' && request.url==='/health') return sendJson(response,200,{status:'ok',service:'wally-app-server'});
     const path=new URL(request.url??'/', 'http://wally.local').pathname; const principal=await verify(bearerToken(request),cognitoSettings()); if(request.method==='POST'&&path==='/v1/me/confirm-email'){const account=await repository.findEmailConfirmationPrincipal(principal.subject);if(!account)throw new HttpError(403,'Account required.');const user=await cognito.send(new AdminGetUserCommand({UserPoolId:poolId(),Username:account.email}));if(user.UserAttributes?.find(x=>x.Name==='email_verified')?.Value!=='true')throw new HttpError(403,'Confirm your email before activating your account.');await repository.confirmEmail(principal.subject);return sendJson(response,204);} const actor=await requirePrincipal(principal,repository);
+    if(request.method==='POST' && path==='/v1/me/last-active') { await adminData.touchLastActive(actor.id); return sendJson(response,204); }
     if(request.method==='GET' && path==='/v1/me') return sendJson(response,200,await repository.me(actor.id));
     if(request.method==='GET' && path==='/v1/me/units') return sendJson(response,200,(await repository.me(actor.id))?.units??[]);
     if(request.method==='PUT' && path==='/v1/me/profile') return sendJson(response,200,await experience.updateProfile(actor.id,await parseJson<UpdateProfileRequest>(request)));
@@ -29,11 +31,17 @@ export function createProductionServer(dependencies: ProductionDependencies) {
     const activeSystem=path.match(/^\/v1\/me\/systems\/([^/]+)\/active$/); if(request.method==='POST'&&activeSystem){await experience.setActive(actor.id,activeSystem[1]);return sendJson(response,204);}
     if(request.method==='GET' && path==='/v1/me/credits') return sendJson(response,200,await experience.credits(actor.id));
     if(path.startsWith('/v1/samples')) return await sampleRoute(request,response,path,actor.id,samples,s3,bucketName);
-    if(path.startsWith('/v1/admin/')) { requireAdmin(actor); return await adminRoute(request,response,path,actor.id,repository,cognito,s3,bucketName); }
+    if(path.startsWith('/v1/admin/')) { requireAdmin(actor); return await adminRoute(request,response,path,actor.id,repository,cognito,s3,bucketName,adminData); }
     return sendJson(response,404,{message:'Route not found.'});
   } catch(error) { if(error instanceof HttpError)return sendJson(response,error.statusCode,{message:error.message}); console.error('Unhandled production API error',error);return sendJson(response,500,{message:'Internal server error.'}); }});
 }
-async function adminRoute(request:IncomingMessage,response:ServerResponse,path:string,actor:string,repo:AccountRepository,cognito:CognitoIdentityProviderClient,s3:S3Client,bucketName:string):Promise<void>{
+async function adminRoute(request:IncomingMessage,response:ServerResponse,path:string,actor:string,repo:AccountRepository,cognito:CognitoIdentityProviderClient,s3:S3Client,bucketName:string,data:PostgresAdminDataRepository):Promise<void>{
+  const query=new URL(request.url??'/', 'http://wally.local').searchParams;
+  if(request.method==='GET'&&path==='/v1/admin/users')return sendJson(response,200,await data.users({q:query.get('q')??undefined,limit:Number(query.get('limit')??25),offset:Number(query.get('offset')??0)}));
+  if(request.method==='GET'&&path==='/v1/admin/users/typeahead')return sendJson(response,200,await data.typeahead(query.get('q')??''));
+  if(request.method==='POST'&&path.match(/^\/v1\/admin\/users\/[^/]+\/credits$/)){const userId=path.split('/')[4];return sendJson(response,201,await data.adjustCredits(userId,actor,await parseJson<{delta:number;note:string;kind?:'grant'|'administrative_adjustment'}>(request)));}
+  if(request.method==='GET'&&path==='/v1/admin/samples')return sendJson(response,200,await data.samples({ownerId:query.get('ownerId')??undefined,psiuUnitId:query.get('psiuUnitId')??undefined,source:query.get('source')??undefined,state:query.get('state')??undefined,limit:Number(query.get('limit')??25),offset:Number(query.get('offset')??0)}));
+  if(request.method==='GET'&&path==='/v1/admin/samples/stats')return sendJson(response,200,await data.sampleStats(actor));
   const id=path.split('/')[4]; const reqId=requestId(request);
   if(request.method==='GET'&&path==='/v1/admin/customers')return sendJson(response,200,await repo.customers());
   if(request.method==='POST'&&path==='/v1/admin/customers'){const x=await parseJson<CreateCustomerRequest>(request);return sendJson(response,201,await repo.createCustomer(email(x.email),actor,reqId));}
