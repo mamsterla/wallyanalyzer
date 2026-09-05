@@ -27,8 +27,18 @@ export interface MeResponse {
   role: Role;
   lifecycle: CustomerLifecycle;
   units: CustomerUnit[];
+  firstName?: string;
+  lastName?: string;
   emailChangeAvailable: false;
 }
+export interface UpdateProfileRequest { firstName: string; lastName: string; }
+export interface SystemComponents { turntable: string; tonearm: string; cartridge: string; headshell?: string; }
+export interface UserSystem { id: string; name: string; notes: string; components: SystemComponents; active: boolean; createdAt: string; }
+export interface CreateSystemRequest { name: string; notes?: string; components: SystemComponents; active?: boolean; }
+export interface UpdateSystemRequest extends CreateSystemRequest {}
+export type CreditLedgerKind = 'initial_verified_account_credit' | 'purchase' | 'grant' | 'usage' | 'administrative_adjustment';
+export interface CreditLedgerEntry { id: string; kind: CreditLedgerKind; delta: number; balanceAfter: number; note: string; createdAt: string; }
+export interface CreditsResponse { balance: number; entries: CreditLedgerEntry[]; }
 
 export interface CreateCustomerRequest { email: string; }
 export interface CreatePsiuRequest { serialNumber: string; uid: string; }
@@ -55,10 +65,10 @@ export interface SampleUploadRequest { fileName: string; contentType: string; by
 export interface SampleUploadResponse { sampleId: string; objectKey: string; uploadUrl: string; expiresAt: string; }
 export type SampleSource = 'manual_file' | 'psiu_capture';
 export interface SampleUploadFile { clientFileId: string; fileName: string; contentType: string; byteLength: number; sha256Base64?: string; recordedAt: string; source: SampleSource; }
-export interface CreateSampleUploadBatchRequest { idempotencyKey: string; psiuUnitId: string; source: SampleSource; observedPsiuUid?: string; files: SampleUploadFile[]; }
+export interface CreateSampleUploadBatchRequest { idempotencyKey: string; psiuUnitId: string; systemId?: string; source: SampleSource; observedPsiuUid?: string; files: SampleUploadFile[]; }
 export interface SampleUploadIntent { sampleId: string; clientFileId: string; fileName: string; uploadUrl: string; expiresAt: string; requiredHeaders: Record<string, string>; }
 export interface CreateSampleUploadBatchResponse { batchId: string; uploads: SampleUploadIntent[]; }
-export interface SampleSummary { id: string; batchId: string; psiuUnitId: string; source: SampleSource; observedPsiuUid?: string; fileName: string; contentType: string; byteLength: number; sha256Base64?: string; recordedAt: string; uploadState: 'intent' | 'uploaded' | 'failed'; sampleRateHz?: number; channels?: number; bitsPerSample?: number; durationMs?: number; createdAt: string; uploadedAt?: string; }
+export interface SampleSummary { id: string; batchId: string; psiuUnitId: string; source: SampleSource; observedPsiuUid?: string; systemSnapshot?: { id: string; name: string; components: SystemComponents }; fileName: string; contentType: string; byteLength: number; sha256Base64?: string; recordedAt: string; uploadState: 'intent' | 'uploaded' | 'failed'; sampleRateHz?: number; channels?: number; bitsPerSample?: number; durationMs?: number; createdAt: string; uploadedAt?: string; }
 export interface CompleteSampleUploadResponse { sample: SampleSummary; }
 export interface SampleDownloadResponse { downloadUrl: string; expiresAt: string; }
 export interface AnalysisReportSummary { id: string; sampleId: string; algorithmVersion: string; status: AnalysisStatus; createdAt: string; completedAt?: string; }

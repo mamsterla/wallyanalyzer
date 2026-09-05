@@ -10,7 +10,7 @@ const [appSource, controllerSource] = await Promise.all([
 describe('native select labels', () => {
   it('always shrinks labels so selected and placeholder values are not obscured', () => {
     expect(nativeSelectInputLabelProps).toEqual({ shrink: true });
-    expect(appSource.match(/InputLabelProps=\{nativeSelectInputLabelProps\}/g)).toHaveLength(4);
+    expect(appSource.match(/InputLabelProps=\{nativeSelectInputLabelProps\}/g)).toHaveLength(5);
     expect(controllerSource).toContain('InputLabelProps={nativeSelectInputLabelProps}');
   });
 });

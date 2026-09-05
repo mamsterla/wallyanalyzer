@@ -1,6 +1,6 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
-import { AdminAddUserToGroupCommand, AdminCreateUserCommand, AdminDeleteUserCommand, AdminDisableUserCommand, AdminEnableUserCommand, AdminResetUserPasswordCommand, CognitoIdentityProviderClient } from '@aws-sdk/client-cognito-identity-provider';
-import type { AdminFulfillmentRequest, AssignPsiuRequest, CreateCustomerRequest, CreatePsiuRequest, CreateSampleUploadBatchRequest } from '@wally/contracts';
+import { AdminAddUserToGroupCommand, AdminCreateUserCommand, AdminDeleteUserCommand, AdminDisableUserCommand, AdminEnableUserCommand, AdminResetUserPasswordCommand, AdminGetUserCommand, CognitoIdentityProviderClient } from '@aws-sdk/client-cognito-identity-provider';
+import type { AdminFulfillmentRequest, AssignPsiuRequest, CreateCustomerRequest, CreatePsiuRequest, CreateSampleUploadBatchRequest, CreateSystemRequest, UpdateProfileRequest } from '@wally/contracts';
 import { DeleteObjectCommand, GetObjectCommand, PutObjectTaggingCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { Pool } from 'pg';
@@ -9,19 +9,25 @@ import { requireAdmin, requirePrincipal } from './services/accountAuthorization.
 import { PostgresAccountRepository, type AccountRepository, type CognitoReconciliationJob } from './services/accountRepository.js';
 import { databaseSettings } from './migrate.js';
 import { PostgresSampleRepository, type SampleRepository } from './services/sampleRepository.js';
+import { PostgresUserExperienceRepository } from './services/userExperienceRepository.js';
 import { ACCEPTED_UPLOAD_TAG, UNACCEPTED_UPLOAD_TAG, UPLOAD_LIFECYCLE_TAG_KEY, presignUpload, validateUploadBatch, verifyWavObject } from './services/sampleUploads.js';
 
 const port = Number(process.env.PORT ?? 3000);
 export function createProductionServer(dependencies: ProductionDependencies) {
   const pool = dependencies.pool; const repository = dependencies.repository ?? new PostgresAccountRepository(pool);
-  const samples = dependencies.samples ?? new PostgresSampleRepository(pool);
+  const samples = dependencies.samples ?? new PostgresSampleRepository(pool); const experience=new PostgresUserExperienceRepository(pool);
   const s3 = dependencies.s3 ?? new S3Client({}); const bucketName = dependencies.sampleBucketName ?? process.env.SAMPLE_BUCKET_NAME ?? '';
   const cognito = dependencies.cognito ?? new CognitoIdentityProviderClient({}); const verify = dependencies.verify ?? verifyCognitoAccessToken;
   return createServer(async (request,response) => { try {
     if (request.method==='GET' && request.url==='/health') return sendJson(response,200,{status:'ok',service:'wally-app-server'});
-    const path=new URL(request.url??'/', 'http://wally.local').pathname; const principal=await verify(bearerToken(request),cognitoSettings()); const actor=await requirePrincipal(principal,repository);
+    const path=new URL(request.url??'/', 'http://wally.local').pathname; const principal=await verify(bearerToken(request),cognitoSettings()); if(request.method==='POST'&&path==='/v1/me/confirm-email'){const account=await repository.findActivePrincipal(principal.subject);if(!account)throw new HttpError(403,'Account required.');const user=await cognito.send(new AdminGetUserCommand({UserPoolId:poolId(),Username:principal.subject}));if(user.UserAttributes?.find(x=>x.Name==='email_verified')?.Value!=='true')throw new HttpError(403,'Confirm your email before activating your account.');await repository.confirmEmail(principal.subject);return sendJson(response,204);} const actor=await requirePrincipal(principal,repository);
     if(request.method==='GET' && path==='/v1/me') return sendJson(response,200,await repository.me(actor.id));
     if(request.method==='GET' && path==='/v1/me/units') return sendJson(response,200,(await repository.me(actor.id))?.units??[]);
+    if(request.method==='PUT' && path==='/v1/me/profile') return sendJson(response,200,await experience.updateProfile(actor.id,await parseJson<UpdateProfileRequest>(request)));
+    if(request.method==='GET' && path==='/v1/me/systems') return sendJson(response,200,await experience.systems(actor.id));
+    if(request.method==='POST' && path==='/v1/me/systems') return sendJson(response,201,await experience.createSystem(actor.id,await parseJson<CreateSystemRequest>(request)));
+    const activeSystem=path.match(/^\/v1\/me\/systems\/([^/]+)\/active$/); if(request.method==='POST'&&activeSystem){await experience.setActive(actor.id,activeSystem[1]);return sendJson(response,204);}
+    if(request.method==='GET' && path==='/v1/me/credits') return sendJson(response,200,await experience.credits(actor.id));
     if(path.startsWith('/v1/samples')) return await sampleRoute(request,response,path,actor.id,samples,s3,bucketName);
     if(path.startsWith('/v1/admin/')) { requireAdmin(actor); return await adminRoute(request,response,path,actor.id,repository,cognito,s3,bucketName); }
     return sendJson(response,404,{message:'Route not found.'});
