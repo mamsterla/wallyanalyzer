@@ -36,7 +36,7 @@ describe('PSIU client', () => {
     const client = createPsuClient(fetchMock);
 
     await expect(client.getStatus()).resolves.toMatchObject({ uid: 'PSIU-001', sampleRateHz: 192_000, xlr: true, bufferCount: 7 });
-    expect(fetchMock).toHaveBeenCalledWith('/api/psiu/status', undefined);
+    expect(fetchMock).toHaveBeenCalledWith('/api/psiu/status');
   });
 
   it('sends capture actions only to the same-origin local proxy', async () => {

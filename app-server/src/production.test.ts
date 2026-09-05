@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { request as httpRequest } from 'node:http';
-import { AdminAddUserToGroupCommand, AdminCreateUserCommand, AdminDeleteUserCommand } from '@aws-sdk/client-cognito-identity-provider';
+import { AdminAddUserToGroupCommand, AdminCreateUserCommand, AdminDeleteUserCommand, AdminGetUserCommand } from '@aws-sdk/client-cognito-identity-provider';
 import { S3Client } from '@aws-sdk/client-s3';
 import { createProductionServer } from './production.js';
 import { HttpError } from './services/auth.js';
@@ -37,6 +37,18 @@ test('admin inventory lifecycle cleans failed pending objects and hard-delete re
   const s3 = new S3Client({ region:'us-east-1', credentials:{accessKeyId:'test',secretAccessKey:'test'} }); s3.send = async (command: { constructor: { name: string } }) => { calls.push(command.constructor.name); return {} as never; };
   const server = createProductionServer({ pool:{} as never, repository:repository as never, s3, sampleBucketName:'bucket', verify:async()=>({subject:'admin',roles:['admin']}) }); await new Promise<void>(r=>server.listen(0,'127.0.0.1',r));
   try { assert.equal((await call(server,'POST','/v1/admin/psiu-units/unit-a/unavailable')).status,204); assert.deepEqual(calls,['unavailable','DeleteObjectCommand']); const suffix=await call(server,'DELETE','/v1/admin/psiu-units/unit-a/extra'); assert.equal(suffix.status,404); assert.equal(calls.includes('hard-delete'),false); const deleted=await call(server,'DELETE','/v1/admin/psiu-units/unit-a'); assert.equal(deleted.status,409); assert.match(deleted.body,/Mark unavailable/); } finally { await new Promise<void>(r=>server.close(()=>r())); }
+});
+
+test('email confirmation checks Cognito by durable email and completes durably once', async () => {
+  const calls:string[]=[];
+  const repository={async findActivePrincipal(){return{id:'user',email:'user@example.com',role:'user' as const,lifecycle:'invited'}},async confirmEmail(subject:string){calls.push(`confirm:${subject}`)}};
+  const cognito={send:async(command:unknown)=>{if(command instanceof AdminGetUserCommand){calls.push(`lookup:${command.input.Username}`);return{UserAttributes:[{Name:'email_verified',Value:'true'}]};}return{}}};
+  const server=createProductionServer({pool:{} as never,repository:repository as never,cognito:cognito as never,verify:async()=>({subject:'subject',roles:['user']})});await new Promise<void>(r=>server.listen(0,'127.0.0.1',r));
+  try{assert.equal((await call(server,'POST','/v1/me/confirm-email')).status,204);assert.deepEqual(calls,['lookup:user@example.com','confirm:subject']);}finally{await new Promise<void>(r=>server.close(()=>r()));}
+});
+
+test('restore uses repository lifecycle decision instead of forcing active', async () => {
+  const calls:string[]=[];const repository={async findActivePrincipal(){return{id:'admin',email:'admin@example.com',role:'admin' as const,lifecycle:'active'}},async restoreCustomer(){calls.push('restore');return{email:'unconfirmed@example.com',cognitoSubject:'sub'}}};const cognito={send:async(command:unknown)=>{calls.push((command as {constructor:{name:string}}).constructor.name);return{}}};const server=createProductionServer({pool:{} as never,repository:repository as never,cognito:cognito as never,verify:async()=>({subject:'admin',roles:['admin']})});await new Promise<void>(r=>server.listen(0,'127.0.0.1',r));try{assert.equal((await call(server,'POST','/v1/admin/customers/user/restore')).status,204);assert.deepEqual(calls,['restore','AdminEnableUserCommand']);}finally{await new Promise<void>(r=>server.close(()=>r()));}
 });
 
 function call(server: ReturnType<typeof createProductionServer>, method:string,path:string,body?:unknown):Promise<{status:number;body:string}>{const address=server.address();if(!address||typeof address==='string')throw Error('server unavailable');return new Promise((resolve,reject)=>{const req=httpRequest({host:'127.0.0.1',port:address.port,path,method,headers:{authorization:'Bearer token','content-type':'application/json'}},res=>{let text='';res.on('data',x=>text+=x);res.on('end',()=>resolve({status:res.statusCode??0,body:text}));});req.on('error',reject);if(body)req.write(JSON.stringify(body));req.end();});}

@@ -16,7 +16,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import type { CustomerUnit, PsiuStatus } from '@wally/contracts';
+import type { CustomerUnit, PsiuStatus, UserSystem } from '@wally/contracts';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { RecordArtwork } from '../features/controller/RecordArtwork.js';
 import { nativeSelectInputLabelProps } from '../nativeSelect.js';
@@ -31,7 +31,17 @@ export function queueCapturedPsiuWav(file: File, psiuUnitId: string, observedPsi
   return { file, clientFileId: crypto.randomUUID().replaceAll('-', ''), psiuUnitId, observedPsiuUid, recordedAt: new Date(file.lastModified).toISOString(), source: 'psiu_capture' };
 }
 
-export function ControllerPage({ units, onCaptureQueued }: { units: CustomerUnit[]; onCaptureQueued: (capture: CapturedPsiuFile) => void }) {
+export function captureEligibility(status: PsiuStatus, units: CustomerUnit[], systems: UserSystem[]): { ok: true; unit: CustomerUnit } | { ok: false; message: string } {
+  if (!systems.some(system => system.active)) return { ok: false, message: 'Create and select an active system before capture.' };
+  const matching = units.find(unit => unit.uid === status.uid);
+  if (!matching) return { ok: false, message: 'This PSIU UID is not assigned to your account.' };
+  if (matching.status === 'disabled') return { ok: false, message: 'This assigned PSIU is disabled. Contact support.' };
+  if (matching.status === 'unavailable') return { ok: false, message: 'This assigned PSIU is unavailable. Contact support.' };
+  if (matching.status !== 'enabled') return { ok: false, message: 'This PSIU is not enabled for capture.' };
+  return { ok: true, unit: matching };
+}
+
+export function ControllerPage({ units, systems, onCaptureQueued }: { units: CustomerUnit[]; systems: UserSystem[]; onCaptureQueued: (capture: CapturedPsiuFile) => void }) {
   const [phase, setPhase] = useState<CapturePhase>('checking');
   const [status, setStatus] = useState<PsiuStatus | null>(null);
   const [capture, setCapture] = useState<File | null>(null);
@@ -69,8 +79,12 @@ export function ControllerPage({ units, onCaptureQueued }: { units: CustomerUnit
 
   const startCapture = async () => {
     setPhase('starting');
-    setNotice('Starting capture…');
+    setNotice('Checking PSIU and recording system…');
     try {
+      const checkedStatus = await client.getStatus();
+      const eligibility = captureEligibility(checkedStatus, units, systems);
+      if (!eligibility.ok) { setStatus(checkedStatus); setPhase('ready'); setNotice(eligibility.message); return; }
+      setSelectedUnitId(eligibility.unit.id);
       const nextStatus = await client.startCapture();
       setStatus(nextStatus);
       setCapture(null);
@@ -148,15 +162,17 @@ export function ControllerPage({ units, onCaptureQueued }: { units: CustomerUnit
       : 'stopped';
   const isBusy = phase === 'checking' || phase === 'starting' || phase === 'stopping';
   const isUnavailable = phase === 'unavailable';
+  const eligibility = status ? captureEligibility(status, units, systems) : { ok: false as const, message: 'Check the PSIU connection before capture.' };
 
   return (
     <Stack spacing={3}>
       <Box>
         <Typography variant="h3">PSIU local capture</Typography>
-        <Typography color="text.secondary">Capture stays on your local network until you add the completed WAV file to your account upload batch.</Typography>
+        <Typography color="text.secondary">Capture stays on your local network until you add the completed WAV file to Process and Report.</Typography>
       </Box>
 
-      <Alert severity={isUnavailable ? 'info' : 'success'}>{notice}</Alert>
+      <Alert severity={isUnavailable || !eligibility.ok ? 'info' : 'success'}>{notice}</Alert>
+      {!systems.some(system => system.active) && <Alert severity="warning" action={<Button color="inherit" size="small" onClick={() => { window.location.href='/systems'; }}>Create system</Button>}>Create an active system before capture.</Alert>}
 
       <LocalInventoryScanner client={client} />
 
@@ -164,7 +180,7 @@ export function ControllerPage({ units, onCaptureQueued }: { units: CustomerUnit
         <Grid size={{ xs: 12, md: 5 }}>
           <Card><CardContent><Stack spacing={2}>
             <Typography variant="h6">PSIU connection</Typography>
-            <Typography variant="body2" color="text.secondary">This local application reaches the configured LAN PSIU through its same-origin local proxy. Capture status refreshes every two seconds while PSIU is active.</Typography>
+            <Typography variant="body2" color="text.secondary">This browser connects only to the configured LAN PSIU. Capture status refreshes every two seconds while PSIU is active.</Typography>
             <Divider />
             <UnitSummary status={status} unavailable={isUnavailable} />
           </Stack></CardContent></Card>
@@ -177,11 +193,11 @@ export function ControllerPage({ units, onCaptureQueued }: { units: CustomerUnit
             {phase === 'capturing' ? (
               <Button variant="contained" color="secondary" size="large" onClick={() => void completeCapture()} disabled={isBusy}>Stop capture</Button>
             ) : (
-              <Button variant="contained" size="large" onClick={() => void startCapture()} disabled={isBusy || isUnavailable}>Start capture</Button>
+              <Button variant="contained" size="large" onClick={() => void startCapture()} disabled={isBusy || isUnavailable || !eligibility.ok}>Start capture</Button>
             )}
             {phase === 'capturing' && status && <LiveCaptureProgress status={status} />}
             {capture && <CaptureSummary file={capture} />}
-            <Dialog open={showUploadPrompt} onClose={() => setShowUploadPrompt(false)}><DialogTitle>Add capture to upload batch</DialogTitle><DialogContent><Stack spacing={2} mt={1}><DialogContentText>The capture can only be attached to the enabled assigned PSIU whose UID matches the local status response.</DialogContentText><TextField select SelectProps={{ native: true }} InputLabelProps={nativeSelectInputLabelProps} label="Assigned enabled PSIU" value={selectedUnitId} onChange={(event) => setSelectedUnitId(event.target.value)}><option value="">Select PSIU</option>{units.filter((unit) => unit.status === 'enabled' && unit.uid === status?.uid).map((unit) => <option key={unit.id} value={unit.id}>{unit.serialNumber} · {unit.uid}</option>)}</TextField></Stack></DialogContent><DialogActions><Button onClick={() => setShowUploadPrompt(false)}>Not now</Button><Button variant="contained" disabled={!capture || !selectedUnitId || !status} onClick={() => { if (!capture || !selectedUnitId || !status) return; onCaptureQueued(queueCapturedPsiuWav(capture, selectedUnitId, status.uid, units)); setShowUploadPrompt(false); setCapture(null); setPhase('ready'); setNotice('Capture added to your upload batch. Upload it from your account page.'); }}>Add to batch</Button></DialogActions></Dialog>
+            <Dialog open={showUploadPrompt} onClose={() => setShowUploadPrompt(false)}><DialogTitle>Add capture to Process and Report</DialogTitle><DialogContent><Stack spacing={2} mt={1}><DialogContentText>The capture can only be attached to the enabled assigned PSIU whose UID matches the local status response.</DialogContentText><TextField select SelectProps={{ native: true }} InputLabelProps={nativeSelectInputLabelProps} label="Assigned enabled PSIU" value={selectedUnitId} onChange={(event) => setSelectedUnitId(event.target.value)}><option value="">Select PSIU</option>{units.filter((unit) => unit.status === 'enabled' && unit.uid === status?.uid).map((unit) => <option key={unit.id} value={unit.id}>{unit.serialNumber} · {unit.uid}</option>)}</TextField></Stack></DialogContent><DialogActions><Button onClick={() => setShowUploadPrompt(false)}>Not now</Button><Button variant="contained" disabled={!capture || !selectedUnitId || !status} onClick={() => { if (!capture || !selectedUnitId || !status) return; onCaptureQueued(queueCapturedPsiuWav(capture, selectedUnitId, status.uid, units)); setShowUploadPrompt(false); setCapture(null); setPhase('ready'); setNotice('Capture added to Process and Report. Continue from your account page.'); }}>Add to batch</Button></DialogActions></Dialog>
           </Stack></CardContent></Card>
         </Grid>
       </Grid>

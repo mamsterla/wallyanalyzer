@@ -58,7 +58,7 @@ test('hard deletion permits a never-used test unit to be re-added', async () => 
   assert.equal(queries.some((sql) => sql.includes('insert into psiu_units')), true);
 });
 
-test('customer unit queries exclude disabled assignments while admin inventory remains unchanged', async () => {
+test('customer unit queries retain assigned unit status for capture eligibility', async () => {
   const queries: string[] = [];
   const pool = {
     async query(sql: string) {
@@ -71,6 +71,6 @@ test('customer unit queries exclude disabled assignments while admin inventory r
   const repository = new PostgresAccountRepository(pool as never);
 
   assert.deepEqual((await repository.me('customer-a'))?.units, []);
-  assert.equal(queries.some((sql) => sql.includes("where a.user_id=$1 and p.status='enabled'")), true);
+  assert.equal(queries.some((sql) => sql.includes('where a.user_id=$1 order by a.assigned_at desc')), true);
   assert.equal(queries.some((sql) => sql.includes('from psiu_units p left join psiu_assignments')), false);
 });
