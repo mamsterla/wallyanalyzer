@@ -59,15 +59,17 @@ test('hard deletion permits a never-used test unit to be re-added', async () => 
 });
 
 test('email confirmation also promotes legacy active accounts that lack durable confirmation', async () => {
-  const queries: string[] = [];
-  const client = { async query(sql: string) { queries.push(sql); return { rowCount: 1, rows: [{ id: 'admin-a' }] }; }, release() {} };
+  const queries: Array<{ sql: string; values?: unknown[] }> = [];
+  const client = { async query(sql: string, values?: unknown[]) { queries.push({ sql, values }); return { rowCount: 1, rows: [{ id: 'admin-a' }] }; }, release() {} };
   const repository = new PostgresAccountRepository({ connect: async () => client } as never);
 
   await repository.confirmEmail('admin-subject');
 
-  assert.equal(queries.some((sql) => sql.includes('lifecycle in') && sql.includes('email_confirmed_at is null')), true);
-  assert.equal(queries.some((sql) => sql.includes("kind='initial_verified_account_credit'")), true);
-  assert.equal(queries.some((sql) => sql.includes('insert into audit_events')), true);
+  assert.equal(queries.some(({ sql }) => sql.includes('lifecycle in') && sql.includes('email_confirmed_at is null')), true);
+  const creditInsert = queries.find(({ sql }) => sql.includes("kind='initial_verified_account_credit'"));
+  assert.match(creditInsert?.sql ?? '', /reference_id=\$2::text/);
+  assert.equal(typeof creditInsert?.values?.[1], 'string');
+  assert.equal(queries.some(({ sql }) => sql.includes('insert into audit_events')), true);
 });
 
 test('customer unit queries retain assigned unit status for capture eligibility', async () => {
