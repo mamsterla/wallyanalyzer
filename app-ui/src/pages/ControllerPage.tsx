@@ -167,14 +167,12 @@ export function ControllerPage({ units, systems, onCaptureQueued }: { units: Cus
   return (
     <Stack spacing={3}>
       <Box>
-        <Typography variant="h3">PSIU local capture</Typography>
+        <Typography variant="h3">Sample Capture</Typography>
         <Typography color="text.secondary">Capture stays on your local network until you add the completed WAV file to Process and Report.</Typography>
       </Box>
 
       <Alert severity={isUnavailable || !eligibility.ok ? 'info' : 'success'}>{notice}</Alert>
       {!systems.some(system => system.active) && <Alert severity="warning" action={<Button color="inherit" size="small" onClick={() => { window.location.href='/systems'; }}>Create system</Button>}>Create an active system before capture.</Alert>}
-
-      <LocalInventoryScanner client={client} />
 
       <Grid container spacing={3}>
         <Grid size={{ xs: 12, md: 5 }}>
@@ -203,47 +201,6 @@ export function ControllerPage({ units, systems, onCaptureQueued }: { units: Cus
       </Grid>
     </Stack>
   );
-}
-
-function LocalInventoryScanner({ client }: { client: ReturnType<typeof createPsuClient> }) {
-  const [uid, setUid] = useState('');
-  const [serialLabel, setSerialLabel] = useState('');
-  const [message, setMessage] = useState('Ready to scan the local PSIU.');
-  const [scanning, setScanning] = useState(false);
-
-  const scan = async () => {
-    setScanning(true);
-    setMessage('Scanning psiu.local…');
-    try {
-      const scannedUid = await client.scanUid();
-      setUid(scannedUid);
-      setMessage('PSIU UID scanned. This local proof of concept does not check or write cloud inventory.');
-    } catch {
-      setUid('');
-      setMessage('PSIU UID scan failed. Check power, network, and psiu.local.');
-    } finally {
-      setScanning(false);
-    }
-  };
-
-  return <Card><CardContent><Stack spacing={2}>
-    <Typography variant="h6">Local inventory scan</Typography>
-    <Typography variant="body2" color="text.secondary">Reads only the immutable UID from the local PSIU. It does not check or add cloud inventory.</Typography>
-    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ sm: 'center' }}>
-      <Button variant="contained" onClick={() => void scan()} disabled={scanning}>{scanning ? 'Scanning…' : 'Scan PSIU'}</Button>
-      <Typography color="text.secondary">{message}</Typography>
-    </Stack>
-    {uid && <Stack spacing={1}>
-      <Detail label="Scanned PSIU UID" value={uid} />
-      <TextField label="Human-readable serial label (optional)" value={serialLabel} onChange={(event) => setSerialLabel(event.target.value)} />
-      <Alert severity="info">{localInventoryPreview(uid, serialLabel)}</Alert>
-    </Stack>}
-  </Stack></CardContent></Card>;
-}
-
-export function localInventoryPreview(uid: string, serialLabel: string): string {
-  const serial = serialLabel.trim();
-  return serial ? `Ready for later inventory confirmation: ${serial} · ${uid}. No cloud change has been made.` : `UID ${uid} scanned. Add an optional serial label before later inventory confirmation. No cloud change has been made.`;
 }
 
 function captureNotice(status: PsiuStatus): string {
