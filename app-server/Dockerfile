@@ -1,6 +1,6 @@
 # Two-process local development image: Node API behind Nginx, plus Postgres in Compose.
 # Production Lambda/CDK packaging remains separate.
-# Local builds use AWS Public ECR; CDK overrides this with the private ECR pull-through cache.
+# Local and production builds use AWS Public ECR to avoid direct Docker Hub pulls.
 ARG NODE_IMAGE=public.ecr.aws/docker/library/node:24-alpine
 FROM ${NODE_IMAGE} AS builder
 WORKDIR /workspace

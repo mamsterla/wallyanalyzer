@@ -7,11 +7,15 @@
 
 Use `AWS_PROFILE=wallyanalyzer AWS_REGION=us-east-1` for every operator command.
 
-## Node base-image cache
+## Node base image
 
-Production image builds use the private ECR pull-through cache prefix `docker-hub` for `library/node:24-alpine`; CodeBuild never pulls directly from Docker Hub. ECR still uses Docker Hub as its upstream on a private-cache miss.
+Local and production image builds use AWS Public ECR directly:
 
-The production pipeline has a durable two-phase bootstrap mode. The first deployment defaults the CDK Docker asset to AWS Public ECR (`public.ecr.aws/docker/library/node:24-alpine`), because the previously deployed pipeline cannot pass the new `nodeBaseImage` context before `DockerHubNodePullThroughCache` exists. That deployment creates the rule and updates the pipeline. Its validation project always synthesizes with AWS Public ECR. On later runs the updated deployment project detects the rule, selects the private cache, and warms it. An operator can explicitly select the private cache with `-c nodeBaseImage=<account>.dkr.ecr.us-east-1.amazonaws.com/docker-hub/library/node:24-alpine`. CodeBuild logs into the private ECR registry before CDK builds assets.
+```text
+public.ecr.aws/docker/library/node:24-alpine
+```
+
+The Dockerfile and CDK asset both set this image explicitly. CodeBuild does not pull from Docker Hub, authenticate to a private base-image registry, or use an ECR pull-through cache. The existing deployment project can deploy this source because the Dockerfile default is already AWS Public ECR.
 
 ## Domain activation model
 
