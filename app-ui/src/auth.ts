@@ -2,6 +2,7 @@ import { AuthenticationDetails, CognitoUser, CognitoUserPool, type CognitoUserSe
 import { cognitoUserPoolId as poolId, cognitoWebClientId as clientId } from './runtimeConfig.js';
 
 const pool = poolId && clientId ? new CognitoUserPool({ UserPoolId: poolId, ClientId: clientId }) : undefined;
+let authenticatedUser: CognitoUser | undefined;
 
 // Credentials must never be entered on the temporary plaintext ALB. Local UI
 // verification uses the separate mock API/auth harness, not Cognito browser auth.
@@ -9,8 +10,9 @@ export function configured() { return Boolean(pool) && window.location.protocol 
 
 function requiredUser() {
   if (!configured() || !pool) throw Error('HTTPS Cognito configuration required.');
-  const user = pool.getCurrentUser();
+  const user = authenticatedUser ?? pool.getCurrentUser();
   if (!user) throw Error('Sign in required.');
+  authenticatedUser = user;
   return user;
 }
 
@@ -31,16 +33,16 @@ export async function refreshSession(): Promise<void> {
 export async function login(email: string, password: string) {
   if (!configured() || !pool) throw Error('HTTPS Cognito configuration required.');
   const user = new CognitoUser({ Username: email, Pool: pool });
-  return new Promise<void>((resolve, reject) => user.authenticateUser(new AuthenticationDetails({ Username: email, Password: password }), { onSuccess: () => resolve(), onFailure: reject, newPasswordRequired: () => reject(Error('Temporary password must be changed.')) }));
+  return new Promise<void>((resolve, reject) => user.authenticateUser(new AuthenticationDetails({ Username: email, Password: password }), { onSuccess: () => { authenticatedUser = user; resolve(); }, onFailure: reject, newPasswordRequired: () => reject(Error('Temporary password must be changed.')) }));
 }
 
 export async function completeTemporaryPassword(email: string, temporaryPassword: string, newPassword: string) {
   if (!configured() || !pool) throw Error('HTTPS Cognito configuration required.');
   const user = new CognitoUser({ Username: email, Pool: pool });
-  return new Promise<void>((resolve, reject) => user.authenticateUser(new AuthenticationDetails({ Username: email, Password: temporaryPassword }), { onSuccess: () => resolve(), onFailure: reject, newPasswordRequired: () => user.completeNewPasswordChallenge(newPassword, {}, { onSuccess: () => resolve(), onFailure: reject }) }));
+  return new Promise<void>((resolve, reject) => user.authenticateUser(new AuthenticationDetails({ Username: email, Password: temporaryPassword }), { onSuccess: () => { authenticatedUser = user; resolve(); }, onFailure: reject, newPasswordRequired: () => user.completeNewPasswordChallenge(newPassword, {}, { onSuccess: () => { authenticatedUser = user; resolve(); }, onFailure: reject }) }));
 }
 
-export function logout() { pool?.getCurrentUser()?.signOut(); }
+export function logout() { authenticatedUser?.signOut(); pool?.getCurrentUser()?.signOut(); authenticatedUser = undefined; }
 
 export async function forgotPassword(email: string) {
   if (!configured() || !pool) throw Error('HTTPS Cognito configuration required.');
