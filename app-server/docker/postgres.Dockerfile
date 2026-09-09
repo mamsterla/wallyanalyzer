@@ -1,4 +1,4 @@
-FROM postgres:16-alpine
+FROM public.ecr.aws/docker/library/postgres:16-alpine
 
 RUN apk add --no-cache aws-cli python3
 COPY app-server/docker/postgres-entrypoint.sh /usr/local/bin/wally-postgres-entrypoint
