@@ -10,3 +10,12 @@ test('owner profile update accepts an international address without audit metada
   assert.match(queries[0]!.sql, /address_country_code/);
   assert.equal(queries[0]!.values.includes('GB'), true);
 });
+
+test('system update is owner scoped', async () => {
+  const calls: Array<{ sql: string; values: unknown[] }> = [];
+  const pool = { query: async (sql: string, values: unknown[]) => { calls.push({ sql, values }); return { rowCount: 1, rows: [{ id: 'system', name: 'Updated', notes: '', components: { turntable: 'TT', tonearm: 'Arm', cartridge: 'Cart' }, active: true, created_at: new Date('2026-01-01') }] }; } };
+  const result = await new PostgresUserExperienceRepository(pool as never).updateSystem('owner', 'system', { name: 'Updated', components: { turntable: 'TT', tonearm: 'Arm', cartridge: 'Cart' } });
+  assert.equal(result.name, 'Updated');
+  assert.match(calls[0]!.sql, /owner_id=\$2/);
+  assert.deepEqual(calls[0]!.values.slice(0, 2), ['system', 'owner']);
+});

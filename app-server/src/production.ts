@@ -1,6 +1,6 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { AdminAddUserToGroupCommand, AdminCreateUserCommand, AdminDeleteUserCommand, AdminDisableUserCommand, AdminEnableUserCommand, AdminResetUserPasswordCommand, AdminGetUserCommand, CognitoIdentityProviderClient } from '@aws-sdk/client-cognito-identity-provider';
-import type { AdminFulfillmentRequest, AssignPsiuRequest, CreateCustomerRequest, CreatePsiuRequest, CreateSampleUploadBatchRequest, CreateSystemRequest, UpdateProfileRequest, CreditAdjustmentRequest } from '@wally/contracts';
+import type { AdminFulfillmentRequest, AssignPsiuRequest, CreateCustomerRequest, CreatePsiuRequest, CreateSampleUploadBatchRequest, CreateSystemRequest, UpdateProfileRequest, UpdateSystemRequest, CreditAdjustmentRequest } from '@wally/contracts';
 import { DeleteObjectCommand, GetObjectCommand, PutObjectTaggingCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { Pool } from 'pg';
@@ -28,6 +28,7 @@ export function createProductionServer(dependencies: ProductionDependencies) {
     if(request.method==='PUT' && path==='/v1/me/profile') return sendJson(response,200,await experience.updateProfile(actor.id,await parseJson<UpdateProfileRequest>(request)));
     if(request.method==='GET' && path==='/v1/me/systems') return sendJson(response,200,await experience.systems(actor.id));
     if(request.method==='POST' && path==='/v1/me/systems') return sendJson(response,201,await experience.createSystem(actor.id,await parseJson<CreateSystemRequest>(request)));
+    const systemUpdate=path.match(/^\/v1\/me\/systems\/([^/]+)$/); if(request.method==='PUT'&&systemUpdate)return sendJson(response,200,await experience.updateSystem(actor.id,systemUpdate[1],await parseJson<UpdateSystemRequest>(request)));
     const activeSystem=path.match(/^\/v1\/me\/systems\/([^/]+)\/active$/); if(request.method==='POST'&&activeSystem){await experience.setActive(actor.id,activeSystem[1]);return sendJson(response,204);}
     if(request.method==='GET' && path==='/v1/me/credits') return sendJson(response,200,await adminData.credits(actor.id,pageQuery(new URL(request.url??'/', 'http://wally.local').searchParams)));
     if(path.startsWith('/v1/samples')) return await sampleRoute(request,response,path,actor.id,samples,s3,bucketName);
