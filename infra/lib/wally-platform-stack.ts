@@ -443,7 +443,7 @@ export class WallyPlatformStack extends cdk.Stack {
           version: '0.2',
           phases: {
             install: { 'runtime-versions': { nodejs: 24 }, commands: ['npm ci'] },
-            build: { commands: ['npm run check', 'npm run build', 'npm run test', 'cd infra && npx cdk synth -c environment=production -c applicationHostedZoneId=Z0640322GREKLUZ06W3O -c applicationExpectedNameServers=ns-723.awsdns-26.net,ns-386.awsdns-48.com,ns-1026.awsdns-00.org,ns-1580.awsdns-05.co.uk -c legacyApplicationCertificateArn=arn:aws:acm:us-east-1:265404809336:certificate/52ff0b5a-79fb-4504-ac2e-9c5ce89f303c -c applicationActivation=true'] },
+            build: { commands: ['npm run check', 'npm run build', 'npm run test', 'cd infra && npx cdk synth -c nodeBaseImage=public.ecr.aws/docker/library/node:24-alpine -c environment=production -c applicationHostedZoneId=Z0640322GREKLUZ06W3O -c applicationExpectedNameServers=ns-723.awsdns-26.net,ns-386.awsdns-48.com,ns-1026.awsdns-00.org,ns-1580.awsdns-05.co.uk -c legacyApplicationCertificateArn=arn:aws:acm:us-east-1:265404809336:certificate/52ff0b5a-79fb-4504-ac2e-9c5ce89f303c -c applicationActivation=true'] },
           },
         }),
       });
@@ -453,8 +453,8 @@ export class WallyPlatformStack extends cdk.Stack {
           version: '0.2',
           phases: {
             install: { 'runtime-versions': { nodejs: 24 }, commands: ['npm ci'] },
-            pre_build: { commands: ['aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $PRIVATE_ECR_REGISTRY'] },
-            build: { commands: ['npm run check', 'npm run build', 'npm run test', 'cd infra && npx cdk deploy WallyPlatform-production -c environment=production -c applicationHostedZoneId=Z0640322GREKLUZ06W3O -c applicationExpectedNameServers=ns-723.awsdns-26.net,ns-386.awsdns-48.com,ns-1026.awsdns-00.org,ns-1580.awsdns-05.co.uk -c legacyApplicationCertificateArn=arn:aws:acm:us-east-1:265404809336:certificate/52ff0b5a-79fb-4504-ac2e-9c5ce89f303c -c applicationActivation=true --require-approval never'] },
+            pre_build: { commands: ['aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $PRIVATE_ECR_REGISTRY', 'if aws ecr describe-pull-through-cache-rules --ecr-repository-prefix docker-hub --query "pullThroughCacheRules[0].ecrRepositoryPrefix" --output text | grep -qx docker-hub; then echo "NODE_BASE_IMAGE=$PRIVATE_ECR_REGISTRY/docker-hub/library/node:24-alpine" > /tmp/wally-node-base-image.env; else echo "NODE_BASE_IMAGE=public.ecr.aws/docker/library/node:24-alpine" > /tmp/wally-node-base-image.env; fi', 'cat /tmp/wally-node-base-image.env'] },
+            build: { commands: ['source /tmp/wally-node-base-image.env', 'npm run check', 'npm run build', 'npm run test', 'cd infra && npx cdk deploy WallyPlatform-production -c nodeBaseImage=$NODE_BASE_IMAGE -c environment=production -c applicationHostedZoneId=Z0640322GREKLUZ06W3O -c applicationExpectedNameServers=ns-723.awsdns-26.net,ns-386.awsdns-48.com,ns-1026.awsdns-00.org,ns-1580.awsdns-05.co.uk -c legacyApplicationCertificateArn=arn:aws:acm:us-east-1:265404809336:certificate/52ff0b5a-79fb-4504-ac2e-9c5ce89f303c -c applicationActivation=true --require-approval never'] },
             post_build: { commands: ['echo "Foundation deployment preserves the activated HTTPS listener, certificate, and canonical Route 53 aliases."'] },
           },
         }),
@@ -466,8 +466,8 @@ export class WallyPlatformStack extends cdk.Stack {
           version: '0.2',
           phases: {
             install: { 'runtime-versions': { nodejs: 24 }, commands: ['npm ci'] },
-            pre_build: { commands: ['aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $PRIVATE_ECR_REGISTRY', 'bash infra/scripts/domain-activation-preflight.sh'] },
-            build: { commands: ['npm run check', 'npm run build', 'npm run test', 'cd infra && npx cdk deploy WallyPlatform-production -c environment=production -c applicationHostedZoneId=Z0640322GREKLUZ06W3O -c applicationExpectedNameServers=ns-723.awsdns-26.net,ns-386.awsdns-48.com,ns-1026.awsdns-00.org,ns-1580.awsdns-05.co.uk -c legacyApplicationCertificateArn=arn:aws:acm:us-east-1:265404809336:certificate/52ff0b5a-79fb-4504-ac2e-9c5ce89f303c -c applicationActivation=true --require-approval never'] },
+            pre_build: { commands: ['aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $PRIVATE_ECR_REGISTRY', 'if aws ecr describe-pull-through-cache-rules --ecr-repository-prefix docker-hub --query "pullThroughCacheRules[0].ecrRepositoryPrefix" --output text | grep -qx docker-hub; then echo "NODE_BASE_IMAGE=$PRIVATE_ECR_REGISTRY/docker-hub/library/node:24-alpine" > /tmp/wally-node-base-image.env; else echo "NODE_BASE_IMAGE=public.ecr.aws/docker/library/node:24-alpine" > /tmp/wally-node-base-image.env; fi', 'bash infra/scripts/domain-activation-preflight.sh'] },
+            build: { commands: ['source /tmp/wally-node-base-image.env', 'npm run check', 'npm run build', 'npm run test', 'cd infra && npx cdk deploy WallyPlatform-production -c nodeBaseImage=$NODE_BASE_IMAGE -c environment=production -c applicationHostedZoneId=Z0640322GREKLUZ06W3O -c applicationExpectedNameServers=ns-723.awsdns-26.net,ns-386.awsdns-48.com,ns-1026.awsdns-00.org,ns-1580.awsdns-05.co.uk -c legacyApplicationCertificateArn=arn:aws:acm:us-east-1:265404809336:certificate/52ff0b5a-79fb-4504-ac2e-9c5ce89f303c -c applicationActivation=true --require-approval never'] },
           },
         }),
         environment: {
@@ -493,8 +493,8 @@ export class WallyPlatformStack extends cdk.Stack {
           resources: ['*'],
         }));
         project.addToRolePolicy(new iam.PolicyStatement({
-          actions: ['ecr:BatchCheckLayerAvailability', 'ecr:BatchGetImage', 'ecr:GetDownloadUrlForLayer'],
-          resources: [`arn:aws:ecr:${this.region}:${this.account}:repository/docker-hub/*`],
+          actions: ['ecr:BatchCheckLayerAvailability', 'ecr:BatchGetImage', 'ecr:DescribePullThroughCacheRules', 'ecr:GetDownloadUrlForLayer'],
+          resources: ['*'],
         }));
       }
 
