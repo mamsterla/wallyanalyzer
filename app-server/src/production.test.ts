@@ -72,6 +72,24 @@ test('active users without durable email confirmation cannot access normal APIs 
   } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
 });
 
+test('legacy active account becomes normally authorized after durable email confirmation', async () => {
+  let confirmed = false;
+  const repository = {
+    async findActivePrincipal() { return confirmed ? { id: 'admin', email: 'admin@example.com', role: 'admin' as const, lifecycle: 'active', emailConfirmedAt: new Date() } : undefined; },
+    async findEmailConfirmationPrincipal() { return { id: 'admin', email: 'admin@example.com', role: 'admin' as const, lifecycle: 'active' }; },
+    async confirmEmail() { confirmed = true; },
+    async me() { return { id: 'admin', email: 'admin@example.com', role: 'admin' as const, lifecycle: 'active', units: [], emailChangeAvailable: false }; },
+  };
+  const cognito = { send: async (command: unknown) => command instanceof AdminGetUserCommand ? { UserAttributes: [{ Name: 'email_verified', Value: 'true' }] } : {} };
+  const server = createProductionServer({ pool: {} as never, repository: repository as never, cognito: cognito as never, verify: async () => ({ subject: 'admin-subject', roles: ['admin'] }) });
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  try {
+    assert.equal((await call(server, 'GET', '/v1/me')).status, 403);
+    assert.equal((await call(server, 'POST', '/v1/me/confirm-email')).status, 204);
+    assert.equal((await call(server, 'GET', '/v1/me')).status, 200);
+  } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
+});
+
 test('restore uses repository lifecycle decision instead of forcing active', async () => {
   const calls:string[]=[];const repository={async findActivePrincipal(){return{id:'admin',email:'admin@example.com',role:'admin' as const,lifecycle:'active'}},async restoreCustomer(){calls.push('restore');return{email:'unconfirmed@example.com',cognitoSubject:'sub'}}};const cognito={send:async(command:unknown)=>{calls.push((command as {constructor:{name:string}}).constructor.name);return{}}};const server=createProductionServer({pool:{} as never,repository:repository as never,cognito:cognito as never,verify:async()=>({subject:'admin',roles:['admin']})});await new Promise<void>(r=>server.listen(0,'127.0.0.1',r));try{assert.equal((await call(server,'POST','/v1/admin/customers/user/restore')).status,204);assert.deepEqual(calls,['restore','AdminEnableUserCommand']);}finally{await new Promise<void>(r=>server.close(()=>r()));}
 });

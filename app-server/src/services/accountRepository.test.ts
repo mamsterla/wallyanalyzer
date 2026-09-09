@@ -58,6 +58,18 @@ test('hard deletion permits a never-used test unit to be re-added', async () => 
   assert.equal(queries.some((sql) => sql.includes('insert into psiu_units')), true);
 });
 
+test('email confirmation also promotes legacy active accounts that lack durable confirmation', async () => {
+  const queries: string[] = [];
+  const client = { async query(sql: string) { queries.push(sql); return { rowCount: 1, rows: [{ id: 'admin-a' }] }; }, release() {} };
+  const repository = new PostgresAccountRepository({ connect: async () => client } as never);
+
+  await repository.confirmEmail('admin-subject');
+
+  assert.equal(queries.some((sql) => sql.includes('lifecycle in') && sql.includes('email_confirmed_at is null')), true);
+  assert.equal(queries.some((sql) => sql.includes("kind='initial_verified_account_credit'")), true);
+  assert.equal(queries.some((sql) => sql.includes('insert into audit_events')), true);
+});
+
 test('customer unit queries retain assigned unit status for capture eligibility', async () => {
   const queries: string[] = [];
   const pool = {
