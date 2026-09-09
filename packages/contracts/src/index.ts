@@ -29,9 +29,10 @@ export interface MeResponse {
   units: CustomerUnit[];
   firstName?: string;
   lastName?: string;
+  address?: Address;
   emailChangeAvailable: false;
 }
-export interface UpdateProfileRequest { firstName: string; lastName: string; }
+export interface UpdateProfileRequest { firstName?: string; lastName?: string; address?: Address; }
 export interface SystemComponents { turntable: string; tonearm: string; cartridge: string; headshell?: string; }
 export interface UserSystem { id: string; name: string; notes: string; components: SystemComponents; active: boolean; createdAt: string; }
 export interface CreateSystemRequest { name: string; notes?: string; components: SystemComponents; active?: boolean; }
