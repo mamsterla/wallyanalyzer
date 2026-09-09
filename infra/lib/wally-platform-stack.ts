@@ -277,8 +277,13 @@ export class WallyPlatformStack extends cdk.Stack {
       ecrRepositoryPrefix: 'docker-hub',
       upstreamRegistryUrl: 'registry-1.docker.io',
     });
+    const publicNodeImage = 'public.ecr.aws/docker/library/node:24-alpine';
     const privateNodeImage = `${this.account}.dkr.ecr.${this.region}.amazonaws.com/docker-hub/library/node:24-alpine`;
-    const nodeImage = this.node.tryGetContext('nodeBaseImage') ?? privateNodeImage;
+    // The currently deployed pipeline cannot pass nodeBaseImage. Default its first
+    // deployment to Public ECR so this cache rule can be created safely. The updated
+    // pipeline selects privateNodeImage after that deployment; operators can also
+    // select it explicitly with -c nodeBaseImage=<private image>.
+    const nodeImage = this.node.tryGetContext('nodeBaseImage') ?? publicNodeImage;
     const applicationImage = ecs.ContainerImage.fromAsset(path.resolve(process.cwd(), '..'), {
       file: 'app-server/Dockerfile',
       buildArgs: { NODE_IMAGE: nodeImage },
