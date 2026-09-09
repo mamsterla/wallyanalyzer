@@ -39,7 +39,7 @@ export interface CreateSystemRequest { name: string; notes?: string; components:
 export interface UpdateSystemRequest extends CreateSystemRequest {}
 export type CreditLedgerKind = 'initial_verified_account_credit' | 'purchase' | 'grant' | 'usage' | 'administrative_adjustment';
 export interface CreditLedgerEntry { id: string; kind: CreditLedgerKind; delta: number; balanceAfter: number; note: string; createdAt: string; }
-export interface CreditsResponse { balance: number; entries: CreditLedgerEntry[]; }
+export interface CreditsResponse { balance: number; items: Array<{ id: string; kind: CreditLedgerKind; delta: number; balance_after: number; note: string; created_at: string }>; limit: number; offset: number; }
 export interface Address { line1: string; line2?: string; city: string; region: string; postalCode: string; countryCode: string; }
 export interface AdminUserSummary { id: string; email: string; firstName?: string; lastName?: string; lifecycle: CustomerLifecycle; createdAt: string; lastActiveAt?: string; balance: number; units: Array<{ id: string; serialNumber: string; status: PsiuUnitStatus }>; }
 export interface CreditAdjustmentRequest { delta: number; note: string; kind?: 'grant' | 'administrative_adjustment'; }
