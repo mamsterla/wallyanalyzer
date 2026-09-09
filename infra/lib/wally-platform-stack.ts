@@ -7,6 +7,7 @@ import * as codepipelineActions from 'aws-cdk-lib/aws-codepipeline-actions';
 import * as cr from 'aws-cdk-lib/custom-resources';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
+import * as ecr from 'aws-cdk-lib/aws-ecr';
 import * as ecrAssets from 'aws-cdk-lib/aws-ecr-assets';
 import * as ecs from 'aws-cdk-lib/aws-ecs';
 import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
@@ -272,10 +273,18 @@ export class WallyPlatformStack extends cdk.Stack {
       cpuArchitecture: ecs.CpuArchitecture.X86_64,
       operatingSystemFamily: ecs.OperatingSystemFamily.LINUX,
     };
+    const nodePullThroughCache = new ecr.CfnPullThroughCacheRule(this, 'DockerHubNodePullThroughCache', {
+      ecrRepositoryPrefix: 'docker-hub',
+      upstreamRegistryUrl: 'registry-1.docker.io',
+    });
+    const privateNodeImage = `${this.account}.dkr.ecr.${this.region}.amazonaws.com/docker-hub/library/node:24-alpine`;
+    const nodeImage = this.node.tryGetContext('nodeBaseImage') ?? privateNodeImage;
     const applicationImage = ecs.ContainerImage.fromAsset(path.resolve(process.cwd(), '..'), {
       file: 'app-server/Dockerfile',
+      buildArgs: { NODE_IMAGE: nodeImage },
       platform: ecrAssets.Platform.LINUX_AMD64,
     });
+    // The first private-cache image pull must occur after this rule is deployed; see the deployment runbook.
     const taskDefinition = new ecs.FargateTaskDefinition(this, 'ApplicationTaskDefinition', {
       cpu: 256,
       memoryLimitMiB: 512,
@@ -439,10 +448,12 @@ export class WallyPlatformStack extends cdk.Stack {
         }),
       });
       const deploymentProject = pipelineProject(this, 'DeploymentProject', {
+        environment: { PRIVATE_ECR_REGISTRY: `${this.account}.dkr.ecr.${this.region}.amazonaws.com` },
         buildSpec: codebuild.BuildSpec.fromObject({
           version: '0.2',
           phases: {
             install: { 'runtime-versions': { nodejs: 24 }, commands: ['npm ci'] },
+            pre_build: { commands: ['aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $PRIVATE_ECR_REGISTRY'] },
             build: { commands: ['npm run check', 'npm run build', 'npm run test', 'cd infra && npx cdk deploy WallyPlatform-production -c environment=production -c applicationHostedZoneId=Z0640322GREKLUZ06W3O -c applicationExpectedNameServers=ns-723.awsdns-26.net,ns-386.awsdns-48.com,ns-1026.awsdns-00.org,ns-1580.awsdns-05.co.uk -c legacyApplicationCertificateArn=arn:aws:acm:us-east-1:265404809336:certificate/52ff0b5a-79fb-4504-ac2e-9c5ce89f303c -c applicationActivation=true --require-approval never'] },
             post_build: { commands: ['echo "Foundation deployment preserves the activated HTTPS listener, certificate, and canonical Route 53 aliases."'] },
           },
@@ -455,13 +466,14 @@ export class WallyPlatformStack extends cdk.Stack {
           version: '0.2',
           phases: {
             install: { 'runtime-versions': { nodejs: 24 }, commands: ['npm ci'] },
-            pre_build: { commands: ['bash infra/scripts/domain-activation-preflight.sh'] },
+            pre_build: { commands: ['aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $PRIVATE_ECR_REGISTRY', 'bash infra/scripts/domain-activation-preflight.sh'] },
             build: { commands: ['npm run check', 'npm run build', 'npm run test', 'cd infra && npx cdk deploy WallyPlatform-production -c environment=production -c applicationHostedZoneId=Z0640322GREKLUZ06W3O -c applicationExpectedNameServers=ns-723.awsdns-26.net,ns-386.awsdns-48.com,ns-1026.awsdns-00.org,ns-1580.awsdns-05.co.uk -c legacyApplicationCertificateArn=arn:aws:acm:us-east-1:265404809336:certificate/52ff0b5a-79fb-4504-ac2e-9c5ce89f303c -c applicationActivation=true --require-approval never'] },
           },
         }),
         environment: {
           APPLICATION_DOMAIN: applicationHostname,
           EXPECTED_NAME_SERVERS: expectedDomainNameServers.join(','),
+          PRIVATE_ECR_REGISTRY: `${this.account}.dkr.ecr.${this.region}.amazonaws.com`,
         },
       });
       const bootstrapRoleArns = [
@@ -475,6 +487,14 @@ export class WallyPlatformStack extends cdk.Stack {
         project.addToRolePolicy(new iam.PolicyStatement({
           actions: ['ssm:GetParameter'],
           resources: ['arn:aws:ssm:us-east-1:265404809336:parameter/cdk-bootstrap/hnb659fds/version'],
+        }));
+        project.addToRolePolicy(new iam.PolicyStatement({
+          actions: ['ecr:GetAuthorizationToken'],
+          resources: ['*'],
+        }));
+        project.addToRolePolicy(new iam.PolicyStatement({
+          actions: ['ecr:BatchCheckLayerAvailability', 'ecr:BatchGetImage', 'ecr:GetDownloadUrlForLayer'],
+          resources: [`arn:aws:ecr:${this.region}:${this.account}:repository/docker-hub/*`],
         }));
       }
 

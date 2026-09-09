@@ -7,6 +7,10 @@
 
 Use `AWS_PROFILE=wallyanalyzer AWS_REGION=us-east-1` for every operator command.
 
+## Node base-image cache
+
+Production image builds use the private ECR pull-through cache prefix `docker-hub` for `library/node:24-alpine`; they do not pull directly from Docker Hub. The first deployment that introduces `DockerHubNodePullThroughCache` cannot use the private cache because CDK builds Docker assets before CloudFormation creates the rule. Bootstrap the rule with a separately approved deployment using `NODE_IMAGE=public.ecr.aws/docker/library/node:24-alpine`, then start a normal pipeline deployment to warm and use the private cache. CodeBuild logs into the private ECR registry before CDK builds assets.
+
 ## Domain activation model
 
 Canonical domain: `wally-analytics.app`. OpenSRS is registrar. Route 53 hosted zone `Z0640322GREKLUZ06W3O` is already delegated and must never be deleted or recreated.

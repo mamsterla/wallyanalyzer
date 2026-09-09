@@ -1,6 +1,8 @@
 # Two-process local development image: Node API behind Nginx, plus Postgres in Compose.
 # Production Lambda/CDK packaging remains separate.
-FROM node:24-alpine AS builder
+# Local builds use AWS Public ECR; CDK overrides this with the private ECR pull-through cache.
+ARG NODE_IMAGE=public.ecr.aws/docker/library/node:24-alpine
+FROM ${NODE_IMAGE} AS builder
 WORKDIR /workspace
 
 COPY package.json package-lock.json ./
@@ -18,7 +20,7 @@ RUN npm run build --workspace=@wally/contracts \
   && npm run build --workspace=@wally/app-server \
   && npm run build --workspace=@wally/app-ui
 
-FROM node:24-alpine AS runtime
+FROM ${NODE_IMAGE} AS runtime
 RUN apk add --no-cache nginx
 
 COPY app-server/docker/nginx.conf /etc/nginx/http.d/default.conf
