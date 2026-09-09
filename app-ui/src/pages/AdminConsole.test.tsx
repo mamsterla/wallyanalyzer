@@ -40,6 +40,21 @@ describe('admin PSIU destructive action', () => {
 });
 
 describe('admin user, credit, and sample workflows', () => {
+  it('hides customer creation and detail inputs until their explicit actions', async () => {
+    request.mockImplementation((path: string) => path.startsWith('/v1/admin/users?') ? Promise.resolve({ items: [user], limit: 25, offset: 0 }) : path === '/v1/admin/users/user-1' ? Promise.resolve(user) : Promise.resolve(undefined));
+    show('/admin/users');
+    await screen.findByText(/person@example.com/);
+    expect(screen.queryByLabelText('Customer email')).toBeNull();
+    fireEvent.click(screen.getByText('Create customer'));
+    expect(screen.getByLabelText('Customer email')).toBeTruthy();
+    fireEvent.click(screen.getByText('Cancel'));
+    fireEvent.click(screen.getByText('Details'));
+    await screen.findByText('Edit user');
+    expect(screen.queryByLabelText('firstName')).toBeNull();
+    fireEvent.click(screen.getByText('Edit user'));
+    expect(screen.getByLabelText('firstName')).toBeTruthy();
+  });
+
   it('invites users and reloads durable lifecycle after restore', async () => {
     let detailCalls = 0;
     request.mockImplementation((path: string) => {
