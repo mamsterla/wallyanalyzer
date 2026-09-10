@@ -39,15 +39,26 @@ test('marking a unit unavailable closes its active assignment, fails pending int
 });
 
 test('hard deletion rejects a unit with retained assignment or sample history', async () => {
-  const client = { async query(sql: string) { if (sql.includes('select id from psiu_units')) return { rowCount: 1, rows: [{ id: 'unit-a' }] }; if (sql.includes('as has_history')) return { rowCount: 1, rows: [{ has_history: true }] }; return { rowCount: 1, rows: [] }; }, release() {} };
+  const client = { async query(sql: string) { if (sql.includes('select status from psiu_units')) return { rowCount: 1, rows: [{ status: 'enabled' }] }; if (sql.includes('as has_history')) return { rowCount: 1, rows: [{ has_history: true }] }; return { rowCount: 1, rows: [] }; }, release() {} };
   const repository = new PostgresAccountRepository({ connect: async () => client } as never);
 
   await assert.rejects(() => repository.hardDeleteUnit('unit-a', 'admin-a'), (error: unknown) => error instanceof HttpError && error.statusCode === 409 && error.message.includes('Mark unavailable'));
 });
 
+test('hard deletion rejects an unavailable unit without assignment or sample history', async () => {
+  const queries: string[] = [];
+  const client = { async query(sql: string) { queries.push(sql); if (sql.includes('select status from psiu_units')) return { rowCount: 1, rows: [{ status: 'unavailable' }] }; if (sql === 'begin' || sql === 'rollback') return { rowCount: 0, rows: [] }; throw new Error(`Unexpected query: ${sql}`); }, release() {} };
+  const repository = new PostgresAccountRepository({ connect: async () => client } as never);
+
+  await assert.rejects(() => repository.hardDeleteUnit('unit-a', 'admin-a'), (error: unknown) => error instanceof HttpError && error.statusCode === 409 && error.message.includes('Unavailable PSIU'));
+
+  assert.equal(queries.some((sql) => sql.includes('as has_history')), false);
+  assert.equal(queries.some((sql) => sql.includes('delete from psiu_units')), false);
+});
+
 test('hard deletion permits a never-used test unit to be re-added', async () => {
   const queries: string[] = [];
-  const client = { async query(sql: string) { queries.push(sql); if (sql.includes('select id from psiu_units')) return { rowCount: 1, rows: [{ id: 'unit-a' }] }; if (sql.includes('as has_history')) return { rowCount: 1, rows: [{ has_history: false }] }; if (sql.includes('insert into psiu_units')) return { rowCount: 1, rows: [{ id: 'unit-b', serial_number: 'serial-a', opaque_uid: 'uid-a', status: 'enabled', assigned_at: null, unavailable_at: null }] }; return { rowCount: 1, rows: [] }; }, release() {} };
+  const client = { async query(sql: string) { queries.push(sql); if (sql.includes('select status from psiu_units')) return { rowCount: 1, rows: [{ status: 'enabled' }] }; if (sql.includes('as has_history')) return { rowCount: 1, rows: [{ has_history: false }] }; if (sql.includes('insert into psiu_units')) return { rowCount: 1, rows: [{ id: 'unit-b', serial_number: 'serial-a', opaque_uid: 'uid-a', status: 'enabled', assigned_at: null, unavailable_at: null }] }; return { rowCount: 1, rows: [] }; }, release() {} };
   const repository = new PostgresAccountRepository({ connect: async () => client, query: client.query } as never);
 
   await repository.hardDeleteUnit('unit-a', 'admin-a');
