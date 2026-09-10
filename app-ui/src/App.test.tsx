@@ -2,14 +2,14 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { MeResponse } from '@wally/contracts';
+import type { CustomerUnit } from '@wally/contracts';
 import { Home } from './App.js';
 
 vi.mock('./auth.js', () => ({ accessToken: vi.fn(async () => 'token') }));
 
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
-const me: MeResponse = { id: 'user-1', email: 'listener@example.com', role: 'user', lifecycle: 'active', units: [], emailChangeAvailable: false };
+const units: CustomerUnit[] = [];
 
 function responseFor(url: string) {
   if (url.endsWith('/v1/me/alerts')) return [];
@@ -22,7 +22,7 @@ function responseFor(url: string) {
 describe('Home', () => {
   it('groups Actions and News above recording and Credits in the responsive dashboard grid', async () => {
     vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => new Response(JSON.stringify(responseFor(String(input))), { status: 200, headers: { 'content-type': 'application/json' } })));
-    render(<MemoryRouter><Home me={me} onCaptureConsumed={() => {}} /></MemoryRouter>);
+    render(<MemoryRouter><Home units={units} onCaptureConsumed={() => {}} /></MemoryRouter>);
     await screen.findByText('8');
     const grid = screen.getByTestId('home-dashboard-grid');
     expect(grid.children).toHaveLength(4);
@@ -34,5 +34,6 @@ describe('Home', () => {
     expect(screen.getByRole('button', { name: 'Record a new sample' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Buy credits' })).toBeTruthy();
     expect(screen.getByText('Verified samples ready for reporting')).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: 'Your Wally system' })).toBeNull();
   });
 });
