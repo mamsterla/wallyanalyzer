@@ -35,3 +35,25 @@ test('admin credit adjustment rejects reserved and invalid ledger kinds', async 
     await assert.rejects(() => repository.adjustCredits('user', 'admin', { delta: 1, note: 'test', kind: kind as never }), (error: unknown) => error instanceof HttpError && error.statusCode === 400);
   }
 });
+
+test('user and PSIU directories enforce two-character queries, escape wildcards, and return keyset cursors', async () => {
+  const calls: Array<{ sql:string; values:unknown[] }> = [];
+  const pool = { query: async (sql:string, values:unknown[] = []) => { calls.push({sql, values}); return { rows: [{ id:'00000000-0000-4000-8000-000000000001', email:'a@example.com', created_at:new Date('2026-01-02T00:00:00Z'), serial_number:'PSIU-1', opaque_uid:'UID-1', status:'enabled' }, { id:'00000000-0000-4000-8000-000000000002', email:'b@example.com', created_at:new Date('2026-01-01T00:00:00Z'), serial_number:'PSIU-2', opaque_uid:'UID-2', status:'enabled' }], rowCount:2 }; } };
+  const repository = new PostgresAdminDataRepository(pool as never);
+  await assert.rejects(() => repository.users({ q:'a' }), (e:unknown) => e instanceof HttpError && e.statusCode===400);
+  const users = await repository.users({ q:'a_%', limit:1 });
+  assert.equal(users.items.length, 1); assert.ok(users.nextCursor);
+  assert.equal(calls[0]!.values[1], '%a\\_\\%%');
+  await repository.users({ cursor:users.nextCursor, limit:1 });
+  assert.match(calls[1]!.sql, /u\.created_at,u\.id/);
+  const units = await repository.units({ q:'PS', status:'enabled', assignment:'assigned', limit:1 });
+  assert.equal(units.items.length, 1); assert.ok(units.nextCursor);
+  await assert.rejects(() => repository.typeahead('x'), (e:unknown) => e instanceof HttpError && e.statusCode===400);
+});
+
+test('admin profile update never updates email', async () => {
+  const calls: Array<{ sql:string }> = [];
+  const pool = { query: async (sql:string) => { calls.push({sql}); if (sql.startsWith('update users')) return { rowCount:1, rows:[{id:'user'}] }; if (sql.includes('from users u where')) return { rowCount:1, rows:[{id:'user',email:'u@example.com',balance:0}] }; return { rowCount:0,rows:[] }; } };
+  await new PostgresAdminDataRepository(pool as never).updateUser('user','admin',{ firstName:'Ada', email:'new@example.com' } as never);
+  assert.equal(calls.find(x=>x.sql.startsWith('update users'))!.sql.includes('email='), false);
+});

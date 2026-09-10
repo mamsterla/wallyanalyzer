@@ -27,8 +27,13 @@ All `/v1/*` routes require a Cognito access token verified against the configure
 - `GET|POST /v1/admin/customers`
 - `POST /v1/admin/customers/:id/invite|reset-password|suspend|restore`
 - `DELETE /v1/admin/customers/:id`
-- `GET|POST /v1/admin/psiu-units`
+- `GET /v1/admin/users?limit=&cursor=&q=&lifecycle=` is a cursor-paginated user directory. Empty `q` browses; nonempty search requires two characters and matches email, name, and active PSIU serial.
+- `GET /v1/admin/users/typeahead?q=` requires two characters.
+- `GET|PUT /v1/admin/users/:id` reads/updates a role-`user` customer. `PUT` permits name/address only; email is immutable.
+- `GET|POST /v1/admin/psiu-units?limit=&cursor=&q=&status=&assignment=` is a cursor-paginated inventory directory. Search matches serial, immutable UID, and current owner name/email.
 - `POST /v1/admin/psiu-units/:id/assign|deassign|enable|disable`
+
+Password reset is delivery-only through Cognito for Cognito-linked `invited` or `active` customers. It records `customer.password_reset_requested` without delivery data or secrets. Suspended, draft, ready, and cancelled customers must be restored/invited through their lifecycle before a reset can be requested.
 
 ## Operator validation
 

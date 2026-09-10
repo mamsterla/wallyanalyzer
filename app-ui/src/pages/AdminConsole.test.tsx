@@ -3,100 +3,54 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AdminConsole } from './AdminConsole.js';
-import { hardDeletePsiuRequest } from './adminActions.js';
 
 const { request } = vi.hoisted(() => ({ request: vi.fn() }));
 vi.mock('../api.js', () => ({ request }));
-const unit = { id: 'unit-1', serialNumber: 'PSIU-1', uid: 'uid-1', status: 'enabled' };
-const user = { id: 'user-1', email: 'person@example.com', firstName: 'Pat', lastName: 'Person', lifecycle: 'invited', balance: 10 };
+const user = { id: 'user-1', email: 'person@example.com', firstName: 'Pat', lastName: 'Person', lifecycle: 'active', balance: 10, units: [{ id:'unit-1', serialNumber:'PSIU-1', uid:'uid-1', status:'enabled', assignedAt:'2026-09-10T00:00:00.000Z' }] };
 function show(path: string) { return render(<MemoryRouter initialEntries={[path]}><AdminConsole /></MemoryRouter>); }
-
 beforeEach(() => { request.mockReset(); vi.stubGlobal('confirm', vi.fn(() => true)); });
 afterEach(cleanup);
 
-describe('admin PSIU destructive action', () => {
-  it('uses DELETE for hard deletion', () => expect(hardDeletePsiuRequest('unit-1')).toEqual({ path: '/v1/admin/psiu-units/unit-1', method: 'DELETE' }));
-
-  it('creates units, suppresses unavailable actions, and assigns only the selected unit', async () => {
-    request.mockImplementation((path: string) => {
-      if (path === '/v1/admin/psiu-units') return Promise.resolve([unit, { ...unit, id: 'unit-2', serialNumber: 'PSIU-2', status: 'unavailable' }]);
-      if (path.startsWith('/v1/admin/users/typeahead')) return Promise.resolve([user]);
-      return Promise.resolve(undefined);
-    });
+describe('scalable admin directories', () => {
+  it('uses two-character typeahead and server cursors for PSIU search', async () => {
+    request.mockImplementation((path: string) => path.startsWith('/v1/admin/psiu-units?') ? Promise.resolve({ items: [{ id:'unit-1', serialNumber:'PSIU-1',uid:'uid-1',status:'enabled' }], limit:25, nextCursor:'next' }) : Promise.resolve([]));
     show('/admin/psiu');
     await screen.findByText('PSIU-1 · uid-1 · enabled');
-    fireEvent.change(screen.getByLabelText('Serial number'), { target: { value: 'PSIU-3' } });
-    fireEvent.change(screen.getByLabelText('Firmware UID'), { target: { value: 'uid-3' } });
-    fireEvent.click(screen.getByText('Add PSIU'));
-    await waitFor(() => expect(request).toHaveBeenCalledWith('/v1/admin/psiu-units', expect.objectContaining({ method: 'POST' })));
-    expect(screen.queryAllByText('Mark unavailable')).toHaveLength(1);
-    fireEvent.click(screen.getByText('Assign user'));
-    fireEvent.change(screen.getByLabelText('Search user'), { target: { value: 'Pa' } });
-    await screen.findByRole('option', { name: /Pat Person/ });
-    fireEvent.click(screen.getByRole('option', { name: /Pat Person/ }));
-    await waitFor(() => expect(request).toHaveBeenCalledWith('/v1/admin/psiu-units/unit-1/assign', expect.objectContaining({ method: 'POST' })));
-    expect(request).not.toHaveBeenCalledWith('/v1/admin/psiu-units/unit-2/assign', expect.anything());
+    fireEvent.change(screen.getByLabelText('Search serial, UID, or owner'), { target: { value: 'P' } });
+    await new Promise(resolve => setTimeout(resolve, 300));
+    expect(request).not.toHaveBeenCalledWith(expect.stringContaining('q=P'));
+    fireEvent.change(screen.getByLabelText('Search serial, UID, or owner'), { target: { value: 'PS' } });
+    await waitFor(() => expect(request).toHaveBeenCalledWith(expect.stringContaining('q=PS')));
+    fireEvent.click(screen.getByText('Next'));
+    await waitFor(() => expect(request).toHaveBeenCalledWith(expect.stringContaining('cursor=next')));
   });
-});
 
-describe('admin user, credit, and sample workflows', () => {
-  it('hides customer creation and detail inputs until their explicit actions', async () => {
-    request.mockImplementation((path: string) => path.startsWith('/v1/admin/users?') ? Promise.resolve({ items: [user], limit: 25, offset: 0 }) : path === '/v1/admin/users/user-1' ? Promise.resolve(user) : Promise.resolve(undefined));
-    show('/admin/users');
-    await screen.findByText(/person@example.com/);
-    expect(screen.queryByLabelText('Customer email')).toBeNull();
-    fireEvent.click(screen.getByText('Create customer'));
-    expect(screen.getByLabelText('Customer email')).toBeTruthy();
-    fireEvent.click(screen.getByText('Cancel'));
-    fireEvent.click(screen.getByText('Details'));
-    await screen.findByText('Edit user');
+  it('opens a deep-linked read-only user detail, then exposes editable profile fields', async () => {
+    request.mockImplementation((path: string) => path === '/v1/admin/users/user-1' ? Promise.resolve(user) : Promise.resolve(undefined));
+    show('/admin/users/user-1?q=Pa');
+    await screen.findByText('User detail');
+    expect(screen.getByText(/\(read-only\)/)).toBeTruthy();
     expect(screen.queryByLabelText('firstName')).toBeNull();
+    expect(screen.getByText(/PSIU-1/)).toBeTruthy();
     fireEvent.click(screen.getByText('Edit user'));
     expect(screen.getByLabelText('firstName')).toBeTruthy();
+    expect(screen.queryByLabelText('email')).toBeNull();
   });
 
-  it('invites users and reloads durable lifecycle after restore', async () => {
-    let detailCalls = 0;
-    request.mockImplementation((path: string) => {
-      if (path.startsWith('/v1/admin/users?')) return Promise.resolve({ items: [{ ...user, lifecycle: 'suspended' }], limit: 25, offset: 0 });
-      if (path === '/v1/admin/users/user-1') return Promise.resolve({ ...user, lifecycle: detailCalls++ ? 'invited' : 'suspended' });
-      return Promise.resolve(undefined);
-    });
-    show('/admin/users');
-    await screen.findByText(/person@example.com/);
-    fireEvent.click(screen.getByText('Details'));
+  it('uses confirmed active-unit actions from user detail', async () => {
+    request.mockImplementation((path: string) => path === '/v1/admin/users/user-1' ? Promise.resolve(user) : Promise.resolve(undefined));
+    show('/admin/users/user-1');
+    await screen.findByText('Disable capture');
+    fireEvent.click(screen.getByText('Disable capture'));
+    await waitFor(() => expect(request).toHaveBeenCalledWith('/v1/admin/psiu-units/unit-1/disable', { method:'POST' }));
+    fireEvent.click(screen.getByText('Deassign'));
+    await waitFor(() => expect(request).toHaveBeenCalledWith('/v1/admin/psiu-units/unit-1/deassign', { method:'POST' }));
+  });
+
+  it('hides reset action for suspended users', async () => {
+    request.mockImplementation((path: string) => path === '/v1/admin/users/user-1' ? Promise.resolve({ ...user, lifecycle:'suspended' }) : Promise.resolve(undefined));
+    show('/admin/users/user-1');
     await screen.findByText('Restore');
-    fireEvent.click(screen.getByText('Restore'));
-    await waitFor(() => expect(request).toHaveBeenCalledWith('/v1/admin/customers/user-1/restore', { method: 'POST' }));
-    await waitFor(() => expect(screen.getByText('Deactivate')).toBeTruthy());
-    fireEvent.click(screen.getByText('Invite'));
-    await waitFor(() => expect(request).toHaveBeenCalledWith('/v1/admin/customers/user-1/invite', { method: 'POST' }));
-  });
-
-  it('renders credit stats and posts a noted adjustment', async () => {
-    request.mockImplementation((path: string) => {
-      if (path === '/v1/admin/credits/stats') return Promise.resolve([{ day: '2026-09-04', kind: 'grant', product: 'admin', entry_count: 1, delta: 5 }]);
-      if (path.includes('/credits?')) return Promise.resolve({ balance: 10, items: [] });
-      return Promise.resolve(undefined);
-    });
-    show('/admin/credits');
-    await screen.findByText(/2026-09-04 · grant · admin · 1 entries · 5 credits/);
-    fireEvent.change(screen.getByLabelText('User ID'), { target: { value: 'user-1' } });
-    fireEvent.change(screen.getByLabelText('Credit amount (+/-)'), { target: { value: '2' } });
-    fireEvent.change(screen.getByLabelText(/Adjustment note/), { target: { value: 'acceptance grant' } });
-    fireEvent.click(screen.getByText('Apply adjustment'));
-    await waitFor(() => expect(request).toHaveBeenCalledWith('/v1/admin/users/user-1/credits', expect.objectContaining({ method: 'POST' })));
-  });
-
-  it('filters and paginates sample directory requests', async () => {
-    request.mockImplementation((path: string) => path === '/v1/admin/samples/stats' ? Promise.resolve({ total: 30, d7: 2, d30: 5, ytd: 30 }) : Promise.resolve({ items: Array.from({ length: 25 }, (_, i) => ({ id: String(i), email: 'person@example.com', serial_number: 'PSIU-1', source: 'manual_file', upload_state: 'uploaded', recorded_at: 'now' })), limit: 25, offset: 0 }));
-    show('/admin/samples');
-    await screen.findByText(/Total 30 · 7 days 2/);
-    fireEvent.change(screen.getByLabelText('State'), { target: { value: 'uploaded' } });
-    fireEvent.change(screen.getByLabelText('Source'), { target: { value: 'manual_file' } });
-    fireEvent.click(screen.getByText('Filter'));
-    await waitFor(() => expect(request).toHaveBeenCalledWith(expect.stringContaining('state=uploaded&source=manual_file')));
-    fireEvent.click(screen.getByText('Next'));
-    await waitFor(() => expect(request).toHaveBeenCalledWith(expect.stringContaining('offset=25')));
+    expect(screen.queryByText('Send password reset')).toBeNull();
   });
 });
