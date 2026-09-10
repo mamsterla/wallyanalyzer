@@ -20,11 +20,17 @@ function responseFor(url: string) {
 }
 
 describe('Home', () => {
-  it('shows actions first, then news, recording CTA, and honest owner summary', async () => {
+  it('groups Actions and News above recording and Credits in the responsive dashboard grid', async () => {
     vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => new Response(JSON.stringify(responseFor(String(input))), { status: 200, headers: { 'content-type': 'application/json' } })));
     render(<MemoryRouter><Home me={me} onCaptureConsumed={() => {}} /></MemoryRouter>);
     await screen.findByText('8');
+    const grid = screen.getByTestId('home-dashboard-grid');
+    expect(grid.children).toHaveLength(4);
     expect(screen.getByRole('heading', { name: 'Actions' }).compareDocumentPosition(screen.getByRole('heading', { name: 'News' }))).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(screen.getByRole('heading', { name: 'Ready to record?' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Credits' })).toBeTruthy();
+    expect(screen.getByTestId('home-actions-empty-row')).toBeTruthy();
+    expect(screen.getByTestId('home-news-row')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Record a new sample' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Buy credits' })).toBeTruthy();
     expect(screen.getByText('Verified samples ready for reporting')).toBeTruthy();
