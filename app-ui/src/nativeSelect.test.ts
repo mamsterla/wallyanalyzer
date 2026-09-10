@@ -1,16 +1,21 @@
 import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
-import { nativeSelectInputLabelProps } from './nativeSelect.js';
 
-const [appSource, controllerSource] = await Promise.all([
+const [appSource, controllerSource, selectSource, themeSource] = await Promise.all([
   readFile(new URL('./App.tsx', import.meta.url), 'utf8'),
   readFile(new URL('./pages/ControllerPage.tsx', import.meta.url), 'utf8'),
+  readFile(new URL('./designSystemSelect.tsx', import.meta.url), 'utf8'),
+  readFile(new URL('./main.tsx', import.meta.url), 'utf8'),
 ]);
 
-describe('native select labels', () => {
-  it('always shrinks labels so selected and placeholder values are not obscured', () => {
-    expect(nativeSelectInputLabelProps).toEqual({ shrink: true });
-    expect(appSource.match(/InputLabelProps=\{nativeSelectInputLabelProps\}/g)).toHaveLength(5);
-    expect(controllerSource).toContain('InputLabelProps={nativeSelectInputLabelProps}');
+describe('design-system selects', () => {
+  it('replaces native browser selects with accessible styled MUI menus', () => {
+    expect(appSource).toContain("WallySelect");
+    expect(controllerSource).toContain("WallySelect");
+    expect(`${appSource}\n${controllerSource}`).not.toMatch(/native:\s*true|<option/);
+    expect(selectSource).toContain('MenuItem');
+    expect(selectSource).toContain("className: 'wally-select-menu'");
+    expect(themeSource).toContain('MuiMenuItem');
+    expect(themeSource).toContain('#d8a54b');
   });
 });
