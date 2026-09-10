@@ -11,12 +11,13 @@ import { databaseSettings } from './migrate.js';
 import { PostgresSampleRepository, type SampleRepository } from './services/sampleRepository.js';
 import { PostgresUserExperienceRepository } from './services/userExperienceRepository.js';
 import { PostgresAdminDataRepository } from './services/adminDataRepository.js';
+import { PostgresUserAlertsRepository } from './services/userAlertsRepository.js';
 import { ACCEPTED_UPLOAD_TAG, UNACCEPTED_UPLOAD_TAG, UPLOAD_LIFECYCLE_TAG_KEY, presignUpload, validateUploadBatch, verifyWavObject } from './services/sampleUploads.js';
 
 const port = Number(process.env.PORT ?? 3000);
 export function createProductionServer(dependencies: ProductionDependencies) {
   const pool = dependencies.pool; const repository = dependencies.repository ?? new PostgresAccountRepository(pool);
-  const samples = dependencies.samples ?? new PostgresSampleRepository(pool); const experience=new PostgresUserExperienceRepository(pool); const adminData=dependencies.adminData ?? new PostgresAdminDataRepository(pool);
+  const samples = dependencies.samples ?? new PostgresSampleRepository(pool); const experience=new PostgresUserExperienceRepository(pool); const adminData=dependencies.adminData ?? new PostgresAdminDataRepository(pool); const alerts=new PostgresUserAlertsRepository(pool);
   const s3 = dependencies.s3 ?? new S3Client({}); const bucketName = dependencies.sampleBucketName ?? process.env.SAMPLE_BUCKET_NAME ?? '';
   const cognito = dependencies.cognito ?? new CognitoIdentityProviderClient({}); const verify = dependencies.verify ?? verifyCognitoAccessToken;
   return createServer(async (request,response) => { try {
@@ -25,6 +26,8 @@ export function createProductionServer(dependencies: ProductionDependencies) {
     if(request.method==='POST' && path==='/v1/me/last-active') { await adminData.touchLastActive(actor.id); return sendJson(response,204); }
     if(request.method==='GET' && path==='/v1/me') return sendJson(response,200,await repository.me(actor.id));
     if(request.method==='GET' && path==='/v1/me/units') return sendJson(response,200,(await repository.me(actor.id))?.units??[]);
+    if(request.method==='GET' && path==='/v1/me/alerts') return sendJson(response,200,await alerts.list(actor.id));
+    const dismissAlert=path.match(/^\/v1\/me\/alerts\/([^/]+)\/dismiss$/); if(request.method==='POST'&&dismissAlert){await alerts.dismiss(actor.id,dismissAlert[1]);return sendJson(response,204);}
     if(request.method==='PUT' && path==='/v1/me/profile') return sendJson(response,200,await experience.updateProfile(actor.id,await parseJson<UpdateProfileRequest>(request)));
     if(request.method==='GET' && path==='/v1/me/systems') return sendJson(response,200,await experience.systems(actor.id));
     if(request.method==='POST' && path==='/v1/me/systems') return sendJson(response,201,await experience.createSystem(actor.id,await parseJson<CreateSystemRequest>(request)));

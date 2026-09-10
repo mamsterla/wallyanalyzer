@@ -76,6 +76,8 @@ export interface SampleSummary { id: string; batchId: string; psiuUnitId: string
 export interface CompleteSampleUploadResponse { sample: SampleSummary; }
 export interface SampleDownloadResponse { downloadUrl: string; expiresAt: string; }
 export interface AnalysisReportSummary { id: string; sampleId: string; algorithmVersion: string; status: AnalysisStatus; createdAt: string; completedAt?: string; }
+export type UserAlertSeverity = 'info' | 'warning' | 'success';
+export interface UserAlert { id: string; eventKey: string; severity: UserAlertSeverity; title: string; message: string; actionLabel?: string; actionRoute?: string; dismissible: boolean; createdAt: string; }
 export interface PsiuConnectionSettings { baseUrl: string; allowInsecureHttp: boolean; }
 export interface PsiuStatus { uid: string; uptimeMs: number; sampleRateHz: number; recording: boolean; xlr: boolean; bufferCount: number; recorderState: string; pagesWritten: number; droppedHalves: number; badBlockCount: number; dmaErrors: number; i2sErrors: number; recordingCount: number; }
 export interface PsiuCaptureInfo { sampleRateHz: number; channels: number; bits: number; dataBytes: number; durationMs: number; droppedHalves: number; recordingCount: number; completedAt: string; }
