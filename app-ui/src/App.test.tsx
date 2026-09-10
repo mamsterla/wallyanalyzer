@@ -35,5 +35,13 @@ describe('Home', () => {
     expect(screen.getByRole('button', { name: 'Buy credits' })).toBeTruthy();
     expect(screen.getByText('Verified samples ready for reporting')).toBeTruthy();
     expect(screen.queryByRole('heading', { name: 'Your Wally system' })).toBeNull();
+    expect(screen.getByRole('heading', { name: 'Sample Capture' })).toBeTruthy();
+    expect(screen.getAllByRole('combobox')).toHaveLength(2);
+    expect(screen.getByRole('button', { name: 'Select WAV files' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Process and Report' })).toBeTruthy();
+    expect(screen.queryByLabelText('Filter unit')).toBeNull();
+    expect(screen.queryByLabelText('Filter state')).toBeNull();
+    expect(screen.queryByLabelText('Sort')).toBeNull();
+    expect(screen.queryByText('No samples uploaded.')).toBeNull();
   });
 });
