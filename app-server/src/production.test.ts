@@ -100,7 +100,17 @@ test('password reset is limited to invited or active Cognito-linked users and au
   const data={ async passwordResetCustomer(){return{id:'user',email:'user@example.com',lifecycle:'active',cognitoSubject:'sub'};}, async auditPasswordReset(id:string,actor:string,requestId?:string){calls.push(`audit:${id}:${actor}:${requestId}`);} };
   const cognito={send:async(command:unknown)=>{assert.ok(command instanceof AdminResetUserPasswordCommand);calls.push(`reset:${(command as AdminResetUserPasswordCommand).input.Username}`);return{};}};
   const server=createProductionServer({pool:{} as never,repository:repository as never,adminData:data as never,cognito:cognito as never,verify:async()=>({subject:'admin',roles:['admin']})});await new Promise<void>(r=>server.listen(0,'127.0.0.1',r));
-  try { const result=await call(server,'POST','/v1/admin/customers/user/reset-password'); assert.equal(result.status,202); assert.equal(result.body.includes('user@example.com'),false); assert.deepEqual(calls,['reset:user@example.com','audit:user:admin:undefined']); } finally { await new Promise<void>(r=>server.close(()=>r())); }
+  try { const result=await call(server,'POST','/v1/admin/customers/user/reset-password'); assert.equal(result.status,202); assert.equal(result.body.includes('user@example.com'),false); assert.deepEqual(calls,['audit:user:admin:undefined','reset:user@example.com']); } finally { await new Promise<void>(r=>server.close(()=>r())); }
+});
+
+test('password reset does not send Cognito email when audit recording fails', async () => {
+  const calls:string[]=[];
+  const repository={async findActivePrincipal(){return{id:'admin',email:'admin@example.com',role:'admin' as const,lifecycle:'active'};}};
+  const data={async passwordResetCustomer(){return{id:'user',email:'user@example.com',lifecycle:'active',cognitoSubject:'sub'};},async auditPasswordReset(){calls.push('audit');throw new Error('audit unavailable');}};
+  const cognito={send:async()=>{calls.push('reset');return{};}};
+  const server=createProductionServer({pool:{} as never,repository:repository as never,adminData:data as never,cognito:cognito as never,verify:async()=>({subject:'admin',roles:['admin']})});
+  await new Promise<void>(r=>server.listen(0,'127.0.0.1',r));
+  try { assert.equal((await call(server,'POST','/v1/admin/customers/user/reset-password')).status,500); assert.deepEqual(calls,['audit']); } finally { await new Promise<void>(r=>server.close(()=>r())); }
 });
 
 test('password reset rejects suspended, draft, and unlinked customers before Cognito delivery', async () => {

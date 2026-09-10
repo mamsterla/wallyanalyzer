@@ -53,4 +53,28 @@ describe('scalable admin directories', () => {
     await screen.findByText('Restore');
     expect(screen.queryByText('Send password reset')).toBeNull();
   });
+
+  it('restores PSIU directory filters and cursor from the URL', async () => {
+    request.mockResolvedValue({ items: [], limit:25 });
+    show('/admin/psiu?q=PS&status=disabled&assignment=assigned&cursor=page-2');
+    await waitFor(() => expect(request).toHaveBeenCalledWith(expect.stringContaining('q=PS')));
+    expect(request).toHaveBeenCalledWith(expect.stringContaining('status=disabled'));
+    expect(request).toHaveBeenCalledWith(expect.stringContaining('assignment=assigned'));
+    expect(request).toHaveBeenCalledWith(expect.stringContaining('cursor=page-2'));
+  });
+
+  it('does not expose destructive actions for unavailable PSIUs and confirms capture blocking before disable', async () => {
+    request.mockResolvedValue({ items: [{ id:'unit-1', serialNumber:'PSIU-1',uid:'uid-1',status:'unavailable' }], limit:25 });
+    show('/admin/psiu');
+    await screen.findByText(/Unavailable: provenance preserved/);
+    expect(screen.queryByText('Hard delete')).toBeNull();
+
+    cleanup(); request.mockReset(); vi.stubGlobal('confirm', vi.fn(() => false));
+    request.mockResolvedValue({ items: [{ id:'unit-1', serialNumber:'PSIU-1',uid:'uid-1',status:'enabled' }], limit:25 });
+    show('/admin/psiu');
+    await screen.findByText('Disable capture');
+    fireEvent.click(screen.getByText('Disable capture'));
+    expect(globalThis.confirm).toHaveBeenCalledWith(expect.stringContaining('New captures will be blocked'));
+    expect(request).not.toHaveBeenCalledWith('/v1/admin/psiu-units/unit-1/disable', expect.anything());
+  });
 });
