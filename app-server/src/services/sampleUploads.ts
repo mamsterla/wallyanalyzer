@@ -57,4 +57,7 @@ export function parseWavHeader(bytes:Uint8Array, totalBytes:number): { sampleRat
   return {sampleRateHz:format.rate,channels:format.channels,bitsPerSample:format.bits,durationMs:Math.round(dataLength/format.blockAlign/format.rate*1000)};
 }
 
-export function newObjectKey(ownerId:string,sampleId:string,fileName:string):string { return `raw/${ownerId}/${sampleId}/${fileName.replace(/[^A-Za-z0-9._-]/g,'_')}`; }
+export function newObjectKey(ownerId:string,sampleId:string,_fileName:string):string { return `raw/${ownerId}/${sampleId}/input.wav`; }
+
+/** Object keys enter workflow state; keep all user-provided file names in Postgres metadata only. */
+export function isOpaqueRawObjectKey(key:string):boolean { return /^raw\/[0-9a-f-]{36}\/[0-9a-f-]{36}\/input\.wav$/i.test(key); }

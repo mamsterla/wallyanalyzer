@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { HttpError } from './auth.js';
-import { parseWavHeader, validateUploadBatch } from './sampleUploads.js';
+import { isOpaqueRawObjectKey, newObjectKey, parseWavHeader, validateUploadBatch } from './sampleUploads.js';
 
 function wav(){const b=Buffer.alloc(48);b.write('RIFF');b.writeUInt32LE(40,4);b.write('WAVE',8);b.write('fmt ',12);b.writeUInt32LE(16,16);b.writeUInt16LE(1,20);b.writeUInt16LE(2,22);b.writeUInt32LE(48000,24);b.writeUInt32LE(192000,28);b.writeUInt16LE(4,32);b.writeUInt16LE(16,34);b.write('data',36);b.writeUInt32LE(4,40);return b;}
 test('parses PCM WAV provenance from S3 range bytes',()=>assert.deepEqual(parseWavHeader(wav(),48),{sampleRateHz:48000,channels:2,bitsPerSample:16,durationMs:0}));
@@ -10,3 +10,4 @@ test('rejects non-WAV upload intents',()=>assert.throws(()=>validateUploadBatch(
 test('rejects PSIU capture source until the approved local bridge exists',()=>assert.throws(()=>validateUploadBatch({idempotencyKey:'x'.repeat(16),psiuUnitId:'unit',source:'psiu_capture',observedPsiuUid:'firmware-uid',files:[{clientFileId:'a'.repeat(16),fileName:'sample.wav',source:'psiu_capture',contentType:'audio/wav',byteLength:44,recordedAt:new Date().toISOString()}]}),HttpError));
 test('rejects mixed manual and PSIU source files',()=>assert.throws(()=>validateUploadBatch({idempotencyKey:'x'.repeat(16),psiuUnitId:'unit',source:'manual_file',files:[{clientFileId:'a'.repeat(16),fileName:'sample.wav',source:'manual_file',contentType:'audio/wav',byteLength:44,recordedAt:new Date().toISOString()},{clientFileId:'b'.repeat(16),fileName:'capture.wav',source:'psiu_capture',contentType:'audio/wav',byteLength:44,recordedAt:new Date().toISOString()}]}),HttpError));
 test('rejects unsupported WAV headers',()=>assert.throws(()=>parseWavHeader(Buffer.from('not-a-wave'),10),HttpError));
+test('uses opaque raw object keys without user file names',()=>{const owner='123e4567-e89b-12d3-a456-426614174000',sample='123e4567-e89b-12d3-a456-426614174001';const key=newObjectKey(owner,sample,'alice-smith-private.wav');assert.equal(key,`raw/${owner}/${sample}/input.wav`);assert.equal(isOpaqueRawObjectKey(key),true);assert.equal(isOpaqueRawObjectKey(`raw/${owner}/${sample}/alice-smith-private.wav`),false);});

@@ -4,6 +4,7 @@ import { StartExecutionCommand, SFNClient } from '@aws-sdk/client-sfn';
 import { Pool } from 'pg';
 import { databaseSettings } from '../migrate.js';
 import { PostgresReportOutbox, dispatchReportOutbox } from '../services/reportRepository.js';
+import { isOpaqueRawObjectKey } from '../services/sampleUploads.js';
 
 const rawBucket=required('SAMPLE_BUCKET_NAME'), reportBucket=required('REPORT_BUCKET_NAME');
 const s3=new S3Client({});
@@ -38,6 +39,7 @@ export async function preflight(event:WorkflowInput){
   const first=r.rows[0]; const inputs:PinnedInput[]=[];
   for(const row of r.rows){
     const key=row.pinned_object_key??row.object_key;
+    if(!isOpaqueRawObjectKey(key))throw new Error('This legacy upload must be uploaded again before it can be processed into a report.');
     const versionId=row.pinned_version_id;
     const head=await s3.send(new HeadObjectCommand({Bucket:rawBucket,Key:key,...(versionId?{VersionId:versionId}:{}),ChecksumMode:'ENABLED'}));
     if(!head.VersionId||!head.ChecksumSHA256)throw new Error('Raw input has no immutable versioned checksum.');

@@ -21,7 +21,7 @@ test('artifact descriptor retains the first graph SVG and permits numbered addit
   assert.equal(artifactDescriptorIsValid(artifact({kind:'graph_svg_2',objectKey:`${prefix}two.svg`,contentType:'image/svg+xml'}),prefix),true);
 });
 test('worker execution state excludes display system and user provenance',()=>{
-  const state=buildWorkerInput({requestId:'request',reportId:'report',ownerId:'owner',algorithmVersion:'1.0.0',parameterProvenance:{fixedDemoValues:{digitizer:'Cosmos'},systemSnapshot:{name:'Private system'},userMetadataSnapshot:{address:'private'}},inputs:[{sampleId:'sample',objectKey:'raw/owner/sample.wav',versionId:'v1',checksumSha256:'base64checksum',contentType:'audio/wav'}]});
+  const state=buildWorkerInput({requestId:'request',reportId:'report',ownerId:'owner',algorithmVersion:'1.0.0',parameterProvenance:{fixedDemoValues:{digitizer:'Cosmos'},systemSnapshot:{name:'Private system'},userMetadataSnapshot:{address:'private'}},inputs:[{sampleId:'sample',objectKey:'raw/123e4567-e89b-12d3-a456-426614174000/123e4567-e89b-12d3-a456-426614174001/input.wav',versionId:'v1',checksumSha256:'base64checksum',contentType:'audio/wav'}]});
   assert.deepEqual(Object.keys(state).sort(),['algorithmVersion','effectiveAlgorithmValues','inputs','outputPrefix','reportId','requestId']);
   assert.equal(JSON.stringify(state).includes('Private system'),false);
   assert.equal(JSON.stringify(state).includes('private'),false);
