@@ -76,6 +76,10 @@ export interface SampleSummary { id: string; batchId: string; psiuUnitId: string
 export interface CompleteSampleUploadResponse { sample: SampleSummary; }
 export interface SampleDownloadResponse { downloadUrl: string; expiresAt: string; }
 export interface AnalysisReportSummary { id: string; sampleId: string; algorithmVersion: string; status: AnalysisStatus; createdAt: string; completedAt?: string; }
+export interface ReportDefinition { key: string; displayName: string; algorithmVersion: string; presets: Array<{ key: string; displayName: string; version: string; notice: string }> }
+export interface CreateReportRequest { idempotencyKey: string; batchId: string; reports: Array<{ definitionKey: string; presetKey: string }> }
+export interface ReportArtifact { kind: 'manifest' | 'metrics_json' | 'graph_svg' | 'report_pdf'; contentType: string; createdAt: string }
+export interface ReportHistoryItem { id: string; requestId: string; reportType: string; algorithmVersion: string; presetName: string; presetVersion: string; status: AnalysisStatus; createdAt: string; completedAt?: string; systemName: string; artifacts: ReportArtifact[] }
 export type UserAlertSeverity = 'info' | 'warning' | 'success';
 export interface UserAlert { id: string; eventKey: string; severity: UserAlertSeverity; title: string; message: string; actionLabel?: string; actionRoute?: string; dismissible: boolean; createdAt: string; }
 export interface PsiuConnectionSettings { baseUrl: string; allowInsecureHttp: boolean; }

@@ -1,6 +1,6 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { AdminAddUserToGroupCommand, AdminCreateUserCommand, AdminDeleteUserCommand, AdminDisableUserCommand, AdminEnableUserCommand, AdminResetUserPasswordCommand, AdminGetUserCommand, CognitoIdentityProviderClient } from '@aws-sdk/client-cognito-identity-provider';
-import type { AdminFulfillmentRequest, AssignPsiuRequest, CreateCustomerRequest, CreatePsiuRequest, CreateSampleUploadBatchRequest, CreateSystemRequest, UpdateProfileRequest, UpdateSystemRequest, CreditAdjustmentRequest } from '@wally/contracts';
+import type { AdminFulfillmentRequest, AssignPsiuRequest, CreateCustomerRequest, CreatePsiuRequest, CreateSampleUploadBatchRequest, CreateSystemRequest, UpdateProfileRequest, UpdateSystemRequest, CreditAdjustmentRequest, CreateReportRequest } from '@wally/contracts';
 import { DeleteObjectCommand, GetObjectCommand, PutObjectTaggingCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { Pool } from 'pg';
@@ -12,12 +12,13 @@ import { PostgresSampleRepository, type SampleRepository } from './services/samp
 import { PostgresUserExperienceRepository } from './services/userExperienceRepository.js';
 import { PostgresAdminDataRepository } from './services/adminDataRepository.js';
 import { PostgresUserAlertsRepository } from './services/userAlertsRepository.js';
+import { PostgresReportRepository } from './services/reportRepository.js';
 import { ACCEPTED_UPLOAD_TAG, UNACCEPTED_UPLOAD_TAG, UPLOAD_LIFECYCLE_TAG_KEY, presignUpload, validateUploadBatch, verifyWavObject } from './services/sampleUploads.js';
 
 const port = Number(process.env.PORT ?? 3000);
 export function createProductionServer(dependencies: ProductionDependencies) {
   const pool = dependencies.pool; const repository = dependencies.repository ?? new PostgresAccountRepository(pool);
-  const samples = dependencies.samples ?? new PostgresSampleRepository(pool); const experience=new PostgresUserExperienceRepository(pool); const adminData=dependencies.adminData ?? new PostgresAdminDataRepository(pool); const alerts=new PostgresUserAlertsRepository(pool);
+  const samples = dependencies.samples ?? new PostgresSampleRepository(pool); const reports=dependencies.reports ?? new PostgresReportRepository(pool); const experience=new PostgresUserExperienceRepository(pool); const adminData=dependencies.adminData ?? new PostgresAdminDataRepository(pool); const alerts=new PostgresUserAlertsRepository(pool);
   const s3 = dependencies.s3 ?? new S3Client({}); const bucketName = dependencies.sampleBucketName ?? process.env.SAMPLE_BUCKET_NAME ?? '';
   const cognito = dependencies.cognito ?? new CognitoIdentityProviderClient({}); const verify = dependencies.verify ?? verifyCognitoAccessToken;
   return createServer(async (request,response) => { try {
@@ -34,6 +35,7 @@ export function createProductionServer(dependencies: ProductionDependencies) {
     const systemUpdate=path.match(/^\/v1\/me\/systems\/([^/]+)$/); if(request.method==='PUT'&&systemUpdate)return sendJson(response,200,await experience.updateSystem(actor.id,systemUpdate[1],await parseJson<UpdateSystemRequest>(request)));
     const activeSystem=path.match(/^\/v1\/me\/systems\/([^/]+)\/active$/); if(request.method==='POST'&&activeSystem){await experience.setActive(actor.id,activeSystem[1]);return sendJson(response,204);}
     if(request.method==='GET' && path==='/v1/me/credits') return sendJson(response,200,await adminData.credits(actor.id,pageQuery(new URL(request.url??'/', 'http://wally.local').searchParams)));
+    if(path.startsWith('/v1/reports')) return await reportRoute(request,response,path,actor.id,reports,s3,dependencies.reportBucketName ?? process.env.REPORT_BUCKET_NAME ?? '');
     if(path.startsWith('/v1/samples')) return await sampleRoute(request,response,path,actor.id,samples,s3,bucketName);
     if(path.startsWith('/v1/admin/')) { requireAdmin(actor); return await adminRoute(request,response,path,actor.id,repository,cognito,s3,bucketName,adminData); }
     return sendJson(response,404,{message:'Route not found.'});
@@ -93,7 +95,14 @@ async function sampleRoute(request:IncomingMessage,response:ServerResponse,path:
   if(request.method==='GET'&&action==='download'){const objectKey=await samples.objectKey(ownerId,sampleId);if(!objectKey)throw new HttpError(404,'Sample not found.');const downloadUrl=await getSignedUrl(s3,new GetObjectCommand({Bucket:bucketName,Key:objectKey}),{expiresIn:900});return sendJson(response,200,{downloadUrl,expiresAt:new Date(Date.now()+900000).toISOString()});}
   throw new HttpError(404,'Route not found.');
 }
-interface ProductionDependencies { pool:Pool; repository?:AccountRepository; samples?:SampleRepository; adminData?:PostgresAdminDataRepository; s3?:S3Client; sampleBucketName?:string; cognito?:CognitoIdentityProviderClient; verify?: (token:string,settings:{userPoolId:string;clientId:string})=>Promise<AuthenticatedPrincipal>; }
+async function reportRoute(request:IncomingMessage,response:ServerResponse,path:string,ownerId:string,reports:PostgresReportRepository,s3:S3Client,bucketName:string):Promise<void>{
+  if(request.method==='GET'&&path==='/v1/reports/definitions')return sendJson(response,200,await reports.definitions());
+  if(request.method==='POST'&&path==='/v1/reports/requests')return sendJson(response,201,await reports.create(ownerId,await parseJson<CreateReportRequest>(request)));
+  if(request.method==='GET'&&path==='/v1/reports')return sendJson(response,200,await reports.history(ownerId,{limit:pageQuery(new URL(request.url??'/', 'http://wally.local').searchParams).limit}));
+  const artifact=path.match(/^\/v1\/reports\/([^/]+)\/artifacts\/(manifest|metrics_json|graph_svg|report_pdf)\/download$/);if(request.method==='GET'&&artifact){if(!bucketName)throw new HttpError(503,'Report storage is unavailable.');const key=await reports.artifact(ownerId,artifact[1],artifact[2]);if(!key)throw new HttpError(404,'Report artifact not found.');return sendJson(response,200,{downloadUrl:await getSignedUrl(s3,new GetObjectCommand({Bucket:bucketName,Key:key}),{expiresIn:900}),expiresAt:new Date(Date.now()+900000).toISOString()});}
+  throw new HttpError(404,'Route not found.');
+}
+interface ProductionDependencies { pool:Pool; repository?:AccountRepository; samples?:SampleRepository; reports?:PostgresReportRepository; adminData?:PostgresAdminDataRepository; s3?:S3Client; sampleBucketName?:string; reportBucketName?:string; cognito?:CognitoIdentityProviderClient; verify?: (token:string,settings:{userPoolId:string;clientId:string})=>Promise<AuthenticatedPrincipal>; }
 export async function createProductionServerFromEnvironment() { return createProductionServer({ pool: new Pool(await databaseSettings()) }); }
 function bearerToken(r:IncomingMessage){const v=r.headers.authorization;if(!v?.startsWith('Bearer '))throw new HttpError(401,'Bearer access token required.');const token=v.slice(7).trim();if(!token)throw new HttpError(401,'Bearer access token required.');return token;}
 async function parseJson<T>(r:IncomingMessage):Promise<T>{const chunks:Buffer[]=[];let n=0;for await(const x of r){const b=Buffer.from(x);if((n+=b.length)>16_384)throw new HttpError(413,'Request body too large.');chunks.push(b);}try{return JSON.parse(Buffer.concat(chunks).toString()) as T;}catch{throw new HttpError(400,'Valid JSON request body required.');}}

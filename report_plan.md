@@ -144,3 +144,13 @@ Retries use bounded exponential backoff. Retry only transient failures. Determin
 3. Is HTML sufficient for phase 1, or is PDF required immediately?
 4. What timeout, memory, and ephemeral-storage profile does the selected algorithm need?
 5. When products arrive, should credits debit at request acceptance, worker start, or successful completion?
+
+## Approved Tracking Error vertical-slice decisions
+
+- First report definition: `tracking-error` / **Tracking Error** / algorithm version `1.0.0`.
+- First versioned preset: **RTI Test 1 Track 1 Side A** v1 (144.5 mm to 58.5 mm).
+- The initial report uses fixed demonstration acquisition/alignment values from the existing fixture. Artifacts and immutable provenance must state this limitation.
+- A report request owns the ordered, fully verified WAV upload batch. One selected definition/preset creates one child analysis report; a future multi-selection request fans out child reports through a bounded Standard Step Functions Map.
+- One input produces an individual graph; two or more inputs additionally produce a sweep graph. Artifacts are checksummed manifest, metrics JSON, SVG graph(s), and an SVG-derived PDF.
+- Future parameter resolution may use saved System and related user metadata. Preserve separate preset, fixed-demo, system, user-metadata, and user-entered snapshots. Do not copy address or other PII.
+- This slice does not debit credits.

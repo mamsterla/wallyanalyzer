@@ -305,6 +305,7 @@ export class WallyPlatformStack extends cdk.Stack {
         DATABASE_SSL: 'require',
         DATABASE_SECRET_ARN: database.secret!.secretArn,
         SAMPLE_BUCKET_NAME: sampleBucket.bucketName,
+        REPORT_BUCKET_NAME: reportBucket.bucketName,
       },
     });
     container.addPortMappings({ containerPort: 80 });
@@ -312,6 +313,7 @@ export class WallyPlatformStack extends cdk.Stack {
     // Report artifacts remain immutable and receive no delete permission.
     database.secret!.grantRead(taskDefinition.taskRole);
     taskDefinition.taskRole.addToPrincipalPolicy(new iam.PolicyStatement({ actions: ['s3:PutObject', 's3:PutObjectTagging', 's3:GetObject', 's3:DeleteObject'], resources: [sampleBucket.arnForObjects('raw/*')] }));
+    taskDefinition.taskRole.addToPrincipalPolicy(new iam.PolicyStatement({ actions: ['s3:GetObject'], resources: [reportBucket.arnForObjects('reports/*')] }));
     taskDefinition.taskRole.addToPrincipalPolicy(new iam.PolicyStatement({
       actions: [
         'cognito-idp:AdminCreateUser',

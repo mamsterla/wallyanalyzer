@@ -23,7 +23,7 @@ Wally Analyzer is an AWS SaaS platform for commerce, PSIU-assisted recording, an
 3. The service returns a short-lived S3 multipart/presigned upload URL. Browser uploads audio directly to private S3 after public ingress is explicitly approved.
 4. S3 event validation confirms object metadata/checksum and moves sample to `queued`.
 5. Step Functions selects algorithm version. Lambda container is default for bounded jobs; Fargate task is selected for long, memory-heavy, or native-library work.
-6. Workers write artifacts and report payloads to S3, transactional status/results to Postgres, and report summary to API.
+6. Report requests atomically create ordered child analysis jobs and an outbox event. Step Functions fans out bounded workers; workers write private JSON/SVG/PDF artifacts, while finalizers write transactional status/results to Postgres and a report summary to the API.
 7. UI presents customer-scoped data or aggregate data after explicit admin authorization.
 
 ## AWS foundation
