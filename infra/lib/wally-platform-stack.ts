@@ -408,7 +408,7 @@ export class WallyPlatformStack extends cdk.Stack {
     // only the isolated dispatcher after migrating and seeding the separate smoke database.
     const smokeRunnerFn=new lambda.DockerImageFunction(this,'ReportSmokeRunnerFunction',{code:workflowImageFor('handlers/reportSmokeRunner.run'),vpc,vpcSubnets:{subnetType:ec2.SubnetType.PRIVATE_ISOLATED},securityGroups:[smokeWorkflowSecurityGroup],timeout:cdk.Duration.minutes(15),memorySize:1024,environment:{DATABASE_PROXY_HOST:databaseProxy.endpoint,DATABASE_SSL:'require',SMOKE_DATABASE_SECRET_ARN:smokeDatabaseSecret.secretArn,SMOKE_DATABASE_NAME:smokeDatabaseName,SAMPLE_BUCKET_NAME:sampleBucket.bucketName,REPORT_BUCKET_NAME:reportBucket.bucketName,SMOKE_RAW_PREFIX:'smoke/raw/',SMOKE_REPORT_PREFIX:'smoke/reports/',SMOKE_DISPATCHER_FUNCTION_NAME:smokeDispatcherFn.functionName},logGroup:workflowLogGroup});
     smokeDatabaseSecret.grantRead(smokeRunnerFn);
-    smokeRunnerFn.addToRolePolicy(new iam.PolicyStatement({actions:['s3:GetObject','s3:GetObjectVersion','s3:PutObject','s3:DeleteObject'],resources:[sampleBucket.arnForObjects('smoke/raw/*'),reportBucket.arnForObjects('smoke/reports/*')]}));
+    smokeRunnerFn.addToRolePolicy(new iam.PolicyStatement({actions:['s3:GetObject','s3:GetObjectVersion','s3:PutObject','s3:DeleteObject','s3:DeleteObjectVersion'],resources:[sampleBucket.arnForObjects('smoke/raw/*'),reportBucket.arnForObjects('smoke/reports/*')]}));
     smokeDispatcherFn.grantInvoke(smokeRunnerFn);
     const applicationService = new ecs.FargateService(this, 'PrivateApplicationService', {
       cluster,
