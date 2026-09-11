@@ -51,6 +51,19 @@ test('user and PSIU directories enforce two-character queries, escape wildcards,
   await assert.rejects(() => repository.typeahead('x'), (e:unknown) => e instanceof HttpError && e.statusCode===400);
 });
 
+test('PSIU and sample owner filters require selected IDs while general search stays device-only', async () => {
+  const calls: Array<{ sql:string; values:unknown[] }> = [];
+  const pool = { query: async (sql:string, values:unknown[] = []) => { calls.push({sql,values}); return { rows: [] }; } };
+  const repository = new PostgresAdminDataRepository(pool as never);
+  await repository.units({ q:'PS', customerId:'00000000-0000-4000-8000-000000000001' });
+  assert.match(calls[0]!.sql, /u\.id=\$3/);
+  assert.equal(calls[0]!.sql.includes('u.email ilike'), false);
+  assert.equal(calls[0]!.values[2], '00000000-0000-4000-8000-000000000001');
+  await repository.samples({ q:'PS' });
+  assert.match(calls[1]!.sql, /p\.serial_number ilike/);
+  assert.equal(calls[1]!.sql.includes('u.email ilike'), false);
+});
+
 test('admin profile update never updates email', async () => {
   const calls: Array<{ sql:string }> = [];
   const pool = { query: async (sql:string) => { calls.push({sql}); if (sql.startsWith('update users')) return { rowCount:1, rows:[{id:'user'}] }; if (sql.includes('from users u where')) return { rowCount:1, rows:[{id:'user',email:'u@example.com',balance:0}] }; return { rowCount:0,rows:[] }; } };

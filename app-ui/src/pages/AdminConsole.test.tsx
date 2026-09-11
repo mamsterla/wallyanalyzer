@@ -57,12 +57,12 @@ describe('scalable admin directories', () => {
     );
     show('/admin/psiu');
     await screen.findByText('PSIU-1 · uid-1 · enabled');
-    fireEvent.change(screen.getByLabelText('Search serial, UID, or owner'), {
+    fireEvent.change(screen.getByLabelText('Search serial or UID'), {
       target: { value: 'P' },
     });
     await new Promise((resolve) => setTimeout(resolve, 300));
     expect(request).not.toHaveBeenCalledWith(expect.stringContaining('q=P'));
-    fireEvent.change(screen.getByLabelText('Search serial, UID, or owner'), {
+    fireEvent.change(screen.getByLabelText('Search serial or UID'), {
       target: { value: 'PS' },
     });
     await waitFor(() => expect(request).toHaveBeenCalledWith(expect.stringContaining('q=PS')));
@@ -152,7 +152,7 @@ describe('scalable admin directories', () => {
     );
     show('/admin/psiu');
     await waitFor(() => expect(request).toHaveBeenCalled());
-    fireEvent.change(screen.getByLabelText('Search serial, UID, or owner'), {
+    fireEvent.change(screen.getByLabelText('Search serial or UID'), {
       target: { value: 'PS' },
     });
     await waitFor(() =>
