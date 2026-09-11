@@ -361,7 +361,7 @@ export class WallyPlatformStack extends cdk.Stack {
     const requestFinalizerFn=workflowLambda('ReportRequestFinalizerFunction','handlers/reportWorkflow.finalizeRequest');
     const dispatcherFn=workflowLambda('ReportDispatcherFunction','handlers/reportWorkflow.dispatch');
     const analysisWorker=new lambda.DockerImageFunction(this,'AnalysisWorkerFunction',{code:workerImage,timeout:cdk.Duration.minutes(15),memorySize:3008,ephemeralStorageSize:cdk.Size.gibibytes(4),environment:{SAMPLE_BUCKET_NAME:sampleBucket.bucketName,REPORT_BUCKET_NAME:reportBucket.bucketName},logGroup:workflowLogGroup});
-    for(const fn of [preflightFn,finalizerFn,failedFn,requestFinalizerFn,dispatcherFn]){database.secret!.grantRead(fn);fn.addToRolePolicy(new iam.PolicyStatement({actions:['s3:GetObject'],resources:[sampleBucket.arnForObjects('raw/*'),reportBucket.arnForObjects('reports/*')]}));}
+    for(const fn of [preflightFn,finalizerFn,failedFn,requestFinalizerFn,dispatcherFn]){database.secret!.grantRead(fn);fn.addToRolePolicy(new iam.PolicyStatement({actions:['s3:GetObject','s3:GetObjectVersion'],resources:[sampleBucket.arnForObjects('raw/*'),reportBucket.arnForObjects('reports/*')]}));}
     // The trusted finalizer alone writes provenance manifests; the worker never supplies one.
     finalizerFn.addToRolePolicy(new iam.PolicyStatement({actions:['s3:PutObject'],resources:[reportBucket.arnForObjects('reports/*')]}));
     analysisWorker.addToRolePolicy(new iam.PolicyStatement({actions:['s3:GetObject','s3:GetObjectVersion'],resources:[sampleBucket.arnForObjects('raw/*')]}));
@@ -391,7 +391,7 @@ export class WallyPlatformStack extends cdk.Stack {
     const smokeRequestFinalizerFn=smokeWorkflowLambda('SmokeReportRequestFinalizerFunction','handlers/reportSmokeWorkflow.finalizeRequest');
     const smokeDispatcherFn=smokeWorkflowLambda('SmokeReportDispatcherFunction','handlers/reportSmokeWorkflow.dispatch');
     const smokeAnalysisWorker=new lambda.DockerImageFunction(this,'SmokeAnalysisWorkerFunction',{code:workerImage,timeout:cdk.Duration.minutes(15),memorySize:3008,ephemeralStorageSize:cdk.Size.gibibytes(4),vpc,vpcSubnets:{subnetType:ec2.SubnetType.PRIVATE_ISOLATED},securityGroups:[smokeWorkflowSecurityGroup],environment:{SAMPLE_BUCKET_NAME:sampleBucket.bucketName,REPORT_BUCKET_NAME:reportBucket.bucketName,REPORT_PREFIX:'smoke/reports/'},logGroup:workflowLogGroup});
-    for(const fn of [smokePreflightFn,smokeFinalizerFn,smokeFailedFn,smokeRequestFinalizerFn,smokeDispatcherFn]){smokeDatabaseSecret.grantRead(fn);fn.addToRolePolicy(new iam.PolicyStatement({actions:['s3:GetObject'],resources:[sampleBucket.arnForObjects('smoke/raw/*'),reportBucket.arnForObjects('smoke/reports/*')]}));}
+    for(const fn of [smokePreflightFn,smokeFinalizerFn,smokeFailedFn,smokeRequestFinalizerFn,smokeDispatcherFn]){smokeDatabaseSecret.grantRead(fn);fn.addToRolePolicy(new iam.PolicyStatement({actions:['s3:GetObject','s3:GetObjectVersion'],resources:[sampleBucket.arnForObjects('smoke/raw/*'),reportBucket.arnForObjects('smoke/reports/*')]}));}
     smokeFinalizerFn.addToRolePolicy(new iam.PolicyStatement({actions:['s3:PutObject'],resources:[reportBucket.arnForObjects('smoke/reports/*')]}));
     smokeAnalysisWorker.addToRolePolicy(new iam.PolicyStatement({actions:['s3:GetObject','s3:GetObjectVersion'],resources:[sampleBucket.arnForObjects('smoke/raw/*')]}));
     smokeAnalysisWorker.addToRolePolicy(new iam.PolicyStatement({actions:['s3:PutObject'],resources:[reportBucket.arnForObjects('smoke/reports/*')]}));
