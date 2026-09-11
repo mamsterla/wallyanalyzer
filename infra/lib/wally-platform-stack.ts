@@ -350,15 +350,19 @@ export class WallyPlatformStack extends cdk.Stack {
     const dispatcherFn=workflowLambda('ReportDispatcherFunction','handlers/reportWorkflow.dispatch');
     const analysisWorker=new lambda.DockerImageFunction(this,'AnalysisWorkerFunction',{code:workerImage,timeout:cdk.Duration.minutes(15),memorySize:4096,ephemeralStorageSize:cdk.Size.gibibytes(4),environment:{SAMPLE_BUCKET_NAME:sampleBucket.bucketName,REPORT_BUCKET_NAME:reportBucket.bucketName},logGroup:workflowLogGroup});
     for(const fn of [preflightFn,finalizerFn,failedFn,requestFinalizerFn,dispatcherFn]){database.secret!.grantRead(fn);fn.addToRolePolicy(new iam.PolicyStatement({actions:['s3:GetObject'],resources:[sampleBucket.arnForObjects('raw/*'),reportBucket.arnForObjects('reports/*')]}));}
+    // The trusted finalizer alone writes provenance manifests; the worker never supplies one.
+    finalizerFn.addToRolePolicy(new iam.PolicyStatement({actions:['s3:PutObject'],resources:[reportBucket.arnForObjects('reports/*')]}));
     analysisWorker.addToRolePolicy(new iam.PolicyStatement({actions:['s3:GetObject','s3:GetObjectVersion'],resources:[sampleBucket.arnForObjects('raw/*')]}));
     analysisWorker.addToRolePolicy(new iam.PolicyStatement({actions:['s3:PutObject'],resources:[reportBucket.arnForObjects('reports/*')]}));
-    const preflight=new sfnTasks.LambdaInvoke(this,'ReportPreflight',{lambdaFunction:preflightFn,outputPath:'$.Payload'});
-    const worker=new sfnTasks.LambdaInvoke(this,'ReportWorker',{lambdaFunction:analysisWorker,outputPath:'$.Payload'});
-    const finalize=new sfnTasks.LambdaInvoke(this,'ReportFinalize',{lambdaFunction:finalizerFn,payload:sfn.TaskInput.fromObject({'reportId.$':'$.reportId','ownerId.$':'$.ownerId','reportPrefix.$':'$.reportPrefix','artifacts.$':'$.artifacts'}),outputPath:'$.Payload'});
-    const fail=new sfnTasks.LambdaInvoke(this,'ReportMarkFailed',{lambdaFunction:failedFn,payload:sfn.TaskInput.fromObject({'reportId.$':'$.reportId','error.$':'$.failure.Error'}),outputPath:'$.Payload'});
+    // Preserve the Map item reportId outside untrusted worker output.
+    const preflight=new sfnTasks.LambdaInvoke(this,'ReportPreflight',{lambdaFunction:preflightFn,payloadResponseOnly:true,resultPath:'$.preflight'});
+    const worker=new sfnTasks.LambdaInvoke(this,'ReportWorker',{lambdaFunction:analysisWorker,payload:sfn.TaskInput.fromJsonPathAt('$.preflight'),payloadResponseOnly:true,resultPath:'$.worker'});
+    const finalize=new sfnTasks.LambdaInvoke(this,'ReportFinalize',{lambdaFunction:finalizerFn,payload:sfn.TaskInput.fromObject({'reportId.$':'$.reportId','artifacts.$':'$.worker.artifacts'}),payloadResponseOnly:true,resultPath:'$.finalized'});
+    const fail=new sfnTasks.LambdaInvoke(this,'ReportMarkFailed',{lambdaFunction:failedFn,payload:sfn.TaskInput.fromObject({'reportId.$':'$.reportId','error.$':'$.failure.Error'}),payloadResponseOnly:true,resultPath:'$.failed'});
     preflight.addRetry({maxAttempts:3,interval:cdk.Duration.seconds(5),backoffRate:2}).addCatch(fail,{resultPath:'$.failure'}); worker.addRetry({maxAttempts:2,interval:cdk.Duration.seconds(10),backoffRate:2}).addCatch(fail,{resultPath:'$.failure'}); finalize.addRetry({maxAttempts:5,interval:cdk.Duration.seconds(5),backoffRate:2}).addCatch(fail,{resultPath:'$.failure'});
     const child=preflight.next(worker).next(finalize);
-    const map=new sfn.Map(this,'ReportFanout',{itemsPath:'$.reportIds',maxConcurrency:4,parameters:{'requestId.$':'$.requestId','reportId.$':'$$.Map.Item.Value'}}).iterator(child);
+    // Keep requestId at the root for the request finalizer after Map completion.
+    const map=new sfn.Map(this,'ReportFanout',{itemsPath:'$.reportIds',maxConcurrency:4,resultPath:'$.fanout',parameters:{'requestId.$':'$.requestId','reportId.$':'$$.Map.Item.Value'}}).iterator(child);
     const finish=new sfnTasks.LambdaInvoke(this,'ReportRequestFinalize',{lambdaFunction:requestFinalizerFn,payload:sfn.TaskInput.fromObject({'requestId.$':'$.requestId'}),outputPath:'$.Payload'});
     finish.addRetry({maxAttempts:6,interval:cdk.Duration.seconds(10),backoffRate:2});
     const reportStateMachine=new sfn.StateMachine(this,'ReportStateMachine',{definitionBody:sfn.DefinitionBody.fromChainable(map.next(finish)),timeout:cdk.Duration.hours(1),stateMachineType:sfn.StateMachineType.STANDARD,logs:{level:sfn.LogLevel.OFF}});
