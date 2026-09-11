@@ -4,16 +4,16 @@ export class PsiuUnavailableError extends Error { constructor() { super('PSIU is
 export interface PsiuClient { scanUid(): Promise<string>; getStatus(): Promise<PsiuStatus>; startCapture(): Promise<PsiuStatus>; stopCapture(): Promise<PsiuStatus>; getCompletedCapture(): Promise<Blob | null>; }
 export type FetchLike = typeof fetch;
 
-/** All PSIU requests use the customer-local bridge; browsers never call psiu.local directly. */
+/** Direct PSIU browser mode is a temporary HTTPS-site → HTTP-device demonstration exception. */
 export function createPsuClient(fetchImplementation: FetchLike = fetch): PsiuClient {
   const localDevelopment = typeof window === 'undefined' || ['localhost', '127.0.0.1'].includes(window.location.hostname);
-  const base = localDevelopment ? '/api/psiu' : 'http://127.0.0.1:3000/psiu';
+  const base = localDevelopment ? '/api/psiu' : 'http://psiu.local';
   return {
     async scanUid() { const value = await requestJson(fetchImplementation, `${base}/uid`); const uid = asRecord(value).uid; if (typeof uid !== 'string' || !uid.trim() || uid.trim().length > 256) throw new PsiuUnavailableError(); return uid.trim(); },
     async getStatus() { return requestStatus(fetchImplementation, `${base}/status`); },
-    async startCapture() { return requestStatus(fetchImplementation, `${base}/capture`, captureInit(true)); },
-    async stopCapture() { return requestStatus(fetchImplementation, `${base}/capture`, captureInit(false)); },
-    async getCompletedCapture() { let response: Response; try { response = await fetchImplementation(`${base}/wav`, { headers: { range: 'bytes=0-' } }); } catch { throw new PsiuUnavailableError(); } if (response.status === 404) return null; if (!response.ok || !response.headers.get('content-type')?.toLowerCase().startsWith('audio/wav')) throw new PsiuUnavailableError(); return response.blob(); },
+    async startCapture() { return requestStatus(fetchImplementation, `${base}${localDevelopment ? '/capture' : '/api/sampling'}`, captureInit(true)); },
+    async stopCapture() { return requestStatus(fetchImplementation, `${base}${localDevelopment ? '/capture' : '/api/sampling'}`, captureInit(false)); },
+    async getCompletedCapture() { let response: Response; try { response = await fetchImplementation(`${base}${localDevelopment ? '/wav' : '/audio.wav'}`, { headers: { range: 'bytes=0-' } }); } catch { throw new PsiuUnavailableError(); } if (response.status === 404) return null; if (!response.ok || !response.headers.get('content-type')?.toLowerCase().startsWith('audio/wav')) throw new PsiuUnavailableError(); return response.blob(); },
   };
 }
 function captureInit(running:boolean):RequestInit { return { method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify({running}) }; }

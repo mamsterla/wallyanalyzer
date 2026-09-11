@@ -21,9 +21,8 @@ test('forwards authenticated audio.wav bytes and content headers through local W
   const server = await createLocalServer({
     authorization: 'Basic test',
     environment: { PSIU_BASE_URL: 'http://psiu.local' },
-    resolveAddresses: async () => ['192.168.1.20'],
     fetchImplementation: (async (input, init) => {
-      assert.equal(String(input), 'http://192.168.1.20/audio.wav');
+      assert.equal(String(input), 'http://psiu.local/audio.wav');
       assert.equal(new Headers(init?.headers).get('authorization'), 'Basic test');
       return new Response(wav, { status: 206, headers: { 'content-type': 'audio/wav', 'content-length': String(wav.length), 'content-range': `bytes 0-${wav.length - 1}/${wav.length}`, 'accept-ranges': 'bytes' } });
     }) as typeof fetch,
@@ -45,9 +44,8 @@ test('forwards authenticated audio.wav bytes and content headers through local W
 test('proxies only a valid unauthenticated PSIU UID without telemetry or cache persistence', async () => {
   const server = await createLocalServer({
     environment: { PSIU_BASE_URL: 'http://psiu.local' },
-    resolveAddresses: async () => ['192.168.1.20'],
     fetchImplementation: (async (input, init) => {
-      assert.equal(String(input), 'http://192.168.1.20/uid');
+      assert.equal(String(input), 'http://psiu.local/uid');
       assert.equal(new Headers(init?.headers).get('authorization'), null);
       return new Response(JSON.stringify({ uid: 'psiu-uid-001', telemetry: 'discarded' }), { status: 200, headers: { 'content-type': 'application/json' } });
     }) as typeof fetch,
@@ -70,7 +68,7 @@ test('rejects malformed UID responses and unavailable PSIU scan targets', async 
     [(async () => new Response(JSON.stringify({ telemetry: true }), { status: 200 })) as typeof fetch, 502],
     [(async () => { throw new TypeError('network unavailable'); }) as typeof fetch, 503],
   ] as const) {
-    const server = await createLocalServer({ environment: { PSIU_BASE_URL: 'http://psiu.local' }, resolveAddresses: async () => ['192.168.1.20'], fetchImplementation });
+    const server = await createLocalServer({ environment: { PSIU_BASE_URL: 'http://psiu.local' }, fetchImplementation });
     await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
     const address = server.address();
     assert.ok(address && typeof address === 'object');

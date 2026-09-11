@@ -26,6 +26,22 @@ describe('PSIU client', () => {
     expect(fetchMock).toHaveBeenCalledWith('/api/psiu/uid');
   });
 
+  it('uses direct fixed HTTP firmware routes outside local development for the temporary demonstration', async () => {
+    vi.stubGlobal('window', { location: { hostname: 'wally-analytics.app' } });
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponse({ ...status, recording: true }))
+      .mockResolvedValueOnce(jsonResponse({ ...status, recording: false }))
+      .mockResolvedValueOnce(new Response(new Blob(['RIFF____WAVE'], { type: 'audio/wav' }), { status: 206, headers: { 'content-type': 'audio/wav' } }));
+    const client = createPsuClient(fetchMock);
+    await client.startCapture();
+    await client.stopCapture();
+    await client.getCompletedCapture();
+    expect(fetchMock).toHaveBeenNthCalledWith(1, 'http://psiu.local/api/sampling', expect.objectContaining({ method: 'POST', body: '{"running":true}' }));
+    expect(fetchMock).toHaveBeenNthCalledWith(2, 'http://psiu.local/api/sampling', expect.objectContaining({ method: 'POST', body: '{"running":false}' }));
+    expect(fetchMock).toHaveBeenNthCalledWith(3, 'http://psiu.local/audio.wav', expect.objectContaining({ headers: { range: 'bytes=0-' } }));
+    vi.unstubAllGlobals();
+  });
+
   it('rejects missing local PSIU UID values', async () => {
     const client = createPsuClient(vi.fn().mockResolvedValue(jsonResponse({ telemetry: true })));
     await expect(client.scanUid()).rejects.toBeInstanceOf(PsiuUnavailableError);

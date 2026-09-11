@@ -45,23 +45,21 @@ Required response behavior:
 5. Request an authenticated signed upload from `/v1/samples/uploads`; upload directly to S3; call sample completion endpoint after checksum verification.
 6. Test CORS and hardware workflow in a real LAN browser matrix before public release.
 
-## Production local bridge design
+## Temporary direct-browser demonstration mode
 
-The production controller uses a customer-local bridge rather than browser-to-PSIU direct requests. This avoids HTTPS mixed-content failures while preserving the LAN-only PSIU boundary.
+For the private demonstration only, the HTTPS Wally browser application calls the LAN-only PSIU directly at `http://psiu.local`. The firmware CORS allowlist permits `https://wally-analytics.app`, and no PSIU authentication header or credential is sent by the browser.
 
-- The bridge binds only to loopback and exposes only fixed `/uid`, `/status`, `/capture`, and `/wav` routes. It never proxies arbitrary URLs and never accepts a cloud-initiated connection.
-- The bridge allows requests only from the explicit production UI origin and approved local-development origin. It handles required preflight requests without forwarding them to the PSIU.
-- First use requires **one-time local pairing** on macOS: after building the local bridge, run `npm run bridge:pair --workspace=@wally/app-server -- --psiu-base-url http://psiu.local`. Native macOS dialogs collect the PSIU username and password without terminal echo. The bridge validates the target is `psiu.local` or a private, link-local, or loopback origin, then stores the target and authorization together in the macOS Keychain. It never sends, logs, or copies authorization to Wally, AWS, browser storage, source control, or application configuration. Start it with `npm run bridge --workspace=@wally/app-server` before opening Sample Capture.
-- Docker Compose is a development harness only. Its `NODE_ENV=development` bridge may resolve `PSIU_CREDENTIAL_SECRET_ARN` through the developer AWS profile; customer bridge mode never reads that variable or calls AWS. Linux customer bridge support requires a future OS credential-store adapter.
-- The browser receives only PSIU status and WAV bytes through the bridge. After the user selects reports, it obtains a tenant-scoped presigned S3 upload intent from the Wally API, transfers the WAV bytes to private S3, verifies completion, and queues reports. The PSIU never receives AWS credentials or S3 URLs.
-- The existing Compose-local proxy remains a development harness only. It must not retrieve a shared PSIU credential from AWS Secrets Manager for customer production use.
+- This is a temporary mixed-content exception configured by the demonstration browser operator. Application JavaScript cannot bypass browser mixed-content or Private Network Access protections.
+- The browser uses only fixed firmware endpoints: `/uid`, `/status`, `POST /api/sampling`, and `/audio.wav`. The PSIU remains LAN-only and receives no AWS credential or S3 URL.
+- After report selection, the browser reads WAV bytes directly from PSIU, obtains a tenant-scoped presigned upload intent from Wally, transfers bytes to private S3, verifies completion, and queues reports.
+- Before public release, firmware must provide HTTPS and successful Private Network Access support for the Wally origin. This exception must then be removed.
 
 ## Controller interaction contract
 
-1. Start capture through the bridge and poll bridge status while the PSIU records.
-2. Stop capture through the bridge; retrieve the completed WAV only after the user chooses **Process this sample**.
+1. Start capture directly on PSIU and poll status while it records.
+2. Stop capture; retrieve the completed WAV only after the user chooses **Process this sample**.
 3. The dialog offers report selection or **Discard**. Discard clears local capture state and returns to ready; it does not upload bytes.
-4. Processing creates the authenticated upload intent, streams the completed WAV bridge-to-browser-to-S3, completes verification, and atomically queues the selected reports.
+4. Processing creates the authenticated upload intent, streams the completed WAV browser-to-S3, completes verification, and atomically queues the selected reports.
 5. The home activity queue shows queued, running, completed, and failed report status. No manual browser WAV selection is available.
 
 ## Inventory lifecycle
