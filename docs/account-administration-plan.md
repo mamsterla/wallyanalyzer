@@ -38,3 +38,7 @@ Password reset is delivery-only through Cognito for Cognito-linked `invited` or 
 ## Operator validation
 
 Production migration history was verified through the private SSM bastion before adding `0003`. Apply only through the existing task startup migration runner after an approved deployment. Do not introduce Prisma Migrate concurrently.
+
+## Directory APIs
+
+Admins may use `GET /v1/admin/users/typeahead?q=` after two characters to select a customer. `GET /v1/admin/samples` accepts owner-scoped `ownerId` plus two-character `q` matching customer name/email and PSIU serial/UID. `GET /v1/admin/reports` provides paginated administrative report search by two-character user/system query, report type, status, and preset. These routes remain admin-authorized.

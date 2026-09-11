@@ -32,6 +32,7 @@ type Unit = {
   customer?: User;
 };
 type Page<T> = { items: T[]; limit: number; offset?: number; nextCursor?: string };
+type TypeaheadProps={label:string;onSelect:(user:User)=>void;selected?:User;};
 const name = (u: Pick<User, 'email' | 'firstName' | 'lastName'>) =>
   `${[u.firstName, u.lastName].filter(Boolean).join(' ') || u.email} · ${u.email}`;
 const err = (e: unknown) => (e instanceof Error ? e.message : 'Request failed.');
@@ -51,6 +52,7 @@ export function AdminConsole() {
           ['users', 'User Management'],
           ['credits', 'Credits'],
           ['samples', 'Samples'],
+          ['reports', 'Reports'],
         ].map(([id, text]) => (
           <Button
             key={id}
@@ -70,8 +72,10 @@ export function AdminConsole() {
           <Users userId={parts[3]} />
         ) : s === 'credits' ? (
           <Credits />
-        ) : (
+        ) : s === 'samples' ? (
           <Samples />
+        ) : (
+          <Reports />
         )}
       </Box>
     </Stack>
@@ -91,6 +95,7 @@ function directoryPath(base: string, q: string, filters: Record<string, string>,
   const search = x.toString();
   return search ? `${base}?${search}` : base;
 }
+function UserTypeahead({label,onSelect,selected}:TypeaheadProps){const[q,setQ]=useState(''),[items,setItems]=useState<User[]>([]),[loading,setLoading]=useState(false),[active,setActive]=useState(0),version=useRef(0);useEffect(()=>{if(q.trim().length<2){setItems([]);return;}const current=++version.current;setLoading(true);const t=setTimeout(()=>void request<User[]>(`/v1/admin/users/typeahead?q=${encodeURIComponent(q)}`).then(x=>{if(current===version.current){setItems(x);setActive(0);}}).finally(()=>{if(current===version.current)setLoading(false)}),250);return()=>clearTimeout(t)},[q]);if(selected)return <Stack direction="row" spacing={1} alignItems="center"><Typography>{name(selected)}</Typography><Button onClick={()=>{setQ('');setItems([]);onSelect(undefined as never)}}>Clear</Button></Stack>;return <Box><TextField label={label} value={q} onChange={e=>setQ(e.target.value)} helperText={q.length===1?'Enter at least 2 characters.':'Search begins at 2 characters.'} inputProps={{role:'combobox','aria-expanded':items.length>0,'aria-controls':`${label}-options`}} onKeyDown={e=>{if(e.key==='ArrowDown'){e.preventDefault();setActive(x=>Math.min(x+1,items.length-1))}if(e.key==='ArrowUp'){e.preventDefault();setActive(x=>Math.max(x-1,0))}if(e.key==='Enter'&&items[active])onSelect(items[active]!);}}/>{loading&&<Typography variant="body2">Searching…</Typography>}{q.length>=2&&!loading&&items.length===0&&<Typography variant="body2">No users found.</Typography>}{items.length>0&&<Paper id={`${label}-options`} role="listbox">{items.map((x,i)=><Button key={x.id} role="option" aria-selected={i===active} fullWidth sx={{justifyContent:'flex-start'}} onClick={()=>onSelect(x)}>{name(x)}</Button>)}</Paper>}</Box>}
 function Psiu() {
   const l = useLocation(),
     n = useNavigate(),
@@ -361,26 +366,7 @@ function Psiu() {
                   </Button>
                 )}
                 {selected === unit.id && !unit.customer && (
-                  <Box>
-                    <TextField
-                      size="small"
-                      label="Search user"
-                      value={assignQ}
-                      onChange={(event) => setAssignQ(event.target.value)}
-                    />
-                    {people.map((person) => (
-                      <Button
-                        key={person.id}
-                        onClick={() =>
-                          void post(`/v1/admin/psiu-units/${unit.id}/assign`, {
-                            customerId: person.id,
-                          })
-                        }
-                      >
-                        {name(person)}
-                      </Button>
-                    ))}
-                  </Box>
+                  <UserTypeahead label="Find user" onSelect={(person)=>void post(`/v1/admin/psiu-units/${unit.id}/assign`,{customerId:person.id})}/>
                 )}
               </Stack>
               <Button
@@ -540,6 +526,7 @@ function Users({ userId }: { userId?: string }) {
           <Button onClick={() => setCreating(false)}>Cancel</Button>
         </Stack>
       )}
+      <UserTypeahead label="Find user" onSelect={(person)=>n(`/admin/users/${person.id}?returnTo=${encodeURIComponent(returnTo)}`)}/>
       <TextField
         label="Search name, email, or active PSIU serial"
         value={q}
@@ -754,138 +741,6 @@ function UserDetail({ id, onBack }: { id: string; onBack: () => void }) {
   );
 }
 
-function Credits() {
-  const [u, setU] = useState(''),
-    [entries, setEntries] = useState<any[]>([]),
-    [balance, setBalance] = useState<number>(),
-    [stats, setStats] = useState<any[]>([]),
-    [delta, setDelta] = useState(''),
-    [note, setNote] = useState(''),
-    [m, setM] = useState('');
-  useEffect(() => {
-    void request<any[]>('/v1/admin/credits/stats')
-      .then(setStats)
-      .catch((e) => setM(err(e)));
-  }, []);
-  const load = () => {
-    if (!u) return;
-    void request<any>(`/v1/admin/users/${u}/credits?limit=50`)
-      .then((x) => {
-        setEntries(x.items);
-        setBalance(x.balance);
-      })
-      .catch((e) => setM(err(e)));
-  };
-  const adjust = async () => {
-    try {
-      await request(`/v1/admin/users/${u}/credits`, {
-        method: 'POST',
-        body: JSON.stringify({
-          delta: Number(delta),
-          note,
-          kind: Number(delta) > 0 ? 'grant' : 'administrative_adjustment',
-        }),
-      });
-      setDelta('');
-      setNote('');
-      load();
-    } catch (e) {
-      setM(err(e));
-    }
-  };
-  return (
-    <Stack spacing={2}>
-      <Typography variant="h4">Credits</Typography>
-      {stats.length > 0 && (
-        <Paper sx={{ p: 1 }}>
-          <Typography variant="subtitle2">Credit activity</Typography>
-          {stats.map((x, i) => (
-            <Typography key={`${x.day}-${x.kind}-${x.product}-${i}`} variant="body2">
-              {String(x.day).slice(0, 10)} · {x.kind} · {x.product} · {x.entry_count} entries ·{' '}
-              {x.delta} credits
-            </Typography>
-          ))}
-        </Paper>
-      )}
-      <TextField label="User ID" value={u} onChange={(e) => setU(e.target.value)} />
-      <Button onClick={load}>Load ledger</Button>
-      {balance !== undefined && <Typography>Balance: {balance}</Typography>}
-      <TextField
-        label="Credit amount (+/-)"
-        value={delta}
-        onChange={(e) => setDelta(e.target.value)}
-      />
-      <TextField
-        required
-        label="Adjustment note"
-        value={note}
-        onChange={(e) => setNote(e.target.value)}
-      />
-      <Button disabled={!u || !note || !delta} onClick={() => void adjust()}>
-        Apply adjustment
-      </Button>
-      {m && <Alert severity="error">{m}</Alert>}
-      {entries.map((x) => (
-        <Paper key={x.id} sx={{ p: 1 }}>
-          {x.created_at} · {x.kind} · {x.delta} · balance {x.balance_after} · {x.note}
-        </Paper>
-      ))}
-    </Stack>
-  );
-}
-function Samples() {
-  const [page, setPage] = useState<Page<any>>({ items: [], limit: 25, offset: 0 }),
-    [state, setState] = useState(''),
-    [source, setSource] = useState(''),
-    [stats, setStats] = useState<any>(),
-    [m, setM] = useState('');
-  const load = (offset = 0) => {
-    const q = `limit=25&offset=${offset}&state=${encodeURIComponent(state)}&source=${encodeURIComponent(source)}`;
-    void Promise.all([
-      request<Page<any>>(`/v1/admin/samples?${q}`),
-      request<any>('/v1/admin/samples/stats'),
-    ])
-      .then(([p, s]) => {
-        setPage(p);
-        setStats(s);
-      })
-      .catch((e) => setM(err(e)));
-  };
-  useEffect(() => {
-    load();
-  }, []);
-  return (
-    <Stack spacing={2}>
-      <Typography variant="h4">Samples</Typography>
-      <Typography>
-        {stats &&
-          `Total ${stats.total} · 7 days ${stats.d7} · 30 days ${stats.d30} · YTD ${stats.ytd}`}
-      </Typography>
-      <Stack direction="row">
-        <TextField label="State" value={state} onChange={(e) => setState(e.target.value)} />
-        <TextField label="Source" value={source} onChange={(e) => setSource(e.target.value)} />
-        <Button onClick={() => load()}>Filter</Button>
-      </Stack>
-      {m && <Alert severity="error">{m}</Alert>}
-      {page.items.map((x) => (
-        <Paper key={x.id} sx={{ p: 1 }}>
-          {x.email} · {x.serial_number} · {x.source} · {x.upload_state} · {x.recorded_at}
-        </Paper>
-      ))}
-      <Stack direction="row">
-        <Button
-          disabled={!(page.offset ?? 0)}
-          onClick={() => load(Math.max(0, (page.offset ?? 0) - page.limit))}
-        >
-          Previous
-        </Button>
-        <Button
-          disabled={page.items.length < page.limit}
-          onClick={() => load((page.offset ?? 0) + page.limit)}
-        >
-          Next
-        </Button>
-      </Stack>
-    </Stack>
-  );
-}
+function Credits(){const[selected,setSelected]=useState<User>(),[entries,setEntries]=useState<any[]>([]),[balance,setBalance]=useState<number>(),[stats,setStats]=useState<any[]>([]),[delta,setDelta]=useState(''),[note,setNote]=useState(''),[m,setM]=useState('');useEffect(()=>{void request<any[]>('/v1/admin/credits/stats').then(setStats).catch(e=>setM(err(e)))},[]);useEffect(()=>{if(!selected){setEntries([]);setBalance(undefined);return;}void request<any>(`/v1/admin/users/${selected.id}/credits?limit=50`).then(x=>{setEntries(x.items);setBalance(x.balance)}).catch(e=>setM(err(e)))},[selected]);const adjust=async()=>{if(!selected)return;try{await request(`/v1/admin/users/${selected.id}/credits`,{method:'POST',body:JSON.stringify({delta:Number(delta),note,kind:Number(delta)>0?'grant':'administrative_adjustment'})});setDelta('');setNote('');const x=await request<any>(`/v1/admin/users/${selected.id}/credits?limit=50`);setEntries(x.items);setBalance(x.balance)}catch(e){setM(err(e))}};return <Stack spacing={2}><Typography variant="h4">Credits</Typography>{stats.length>0&&<Paper sx={{p:1}}><Typography variant="subtitle2">Credit activity</Typography>{stats.map((x,i)=><Typography key={i} variant="body2">{String(x.day).slice(0,10)} · {x.kind} · {x.delta} credits</Typography>)}</Paper>}<UserTypeahead label="Find user" selected={selected} onSelect={setSelected}/>{selected&&<Typography>Current balance for {name(selected)}: {balance===undefined?'Loading…':balance}</Typography>}<TextField label="Credit amount (+/-)" value={delta} onChange={e=>setDelta(e.target.value)}/><TextField required label="Adjustment note" value={note} onChange={e=>setNote(e.target.value)}/><Button disabled={!selected||!note||!delta} onClick={()=>void adjust()}>Apply adjustment</Button>{m&&<Alert severity="error">{m}</Alert>}{entries.map(x=><Paper key={x.id} sx={{p:1}}>{x.created_at} · {x.kind} · {x.delta} · balance {x.balance_after} · {x.note}</Paper>)}</Stack>}
+function Samples(){const[page,setPage]=useState<Page<any>>({items:[],limit:25,offset:0}),[state,setState]=useState(''),[source,setSource]=useState(''),[q,setQ]=useState(''),[owner,setOwner]=useState<User>(),[stats,setStats]=useState<any>(),[m,setM]=useState('');const load=(offset=0)=>{const x=new URLSearchParams({limit:'25',offset:String(offset),state,source,q});if(owner)x.set('ownerId',owner.id);void Promise.all([request<Page<any>>(`/v1/admin/samples?${x}`),request<any>('/v1/admin/samples/stats')]).then(([p,st])=>{setPage(p);setStats(st)}).catch(e=>setM(err(e)))};useEffect(()=>{load()},[]);return <Stack spacing={2}><Typography variant="h4">Samples</Typography><Typography>{stats&&`Total ${stats.total} · 7 days ${stats.d7} · 30 days ${stats.d30} · YTD ${stats.ytd}`}</Typography><UserTypeahead label="Filter by user" selected={owner} onSelect={setOwner}/><TextField label="Search user, PSIU serial, or UID" value={q} onChange={e=>setQ(e.target.value)} helperText={q.length===1?'Enter at least 2 characters.':'Search begins at 2 characters.'}/><Stack direction="row"><TextField label="State" value={state} onChange={e=>setState(e.target.value)}/><TextField label="Source" value={source} onChange={e=>setSource(e.target.value)}/><Button onClick={()=>load()}>Filter</Button></Stack>{m&&<Alert severity="error">{m}</Alert>}{page.items.map(x=><Paper key={x.id} sx={{p:1}}>{x.email} · {x.serial_number} · {x.source} · {x.upload_state} · {x.recorded_at}</Paper>)}<Stack direction="row"><Button disabled={!(page.offset??0)} onClick={()=>load(Math.max(0,(page.offset??0)-page.limit))}>Previous</Button><Button disabled={page.items.length<page.limit} onClick={()=>load((page.offset??0)+page.limit)}>Next</Button></Stack></Stack>}
+function Reports(){const[page,setPage]=useState<Page<any>>({items:[],limit:25,offset:0}),[q,setQ]=useState(''),[type,setType]=useState(''),[status,setStatus]=useState(''),[m,setM]=useState('');const load=(offset=0)=>void request<Page<any>>(`/v1/admin/reports?limit=25&offset=${offset}&q=${encodeURIComponent(q)}&type=${encodeURIComponent(type)}&status=${encodeURIComponent(status)}`).then(setPage).catch(e=>setM(err(e)));useEffect(()=>{load()},[]);return <Stack spacing={2}><Typography variant="h4">Reports</Typography><TextField label="Search user, email, or system" value={q} onChange={e=>setQ(e.target.value)} helperText={q.length===1?'Enter at least 2 characters.':'Search begins at 2 characters.'}/><Stack direction="row" spacing={1}><TextField label="Report type" value={type} onChange={e=>setType(e.target.value)}/><TextField label="Status" value={status} onChange={e=>setStatus(e.target.value)}/><Button onClick={()=>load()}>Filter</Button></Stack>{m&&<Alert severity="error">{m}</Alert>}{page.items.map(x=><Paper key={x.id} sx={{p:2}}><Typography>{x.reportName} · {x.status}</Typography><Typography variant="body2">{x.owner.email} · {x.systemName} · {x.presetName} v{x.presetVersion} · {new Date(x.createdAt).toLocaleString()}</Typography></Paper>)}</Stack>}
