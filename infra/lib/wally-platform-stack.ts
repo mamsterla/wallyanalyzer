@@ -348,7 +348,7 @@ export class WallyPlatformStack extends cdk.Stack {
     const failedFn=workflowLambda('ReportFailureFunction','handlers/reportWorkflow.fail');
     const requestFinalizerFn=workflowLambda('ReportRequestFinalizerFunction','handlers/reportWorkflow.finalizeRequest');
     const dispatcherFn=workflowLambda('ReportDispatcherFunction','handlers/reportWorkflow.dispatch');
-    const analysisWorker=new lambda.DockerImageFunction(this,'AnalysisWorkerFunction',{code:workerImage,timeout:cdk.Duration.minutes(15),memorySize:4096,ephemeralStorageSize:cdk.Size.gibibytes(4),environment:{SAMPLE_BUCKET_NAME:sampleBucket.bucketName,REPORT_BUCKET_NAME:reportBucket.bucketName},logGroup:workflowLogGroup});
+    const analysisWorker=new lambda.DockerImageFunction(this,'AnalysisWorkerFunction',{code:workerImage,timeout:cdk.Duration.minutes(15),memorySize:3008,ephemeralStorageSize:cdk.Size.gibibytes(4),environment:{SAMPLE_BUCKET_NAME:sampleBucket.bucketName,REPORT_BUCKET_NAME:reportBucket.bucketName},logGroup:workflowLogGroup});
     for(const fn of [preflightFn,finalizerFn,failedFn,requestFinalizerFn,dispatcherFn]){database.secret!.grantRead(fn);fn.addToRolePolicy(new iam.PolicyStatement({actions:['s3:GetObject'],resources:[sampleBucket.arnForObjects('raw/*'),reportBucket.arnForObjects('reports/*')]}));}
     // The trusted finalizer alone writes provenance manifests; the worker never supplies one.
     finalizerFn.addToRolePolicy(new iam.PolicyStatement({actions:['s3:PutObject'],resources:[reportBucket.arnForObjects('reports/*')]}));
