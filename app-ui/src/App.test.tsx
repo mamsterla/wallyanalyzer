@@ -22,7 +22,7 @@ function responseFor(url: string) {
 describe('Home', () => {
   it('groups Actions and News above Credits without a redundant recording call to action', async () => {
     vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => new Response(JSON.stringify(responseFor(String(input))), { status: 200, headers: { 'content-type': 'application/json' } })));
-    render(<MemoryRouter><Home units={units} onCaptureConsumed={() => {}} /></MemoryRouter>);
+    render(<MemoryRouter><Home /></MemoryRouter>);
     await screen.findByText('8');
     const grid = screen.getByTestId('home-dashboard-grid');
     expect(grid.children).toHaveLength(3);
@@ -33,10 +33,9 @@ describe('Home', () => {
     expect(screen.getByRole('button', { name: 'Buy credits' })).toBeTruthy();
     expect(screen.getByText('Verified samples ready for reporting')).toBeTruthy();
     expect(screen.queryByRole('heading', { name: 'Your Wally system' })).toBeNull();
-    expect(screen.getByRole('heading', { name: 'Sample Capture' })).toBeTruthy();
-    expect(screen.getAllByRole('combobox')).toHaveLength(2);
-    expect(screen.getByRole('button', { name: 'Select WAV files' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Process and Report' })).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: 'Sample Capture' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Select WAV files' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Process and Report' })).toBeNull();
     expect(screen.queryByLabelText('Filter unit')).toBeNull();
     expect(screen.queryByLabelText('Filter state')).toBeNull();
     expect(screen.queryByLabelText('Sort')).toBeNull();

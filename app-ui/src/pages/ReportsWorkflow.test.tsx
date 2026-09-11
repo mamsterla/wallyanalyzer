@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import type { ReportDefinition, ReportHistoryPage } from '@wally/contracts';
-import { ReportPicker } from '../App.js';
+import { ReportPicker } from './SampleUploadPanel.js';
 import { ReportsPage } from './UserExperiencePages.js';
 
 vi.mock('../auth.js', () => ({ accessToken: vi.fn(async () => 'token') }));

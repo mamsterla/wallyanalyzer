@@ -21,6 +21,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { RecordArtwork } from '../features/controller/RecordArtwork.js';
 import { WallySelect } from '../designSystemSelect.js';
 import { createPsuClient, PsiuUnavailableError } from '../features/controller/psiuClient.js';
+import { SampleUploadPanel } from './SampleUploadPanel.js';
 
 type CapturePhase = 'checking' | 'unavailable' | 'ready' | 'starting' | 'capturing' | 'stopping' | 'completed';
 
@@ -41,7 +42,8 @@ export function captureEligibility(status: PsiuStatus, units: CustomerUnit[], sy
   return { ok: true, unit: matching };
 }
 
-export function ControllerPage({ units, systems, onCaptureQueued }: { units: CustomerUnit[]; systems: UserSystem[]; onCaptureQueued: (capture: CapturedPsiuFile) => void }) {
+export function ControllerPage({ units, systems }: { units: CustomerUnit[]; systems: UserSystem[] }) {
+  const [queuedCapture, setQueuedCapture] = useState<CapturedPsiuFile>();
   const [phase, setPhase] = useState<CapturePhase>('checking');
   const [status, setStatus] = useState<PsiuStatus | null>(null);
   const [capture, setCapture] = useState<File | null>(null);
@@ -195,10 +197,11 @@ export function ControllerPage({ units, systems, onCaptureQueued }: { units: Cus
             )}
             {phase === 'capturing' && status && <LiveCaptureProgress status={status} />}
             {capture && <CaptureSummary file={capture} />}
-            <Dialog open={showUploadPrompt} onClose={() => setShowUploadPrompt(false)}><DialogTitle>Add capture to Process and Report</DialogTitle><DialogContent><Stack spacing={2} mt={1}><DialogContentText>The capture can only be attached to the enabled assigned PSIU whose UID matches the local status response.</DialogContentText><WallySelect label="Assigned enabled PSIU" value={selectedUnitId} onChange={setSelectedUnitId} options={[{ value: '', label: 'Select PSIU' }, ...units.filter((unit) => unit.status === 'enabled' && unit.uid === status?.uid).map((unit) => ({ value: unit.id, label: `${unit.serialNumber} · ${unit.uid}` }))]}/></Stack></DialogContent><DialogActions><Button onClick={() => setShowUploadPrompt(false)}>Not now</Button><Button variant="contained" disabled={!capture || !selectedUnitId || !status} onClick={() => { if (!capture || !selectedUnitId || !status) return; onCaptureQueued(queueCapturedPsiuWav(capture, selectedUnitId, status.uid, units)); setShowUploadPrompt(false); setCapture(null); setPhase('ready'); setNotice('Capture added to Process and Report. Continue from your account page.'); }}>Add to batch</Button></DialogActions></Dialog>
+            <Dialog open={showUploadPrompt} onClose={() => setShowUploadPrompt(false)}><DialogTitle>Add capture to Process and Report</DialogTitle><DialogContent><Stack spacing={2} mt={1}><DialogContentText>The capture can only be attached to the enabled assigned PSIU whose UID matches the local status response.</DialogContentText><WallySelect label="Assigned enabled PSIU" value={selectedUnitId} onChange={setSelectedUnitId} options={[{ value: '', label: 'Select PSIU' }, ...units.filter((unit) => unit.status === 'enabled' && unit.uid === status?.uid).map((unit) => ({ value: unit.id, label: `${unit.serialNumber} · ${unit.uid}` }))]}/></Stack></DialogContent><DialogActions><Button onClick={() => setShowUploadPrompt(false)}>Not now</Button><Button variant="contained" disabled={!capture || !selectedUnitId || !status} onClick={() => { if (!capture || !selectedUnitId || !status) return; setQueuedCapture(queueCapturedPsiuWav(capture, selectedUnitId, status.uid, units)); setShowUploadPrompt(false); setCapture(null); setPhase('ready'); setNotice('Capture added below. Upload and verify it before selecting a report.'); }}>Add to batch</Button></DialogActions></Dialog>
           </Stack></CardContent></Card>
         </Grid>
       </Grid>
+      <SampleUploadPanel units={units} captured={queuedCapture} onCaptureConsumed={() => setQueuedCapture(undefined)} />
     </Stack>
   );
 }

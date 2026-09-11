@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { File as NodeFile } from 'node:buffer';
 import { webcrypto } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
