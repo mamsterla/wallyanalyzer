@@ -93,13 +93,16 @@ export class WallyPlatformStack extends cdk.Stack {
     });
     loadBalancerSecurityGroup.addEgressRule(serviceSecurityGroup, ec2.Port.tcp(80), 'HTTP to application tasks');
     serviceSecurityGroup.addIngressRule(loadBalancerSecurityGroup, ec2.Port.tcp(80), 'HTTP from temporary browser load balancer');
+    const workflowSecurityGroup = new ec2.SecurityGroup(this, 'ReportWorkflowSecurityGroup', { vpc, allowAllOutbound: false, description: 'Private report workflow Lambdas' });
     const endpointSecurityGroup = new ec2.SecurityGroup(this, 'VpcEndpointSecurityGroup', {
       vpc,
       allowAllOutbound: false,
       description: 'AWS PrivateLink endpoints used by private Wally workloads',
     });
     endpointSecurityGroup.addIngressRule(serviceSecurityGroup, ec2.Port.tcp(443), 'HTTPS from private application tasks');
+    endpointSecurityGroup.addIngressRule(workflowSecurityGroup, ec2.Port.tcp(443), 'HTTPS from report workflow Lambdas');
     serviceSecurityGroup.addEgressRule(endpointSecurityGroup, ec2.Port.tcp(443), 'HTTPS to approved AWS PrivateLink endpoints');
+    workflowSecurityGroup.addEgressRule(endpointSecurityGroup, ec2.Port.tcp(443), 'HTTPS to approved AWS PrivateLink endpoints');
 
     vpc.addGatewayEndpoint('S3GatewayEndpoint', { service: ec2.GatewayVpcEndpointAwsService.S3 });
     const s3PrefixList = new cr.AwsCustomResource(this, 'S3ManagedPrefixList', {
@@ -117,6 +120,7 @@ export class WallyPlatformStack extends cdk.Stack {
       ec2.Port.tcp(443),
       'HTTPS to S3 image layers through the gateway endpoint',
     );
+    workflowSecurityGroup.addEgressRule(ec2.Peer.prefixList(s3PrefixList.getResponseField('PrefixLists.0.PrefixListId')), ec2.Port.tcp(443), 'HTTPS to S3 report artifacts through the gateway endpoint');
     [
       ec2.InterfaceVpcEndpointAwsService.ECR,
       ec2.InterfaceVpcEndpointAwsService.ECR_DOCKER,
@@ -170,8 +174,10 @@ export class WallyPlatformStack extends cdk.Stack {
     bastionSecurityGroup.addEgressRule(proxySecurityGroup, ec2.Port.tcp(5432), 'PostgreSQL tunnel to RDS Proxy');
     proxySecurityGroup.addIngressRule(serviceSecurityGroup, ec2.Port.tcp(5432), 'PostgreSQL from private application tasks');
     proxySecurityGroup.addIngressRule(bastionSecurityGroup, ec2.Port.tcp(5432), 'PostgreSQL from Session Manager bastion');
+    proxySecurityGroup.addIngressRule(workflowSecurityGroup, ec2.Port.tcp(5432), 'PostgreSQL from report workflow Lambdas');
     proxySecurityGroup.addEgressRule(databaseSecurityGroup, ec2.Port.tcp(5432), 'PostgreSQL to database');
     serviceSecurityGroup.addEgressRule(proxySecurityGroup, ec2.Port.tcp(5432), 'PostgreSQL through RDS Proxy');
+    workflowSecurityGroup.addEgressRule(proxySecurityGroup, ec2.Port.tcp(5432), 'PostgreSQL through RDS Proxy');
     databaseSecurityGroup.addIngressRule(proxySecurityGroup, ec2.Port.tcp(5432), 'PostgreSQL only through RDS Proxy');
 
     const bastionRole = new iam.Role(this, 'DatabaseBastionRole', {
@@ -336,7 +342,7 @@ export class WallyPlatformStack extends cdk.Stack {
     const workerImage = lambda.DockerImageCode.fromImageAsset(path.resolve(process.cwd(), '..'), { file: 'algorithms/Dockerfile.analysis-worker', platform: ecrAssets.Platform.LINUX_AMD64 });
     const workflowLogGroup = new logs.LogGroup(this, 'ReportWorkflowLogGroup', { retention: logs.RetentionDays.ONE_MONTH, removalPolicy: retention });
     const workflowEnvironment = { DATABASE_PROXY_HOST: databaseProxy.endpoint, DATABASE_NAME: 'wally', DATABASE_SSL: 'require', DATABASE_SECRET_ARN: database.secret!.secretArn, SAMPLE_BUCKET_NAME: sampleBucket.bucketName, REPORT_BUCKET_NAME: reportBucket.bucketName };
-    const workflowLambda = (id:string, handler:string) => new lambda.DockerImageFunction(this, id, { code: workflowImageFor(handler), vpc, vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED }, securityGroups: [serviceSecurityGroup], timeout: cdk.Duration.minutes(2), memorySize: 512, environment: workflowEnvironment, logGroup: workflowLogGroup });
+    const workflowLambda = (id:string, handler:string) => new lambda.DockerImageFunction(this, id, { code: workflowImageFor(handler), vpc, vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED }, securityGroups: [workflowSecurityGroup], timeout: cdk.Duration.minutes(2), memorySize: 512, environment: workflowEnvironment, logGroup: workflowLogGroup });
     const preflightFn=workflowLambda('ReportPreflightFunction','handlers/reportWorkflow.preflight');
     const finalizerFn=workflowLambda('ReportFinalizerFunction','handlers/reportWorkflow.finalize');
     const failedFn=workflowLambda('ReportFailureFunction','handlers/reportWorkflow.fail');
@@ -349,12 +355,13 @@ export class WallyPlatformStack extends cdk.Stack {
     const preflight=new sfnTasks.LambdaInvoke(this,'ReportPreflight',{lambdaFunction:preflightFn,outputPath:'$.Payload'});
     const worker=new sfnTasks.LambdaInvoke(this,'ReportWorker',{lambdaFunction:analysisWorker,outputPath:'$.Payload'});
     const finalize=new sfnTasks.LambdaInvoke(this,'ReportFinalize',{lambdaFunction:finalizerFn,payload:sfn.TaskInput.fromObject({'reportId.$':'$.reportId','ownerId.$':'$.ownerId','reportPrefix.$':'$.reportPrefix','artifacts.$':'$.artifacts'}),outputPath:'$.Payload'});
-    const fail=new sfnTasks.LambdaInvoke(this,'ReportMarkFailed',{lambdaFunction:failedFn,payload:sfn.TaskInput.fromObject({'reportId.$':'$.reportId','error.$':'$.Error'}),outputPath:'$.Payload'});
-    preflight.addCatch(fail,{resultPath:'$.failure'}); worker.addCatch(fail,{resultPath:'$.failure'}); finalize.addCatch(fail,{resultPath:'$.failure'});
+    const fail=new sfnTasks.LambdaInvoke(this,'ReportMarkFailed',{lambdaFunction:failedFn,payload:sfn.TaskInput.fromObject({'reportId.$':'$.reportId','error.$':'$.failure.Error'}),outputPath:'$.Payload'});
+    preflight.addRetry({maxAttempts:3,interval:cdk.Duration.seconds(5),backoffRate:2}).addCatch(fail,{resultPath:'$.failure'}); worker.addRetry({maxAttempts:2,interval:cdk.Duration.seconds(10),backoffRate:2}).addCatch(fail,{resultPath:'$.failure'}); finalize.addRetry({maxAttempts:5,interval:cdk.Duration.seconds(5),backoffRate:2}).addCatch(fail,{resultPath:'$.failure'});
     const child=preflight.next(worker).next(finalize);
     const map=new sfn.Map(this,'ReportFanout',{itemsPath:'$.reportIds',maxConcurrency:4,parameters:{'requestId.$':'$.requestId','reportId.$':'$$.Map.Item.Value'}}).iterator(child);
     const finish=new sfnTasks.LambdaInvoke(this,'ReportRequestFinalize',{lambdaFunction:requestFinalizerFn,payload:sfn.TaskInput.fromObject({'requestId.$':'$.requestId'}),outputPath:'$.Payload'});
-    const reportStateMachine=new sfn.StateMachine(this,'ReportStateMachine',{definitionBody:sfn.DefinitionBody.fromChainable(map.next(finish)),timeout:cdk.Duration.hours(1),stateMachineType:sfn.StateMachineType.STANDARD,logs:{destination:workflowLogGroup,level:sfn.LogLevel.ALL}});
+    finish.addRetry({maxAttempts:6,interval:cdk.Duration.seconds(10),backoffRate:2});
+    const reportStateMachine=new sfn.StateMachine(this,'ReportStateMachine',{definitionBody:sfn.DefinitionBody.fromChainable(map.next(finish)),timeout:cdk.Duration.hours(1),stateMachineType:sfn.StateMachineType.STANDARD,logs:{level:sfn.LogLevel.OFF}});
     dispatcherFn.addEnvironment('REPORT_STATE_MACHINE_ARN',reportStateMachine.stateMachineArn);reportStateMachine.grantStartExecution(dispatcherFn);
     new events.Rule(this,'ReportOutboxDispatchSchedule',{schedule:events.Schedule.rate(cdk.Duration.minutes(1)),targets:[new targets.LambdaFunction(dispatcherFn)]});
     const applicationService = new ecs.FargateService(this, 'PrivateApplicationService', {

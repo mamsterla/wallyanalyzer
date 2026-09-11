@@ -17,7 +17,7 @@ const definitions: ReportDefinition[] = [
 describe('ReportPicker', () => {
   it('requires one selection and submits all selected definition/preset pairs', async () => {
     const submit = vi.fn(async () => {});
-    render(<MemoryRouter><ReportPicker open definitions={definitions} onSubmit={submit} /></MemoryRouter>);
+    render(<MemoryRouter><ReportPicker open definitions={definitions} onSubmit={submit} onClose={vi.fn()} /></MemoryRouter>);
     const queue = screen.getByRole('button', { name: 'Queue reports' });
     expect(queue.hasAttribute('disabled')).toBe(true);
     fireEvent.click(screen.getByRole('checkbox', { name: 'Tracking Error' }));
@@ -46,5 +46,15 @@ describe('ReportsPage', () => {
     expect(screen.getByRole('button', { name: 'Previous' }).hasAttribute('disabled')).toBe(false);
     fireEvent.click(screen.getByRole('button', { name: 'Previous' }));
     await waitFor(() => expect(calls.filter(url => url.includes('/v1/reports?limit=10')).length).toBeGreaterThan(2));
+  });
+});
+
+describe('ReportPicker recovery controls', () => {
+  it('exposes a cancel action and an announced active-dialog error', () => {
+    const close=vi.fn();
+    render(<MemoryRouter><ReportPicker open definitions={definitions} onSubmit={vi.fn(async()=>{})} onClose={close} error="Queue failed. Retry safely." /></MemoryRouter>);
+    expect(screen.getByRole('alert').textContent).toContain('Queue failed');
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(close).toHaveBeenCalledOnce();
   });
 });
