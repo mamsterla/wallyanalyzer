@@ -36,18 +36,17 @@ test('admin credit adjustment rejects reserved and invalid ledger kinds', async 
   }
 });
 
-test('user and PSIU directories enforce two-character queries, escape wildcards, and return keyset cursors', async () => {
+test('user and PSIU directories enforce two-character queries, escape wildcards, and use bounded offset pages', async () => {
   const calls: Array<{ sql:string; values:unknown[] }> = [];
   const pool = { query: async (sql:string, values:unknown[] = []) => { calls.push({sql, values}); return { rows: [{ id:'00000000-0000-4000-8000-000000000001', email:'a@example.com', created_at:new Date('2026-01-02T00:00:00Z'), serial_number:'PSIU-1', opaque_uid:'UID-1', status:'enabled' }, { id:'00000000-0000-4000-8000-000000000002', email:'b@example.com', created_at:new Date('2026-01-01T00:00:00Z'), serial_number:'PSIU-2', opaque_uid:'UID-2', status:'enabled' }], rowCount:2 }; } };
   const repository = new PostgresAdminDataRepository(pool as never);
   await assert.rejects(() => repository.users({ q:'a' }), (e:unknown) => e instanceof HttpError && e.statusCode===400);
   const users = await repository.users({ q:'a_%', limit:1 });
-  assert.equal(users.items.length, 1); assert.ok(users.nextCursor);
+  assert.equal(users.items.length, 1);
   assert.equal(calls[0]!.values[1], '%a\\_\\%%');
-  await repository.users({ cursor:users.nextCursor, limit:1 });
-  assert.match(calls[1]!.sql, /u\.created_at,u\.id/);
+  assert.match(calls[0]!.sql, /offset/);
   const units = await repository.units({ q:'PS', status:'enabled', assignment:'assigned', limit:1 });
-  assert.equal(units.items.length, 1); assert.ok(units.nextCursor);
+  assert.equal(units.items.length, 1);
   await assert.rejects(() => repository.typeahead('x'), (e:unknown) => e instanceof HttpError && e.statusCode===400);
 });
 
@@ -75,9 +74,13 @@ test('admin report, sample, and credit sorting is whitelisted and deterministic'
   await repository.samples({ sortBy:'owner', sortDirection:'asc' });
   await repository.reports({ sortBy:'status', sortDirection:'desc' });
   await repository.creditEntries({ sortBy:'delta', sortDirection:'asc' });
+  await repository.users({ sortBy:'email', sortDirection:'asc' });
+  await repository.units({ sortBy:'owner', sortDirection:'asc' });
   assert.match(calls[0]!.sql, /order by u\.email asc,s\.id asc/);
   assert.match(calls[1]!.sql, /order by ar\.status desc,ar\.id desc/);
   assert.match(calls[2]!.sql, /order by l\.delta asc,l\.id asc/);
+  assert.match(calls[3]!.sql, /order by u\.email asc,u\.id asc/);
+  assert.match(calls[4]!.sql, /order by u\.email asc,p\.id asc/);
   await assert.rejects(() => repository.samples({ sortBy:'drop table' }), (e:unknown) => e instanceof HttpError && e.statusCode===400);
   await assert.rejects(() => repository.creditEntries({ sortDirection:'sideways' }), (e:unknown) => e instanceof HttpError && e.statusCode===400);
 });
