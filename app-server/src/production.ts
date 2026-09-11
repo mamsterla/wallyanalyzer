@@ -32,7 +32,7 @@ export function createProductionServer(dependencies: ProductionDependencies) {
     if(request.method==='PUT' && path==='/v1/me/profile') return sendJson(response,200,await experience.updateProfile(actor.id,await parseJson<UpdateProfileRequest>(request)));
     if(request.method==='GET' && path==='/v1/me/systems') return sendJson(response,200,await experience.systems(actor.id));
     if(request.method==='POST' && path==='/v1/me/systems') return sendJson(response,201,await experience.createSystem(actor.id,await parseJson<CreateSystemRequest>(request)));
-    const systemUpdate=path.match(/^\/v1\/me\/systems\/([^/]+)$/); if(request.method==='PUT'&&systemUpdate)return sendJson(response,200,await experience.updateSystem(actor.id,systemUpdate[1],await parseJson<UpdateSystemRequest>(request)));
+    const systemUpdate=path.match(/^\/v1\/me\/systems\/([^/]+)$/); if(request.method==='PUT'&&systemUpdate)return sendJson(response,200,await experience.updateSystem(actor.id,systemUpdate[1],await parseJson<UpdateSystemRequest>(request))); if(request.method==='DELETE'&&systemUpdate){await experience.deleteSystem(actor.id,systemUpdate[1]);return sendJson(response,204);}
     const activeSystem=path.match(/^\/v1\/me\/systems\/([^/]+)\/active$/); if(request.method==='POST'&&activeSystem){await experience.setActive(actor.id,activeSystem[1]);return sendJson(response,204);}
     if(request.method==='GET' && path==='/v1/me/credits') return sendJson(response,200,await adminData.credits(actor.id,pageQuery(new URL(request.url??'/', 'http://wally.local').searchParams)));
     if(path.startsWith('/v1/reports')) return await reportRoute(request,response,path,actor.id,reports,s3,dependencies.reportBucketName ?? process.env.REPORT_BUCKET_NAME ?? '');

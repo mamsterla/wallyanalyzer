@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { PostgresUserExperienceRepository } from './userExperienceRepository.js';
+import { HttpError } from './auth.js';
 
 test('owner profile update accepts an international address without audit metadata', async () => {
   const queries: Array<{ sql: string; values: unknown[] }> = [];
@@ -18,4 +19,13 @@ test('system update is owner scoped', async () => {
   assert.equal(result.name, 'Updated');
   assert.match(calls[0]!.sql, /owner_id=\$2/);
   assert.deepEqual(calls[0]!.values.slice(0, 2), ['system', 'owner']);
+});
+
+test('system used by a report cannot be deleted', async () => {
+  const calls: string[] = [];
+  const client = { query: async (sql: string) => { calls.push(sql); if (sql.startsWith('select id from user_systems')) return { rowCount: 1, rows: [{ id: 'system' }] }; if (sql.startsWith('select 1 from report_requests')) return { rowCount: 1, rows: [{ '?column?': 1 }] }; return { rowCount: 0, rows: [] }; }, release() {} };
+  const pool = { connect: async () => client };
+  await assert.rejects(() => new PostgresUserExperienceRepository(pool as never).deleteSystem('owner', 'system'), (error: unknown) => error instanceof HttpError && error.statusCode === 409);
+  assert.equal(calls.some(sql => sql.startsWith('delete from user_systems')), false);
+  assert.equal(calls.some(sql => sql.includes('system_snapshot')), true);
 });
