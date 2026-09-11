@@ -1,0 +1,16 @@
+ARG NODE_IMAGE=public.ecr.aws/docker/library/node:24-alpine
+FROM ${NODE_IMAGE} AS builder
+WORKDIR /workspace
+COPY package.json package-lock.json ./
+COPY packages/contracts/package.json packages/contracts/package.json
+COPY app-server/package.json app-server/package.json
+RUN npm ci
+COPY tsconfig.base.json ./
+COPY packages/contracts packages/contracts
+COPY app-server app-server
+RUN npm run build --workspace=@wally/contracts && npm run build --workspace=@wally/app-server
+FROM public.ecr.aws/lambda/nodejs:22
+COPY --from=builder /workspace/node_modules ${LAMBDA_TASK_ROOT}/node_modules
+COPY --from=builder /workspace/packages/contracts ${LAMBDA_TASK_ROOT}/packages/contracts
+COPY --from=builder /workspace/app-server/dist ${LAMBDA_TASK_ROOT}
+CMD ["handlers/reportWorkflow.dispatch"]

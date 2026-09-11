@@ -12,7 +12,11 @@ coverage
 .venv
 __pycache__
 data
-algorithms
+algorithms/*
+!algorithms/pyproject.toml
+!algorithms/wally_report_worker.py
+!algorithms/analysis_worker.py
+!algorithms/Dockerfile.analysis-worker
 graphify-out
 .docker-data
 .env

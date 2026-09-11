@@ -12,6 +12,11 @@ import * as ecs from 'aws-cdk-lib/aws-ecs';
 import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as logs from 'aws-cdk-lib/aws-logs';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as sfn from 'aws-cdk-lib/aws-stepfunctions';
+import * as sfnTasks from 'aws-cdk-lib/aws-stepfunctions-tasks';
+import * as events from 'aws-cdk-lib/aws-events';
+import * as targets from 'aws-cdk-lib/aws-events-targets';
 import * as rds from 'aws-cdk-lib/aws-rds';
 import * as route53 from 'aws-cdk-lib/aws-route53';
 import * as route53targets from 'aws-cdk-lib/aws-route53-targets';
@@ -326,6 +331,32 @@ export class WallyPlatformStack extends cdk.Stack {
       ],
       resources: [userPool.userPoolArn],
     }));
+    // Workflow functions are private and use the same RDS Proxy security boundary as the API.
+    const workflowImageFor = (handler:string) => lambda.DockerImageCode.fromImageAsset(path.resolve(process.cwd(), '..'), { file: 'app-server/Dockerfile.report-workflow', buildArgs: { NODE_IMAGE: nodeImage }, platform: ecrAssets.Platform.LINUX_AMD64, cmd: [handler] });
+    const workerImage = lambda.DockerImageCode.fromImageAsset(path.resolve(process.cwd(), '..'), { file: 'algorithms/Dockerfile.analysis-worker', platform: ecrAssets.Platform.LINUX_AMD64 });
+    const workflowLogGroup = new logs.LogGroup(this, 'ReportWorkflowLogGroup', { retention: logs.RetentionDays.ONE_MONTH, removalPolicy: retention });
+    const workflowEnvironment = { DATABASE_PROXY_HOST: databaseProxy.endpoint, DATABASE_NAME: 'wally', DATABASE_SSL: 'require', DATABASE_SECRET_ARN: database.secret!.secretArn, SAMPLE_BUCKET_NAME: sampleBucket.bucketName, REPORT_BUCKET_NAME: reportBucket.bucketName };
+    const workflowLambda = (id:string, handler:string) => new lambda.DockerImageFunction(this, id, { code: workflowImageFor(handler), vpc, vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED }, securityGroups: [serviceSecurityGroup], timeout: cdk.Duration.minutes(2), memorySize: 512, environment: workflowEnvironment, logGroup: workflowLogGroup });
+    const preflightFn=workflowLambda('ReportPreflightFunction','handlers/reportWorkflow.preflight');
+    const finalizerFn=workflowLambda('ReportFinalizerFunction','handlers/reportWorkflow.finalize');
+    const failedFn=workflowLambda('ReportFailureFunction','handlers/reportWorkflow.fail');
+    const requestFinalizerFn=workflowLambda('ReportRequestFinalizerFunction','handlers/reportWorkflow.finalizeRequest');
+    const dispatcherFn=workflowLambda('ReportDispatcherFunction','handlers/reportWorkflow.dispatch');
+    const analysisWorker=new lambda.DockerImageFunction(this,'AnalysisWorkerFunction',{code:workerImage,timeout:cdk.Duration.minutes(15),memorySize:4096,ephemeralStorageSize:cdk.Size.gibibytes(4),environment:{SAMPLE_BUCKET_NAME:sampleBucket.bucketName,REPORT_BUCKET_NAME:reportBucket.bucketName},logGroup:workflowLogGroup});
+    for(const fn of [preflightFn,finalizerFn,failedFn,requestFinalizerFn,dispatcherFn]){database.secret!.grantRead(fn);fn.addToRolePolicy(new iam.PolicyStatement({actions:['s3:GetObject'],resources:[sampleBucket.arnForObjects('raw/*'),reportBucket.arnForObjects('reports/*')]}));}
+    analysisWorker.addToRolePolicy(new iam.PolicyStatement({actions:['s3:GetObject','s3:GetObjectVersion'],resources:[sampleBucket.arnForObjects('raw/*')]}));
+    analysisWorker.addToRolePolicy(new iam.PolicyStatement({actions:['s3:PutObject'],resources:[reportBucket.arnForObjects('reports/*')]}));
+    const preflight=new sfnTasks.LambdaInvoke(this,'ReportPreflight',{lambdaFunction:preflightFn,outputPath:'$.Payload'});
+    const worker=new sfnTasks.LambdaInvoke(this,'ReportWorker',{lambdaFunction:analysisWorker,outputPath:'$.Payload'});
+    const finalize=new sfnTasks.LambdaInvoke(this,'ReportFinalize',{lambdaFunction:finalizerFn,payload:sfn.TaskInput.fromObject({'reportId.$':'$.reportId','ownerId.$':'$.ownerId','reportPrefix.$':'$.reportPrefix','artifacts.$':'$.artifacts'}),outputPath:'$.Payload'});
+    const fail=new sfnTasks.LambdaInvoke(this,'ReportMarkFailed',{lambdaFunction:failedFn,payload:sfn.TaskInput.fromObject({'reportId.$':'$.reportId','error.$':'$.Error'}),outputPath:'$.Payload'});
+    preflight.addCatch(fail,{resultPath:'$.failure'}); worker.addCatch(fail,{resultPath:'$.failure'}); finalize.addCatch(fail,{resultPath:'$.failure'});
+    const child=preflight.next(worker).next(finalize);
+    const map=new sfn.Map(this,'ReportFanout',{itemsPath:'$.reportIds',maxConcurrency:4,parameters:{'requestId.$':'$.requestId','reportId.$':'$$.Map.Item.Value'}}).iterator(child);
+    const finish=new sfnTasks.LambdaInvoke(this,'ReportRequestFinalize',{lambdaFunction:requestFinalizerFn,payload:sfn.TaskInput.fromObject({'requestId.$':'$.requestId'}),outputPath:'$.Payload'});
+    const reportStateMachine=new sfn.StateMachine(this,'ReportStateMachine',{definitionBody:sfn.DefinitionBody.fromChainable(map.next(finish)),timeout:cdk.Duration.hours(1),stateMachineType:sfn.StateMachineType.STANDARD,logs:{destination:workflowLogGroup,level:sfn.LogLevel.ALL}});
+    dispatcherFn.addEnvironment('REPORT_STATE_MACHINE_ARN',reportStateMachine.stateMachineArn);reportStateMachine.grantStartExecution(dispatcherFn);
+    new events.Rule(this,'ReportOutboxDispatchSchedule',{schedule:events.Schedule.rate(cdk.Duration.minutes(1)),targets:[new targets.LambdaFunction(dispatcherFn)]});
     const applicationService = new ecs.FargateService(this, 'PrivateApplicationService', {
       cluster,
       taskDefinition,

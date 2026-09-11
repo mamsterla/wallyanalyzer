@@ -1,0 +1,8 @@
+# AWS Public ECR only. CairoSVG converts the generated SVG graph into the downloadable PDF.
+FROM public.ecr.aws/lambda/python:3.11
+RUN yum install -y cairo gcc python3-devel libjpeg-turbo-devel zlib-devel && yum clean all
+COPY algorithms/pyproject.toml /build/pyproject.toml
+COPY src /build/src
+COPY algorithms/wally_report_worker.py algorithms/analysis_worker.py /var/task/
+RUN pip install --no-cache-dir /build
+CMD ["analysis_worker.handler"]
