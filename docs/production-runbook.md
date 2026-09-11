@@ -81,8 +81,10 @@ CloudFormation never deploys a Lambda or service role that can read the platform
 
 ```bash
 node app-server/scripts/bootstrap-smoke-database.mjs \
-  --proxy-host=127.0.0.1 --master-secret-arn=arn:... \
-  --smoke-secret-arn=arn:... --database=wally_report_smoke
+  --proxy-host=127.0.0.1 --proxy-port=5432 \
+  --tls-servername=applicationdatabaseproxy.proxy-….us-east-1.rds.amazonaws.com \
+  --master-secret-arn=arn:... --smoke-secret-arn=arn:... \
+  --database=wally_report_smoke
 ```
 
 The runner, smoke workflow, and smoke worker receive only the smoke secret and cannot read the platform-admin secret. The CDK smoke assertion verifies this boundary and that the dispatcher targets only the isolated state machine.

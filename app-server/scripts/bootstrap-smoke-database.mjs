@@ -32,10 +32,13 @@ const readSecret = async (arn) => {
 const duplicateRole = (error) => typeof error === 'object' && error !== null && error.code === '42710';
 
 const host = required('proxy-host');
+const port = Number(args['proxy-port'] ?? 5432);
+if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('Proxy port is invalid.');
+const tlsServername = args['tls-servername'] ?? host;
 const master = await readSecret(required('master-secret-arn'));
 const smoke = await readSecret(required('smoke-secret-arn'));
 const database = required('database');
-const client = new pg.Client({ host, database: 'postgres', user: master.username, password: master.password, ssl: { rejectUnauthorized: true } });
+const client = new pg.Client({ host, port, database: 'postgres', user: master.username, password: master.password, ssl: { rejectUnauthorized: true, servername: tlsServername } });
 await client.connect();
 try {
   try { await client.query(`create role ${identifier(smoke.username)} login password ${literal(smoke.password)}`); }
