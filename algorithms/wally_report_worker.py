@@ -13,13 +13,16 @@ from wallyanalyzer.metadata.provider import InMemoryMetadataProvider
 from wallyanalyzer.pipelines.compile_sine import compile_sine_results
 from wallyanalyzer.pipelines.measure_sine import measure_sine_file
 from wallyanalyzer.output.compile_svg_plots import render_compile_validation_svg, render_compile_sweep_svg
-from wallyanalyzer.schemas.metadata import AcquisitionRecord, TestTrackRecord
+from wallyanalyzer.schemas.metadata import AcquisitionRecord, CartridgeRecord, SystemRecord, TestTrackRecord
 
 PRESET = {
     "name": "RTI Test 1 Track 1 Side A", "outer_radius_mm": 144.5, "inner_radius_mm": 58.5,
     "digitizer": "Cosmos", "effective_length_mm": 245.0, "offset_angle_deg": 22.42,
     "overhang_mm": 16.9, "cantilever_yaw_deg": 0.0, "stylus_yaw_deg": -0.2,
     "actual_pivot_to_spindle_mm": 228.1,
+    "system_id": 1,
+    "cartridge_name": "Tracking Error reference cartridge",
+    "cartridge_lr_um": 10.0,
 }
 
 def build_tracking_error_artifacts(inputs: list[Path], output_dir: Path, system_name: str) -> list[dict[str, Any]]:
@@ -57,8 +60,9 @@ def build_tracking_error_artifacts(inputs: list[Path], output_dir: Path, system_
 
 def _provider(inputs: list[Path]) -> InMemoryMetadataProvider:
     track = TestTrackRecord(name=PRESET["name"], outer_radius_mm=PRESET["outer_radius_mm"], inner_radius_mm=PRESET["inner_radius_mm"])
-    acquisitions = {path.stem: AcquisitionRecord(file_stem=path.stem, digitizer=PRESET["digitizer"], test_track_name=PRESET["name"], cantilever_yaw_deg=PRESET["cantilever_yaw_deg"], stylus_yaw_deg=PRESET["stylus_yaw_deg"], effective_length_mm=PRESET["effective_length_mm"], offset_angle_deg=PRESET["offset_angle_deg"], overhang_mm=PRESET["overhang_mm"], actual_pivot_to_spindle_mm=PRESET["actual_pivot_to_spindle_mm"]) for path in inputs}
-    return InMemoryMetadataProvider(acquisitions=acquisitions, test_tracks={track.name: track})
+    acquisitions = {path.stem: AcquisitionRecord(file_stem=path.stem, digitizer=PRESET["digitizer"], test_track_name=PRESET["name"], system_id=PRESET["system_id"], cartridge_name=PRESET["cartridge_name"], cantilever_yaw_deg=PRESET["cantilever_yaw_deg"], stylus_yaw_deg=PRESET["stylus_yaw_deg"], effective_length_mm=PRESET["effective_length_mm"], offset_angle_deg=PRESET["offset_angle_deg"], overhang_mm=PRESET["overhang_mm"], actual_pivot_to_spindle_mm=PRESET["actual_pivot_to_spindle_mm"]) for path in inputs}
+    cartridge = CartridgeRecord(cartridge_name=PRESET["cartridge_name"], lr_um=PRESET["cartridge_lr_um"])
+    return InMemoryMetadataProvider(acquisitions=acquisitions, test_tracks={track.name: track}, cartridges={cartridge.cartridge_name: cartridge}, systems={PRESET["system_id"]: SystemRecord(system_id=PRESET["system_id"])})
 
 def _svg_to_pdf(svg: Path, pdf: Path) -> None:
     try:
