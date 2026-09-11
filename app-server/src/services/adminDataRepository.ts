@@ -57,9 +57,14 @@ export class PostgresAdminDataRepository {
     );
     const r = await this.pool.query(
       `select u.id,u.email,u.first_name,u.last_name,u.lifecycle,u.created_at,u.last_active_at,coalesce((select l.balance_after from credit_ledger_entries l where l.owner_id=u.id order by l.created_at desc,id desc limit 1),0) balance,coalesce(json_agg(json_build_object('id',p.id,'serialNumber',p.serial_number,'status',p.status)) filter(where p.id is not null),'[]') units from users u left join psiu_assignments a on a.user_id=u.id and a.unassigned_at is null left join psiu_units p on p.id=a.psiu_unit_id where u.role='user' and ($1='' or u.email ilike $2 escape '\\' or coalesce(u.first_name,'') ilike $2 escape '\\' or coalesce(u.last_name,'') ilike $2 escape '\\' or exists(select 1 from psiu_assignments aa join psiu_units pp on pp.id=aa.psiu_unit_id where aa.user_id=u.id and aa.unassigned_at is null and pp.serial_number ilike $2 escape '\\')) and ($3::text is null or u.lifecycle=$3::customer_lifecycle) group by u.id order by ${order},u.id ${order.endsWith(' desc') ? 'desc' : 'asc'} limit $4 offset $5`,
-      [q, term, lifecycle, p.limit, p.offset],
+      [q, term, lifecycle, p.limit + 1, p.offset],
     );
-    return { items: r.rows.slice(0, p.limit), limit: p.limit, offset: p.offset };
+    return {
+      items: r.rows.slice(0, p.limit),
+      limit: p.limit,
+      offset: p.offset,
+      hasNext: r.rows.length > p.limit,
+    };
   }
   async typeahead(q: string) {
     const value = directoryQuery(q, true);
@@ -182,17 +187,18 @@ export class PostgresAdminDataRepository {
     const p = page(value);
     const r = await this.pool.query(
       `select id,kind,delta,balance_after,note,created_at from credit_ledger_entries where owner_id=$1 order by created_at desc,id desc limit $2 offset $3`,
-      [ownerId, p.limit, p.offset],
+      [ownerId, p.limit + 1, p.offset],
     );
     const balance = await this.pool.query<{ balance: number }>(
       `select coalesce((select balance_after from credit_ledger_entries where owner_id=$1 order by created_at desc,id desc limit 1),0) balance`,
       [ownerId],
     );
     return {
-      items: r.rows,
+      items: r.rows.slice(0, p.limit),
       balance: balance.rows[0]?.balance ?? 0,
       limit: p.limit,
       offset: p.offset,
+      hasNext: r.rows.length > p.limit,
     };
   }
   async creditStats(value: { from?: string; to?: string } = {}) {
@@ -229,29 +235,28 @@ export class PostgresAdminDataRepository {
     );
     const r = await this.pool.query(
       `select p.id,p.serial_number,p.opaque_uid,p.status,p.unavailable_at,a.assigned_at,u.id customer_id,u.email customer_email,u.first_name customer_first_name,u.last_name customer_last_name from psiu_units p left join psiu_assignments a on a.psiu_unit_id=p.id and a.unassigned_at is null left join users u on u.id=a.user_id where ($1='' or p.serial_number ilike $2 escape '\\' or p.opaque_uid ilike $2 escape '\\') and ($3::uuid is null or u.id=$3) and ($4::text is null or p.status=$4::psiu_unit_status) and ($5::text is null or ($5='assigned' and u.id is not null) or ($5='unassigned' and u.id is null)) order by ${order},p.id ${order.endsWith(' desc') ? 'desc' : 'asc'} limit $6 offset $7`,
-      [q, term, value.customerId ?? null, status, assignment, p.limit, p.offset],
+      [q, term, value.customerId ?? null, status, assignment, p.limit + 1, p.offset],
     );
     return {
-      items: r.rows
-        .slice(0, p.limit)
-        .map((x) => ({
-          id: x.id,
-          serialNumber: x.serial_number,
-          uid: x.opaque_uid,
-          status: x.status,
-          unavailableAt: x.unavailable_at?.toISOString(),
-          assignedAt: x.assigned_at?.toISOString(),
-          customer: x.customer_id
-            ? {
-                id: x.customer_id,
-                email: x.customer_email,
-                firstName: x.customer_first_name ?? undefined,
-                lastName: x.customer_last_name ?? undefined,
-              }
-            : undefined,
-        })),
+      items: r.rows.slice(0, p.limit).map((x) => ({
+        id: x.id,
+        serialNumber: x.serial_number,
+        uid: x.opaque_uid,
+        status: x.status,
+        unavailableAt: x.unavailable_at?.toISOString(),
+        assignedAt: x.assigned_at?.toISOString(),
+        customer: x.customer_id
+          ? {
+              id: x.customer_id,
+              email: x.customer_email,
+              firstName: x.customer_first_name ?? undefined,
+              lastName: x.customer_last_name ?? undefined,
+            }
+          : undefined,
+      })),
       limit: p.limit,
       offset: p.offset,
+      hasNext: r.rows.length > p.limit,
     };
   }
   async passwordResetCustomer(id: string) {
@@ -304,9 +309,23 @@ export class PostgresAdminDataRepository {
     );
     const r = await this.pool.query(
       `select s.id,s.owner_id,s.psiu_unit_id,s.source,s.upload_state,s.metadata,s.system_snapshot,s.recorded_at,s.created_at,s.uploaded_at,u.email,p.serial_number from samples s join users u on u.id=s.owner_id join psiu_units p on p.id=s.psiu_unit_id where ($1::uuid is null or s.owner_id=$1) and ($2::uuid is null or s.psiu_unit_id=$2) and ($3::text is null or s.source=$3) and ($4::text is null or s.upload_state=$4::sample_upload_state) and ($5='' or p.serial_number ilike $6 escape '\\' or p.opaque_uid ilike $6 escape '\\') order by ${order},s.id ${order.endsWith(' desc') ? 'desc' : 'asc'} limit $7 offset $8`,
-      [value.ownerId ?? null, value.psiuUnitId ?? null, source, state, q, term, p.limit, p.offset],
+      [
+        value.ownerId ?? null,
+        value.psiuUnitId ?? null,
+        source,
+        state,
+        q,
+        term,
+        p.limit + 1,
+        p.offset,
+      ],
     );
-    return { items: r.rows, limit: p.limit, offset: p.offset };
+    return {
+      items: r.rows.slice(0, p.limit),
+      limit: p.limit,
+      offset: p.offset,
+      hasNext: r.rows.length > p.limit,
+    };
   }
   async reports(
     value: {
@@ -341,12 +360,12 @@ export class PostgresAdminDataRepository {
         value.type ?? null,
         value.status ?? null,
         value.preset ?? null,
-        p.limit,
+        p.limit + 1,
         p.offset,
       ],
     );
     return {
-      items: r.rows.map((x: any) => ({
+      items: r.rows.slice(0, p.limit).map((x: any) => ({
         id: x.id,
         status: x.status,
         createdAt: x.created_at?.toISOString?.() ?? x.created_at,
@@ -365,6 +384,7 @@ export class PostgresAdminDataRepository {
       })),
       limit: p.limit,
       offset: p.offset,
+      hasNext: r.rows.length > p.limit,
     };
   }
   async creditEntries(value: SortPage = {}) {
@@ -383,9 +403,14 @@ export class PostgresAdminDataRepository {
     );
     const r = await this.pool.query(
       `select l.id,l.kind,l.delta,l.balance_after,l.note,l.created_at,u.id owner_id,u.email from credit_ledger_entries l join users u on u.id=l.owner_id order by ${order},l.id ${order.endsWith(' desc') ? 'desc' : 'asc'} limit $1 offset $2`,
-      [p.limit, p.offset],
+      [p.limit + 1, p.offset],
     );
-    return { items: r.rows, limit: p.limit, offset: p.offset };
+    return {
+      items: r.rows.slice(0, p.limit),
+      limit: p.limit,
+      offset: p.offset,
+      hasNext: r.rows.length > p.limit,
+    };
   }
   async sampleStats(adminId: string) {
     const r = await this.pool.query<{

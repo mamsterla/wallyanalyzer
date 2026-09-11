@@ -48,11 +48,26 @@ type Unit = {
   unavailableAt?: string;
   customer?: User;
 };
-type Page<T> = { items: T[]; limit: number; offset?: number };
+type Page<T> = { items: T[]; limit: number; offset?: number; hasNext?: boolean };
 type TypeaheadProps = { label: string; onSelect: (user: User) => void; selected?: User };
 const name = (u: Pick<User, 'email' | 'firstName' | 'lastName'>) =>
   `${[u.firstName, u.lastName].filter(Boolean).join(' ') || u.email} · ${u.email}`;
 const err = (e: unknown) => (e instanceof Error ? e.message : 'Request failed.');
+const adminUser = (value: any): User => ({
+  ...value,
+  firstName: value.firstName ?? value.first_name,
+  lastName: value.lastName ?? value.last_name,
+  createdAt: value.createdAt ?? value.created_at,
+  lastActiveAt: value.lastActiveAt ?? value.last_active_at,
+  addressLine1: value.addressLine1 ?? value.address_line1,
+  addressLine2: value.addressLine2 ?? value.address_line2,
+  addressCity: value.addressCity ?? value.address_city,
+  addressRegion: value.addressRegion ?? value.address_region,
+  addressPostalCode: value.addressPostalCode ?? value.address_postal_code,
+  addressCountryCode: value.addressCountryCode ?? value.address_country_code,
+});
+const validReturnTo = (value: string | null) =>
+  value?.startsWith('/admin/') ? value : '/admin/users';
 const labels: Record<string, string> = {
   psiu: 'PSIU Management',
   users: 'User Management',
@@ -210,7 +225,7 @@ function Pager({
       <Typography variant="body2">
         {offset + 1}–{offset + page.items.length}
       </Typography>
-      <Button disabled={page.items.length < page.limit} onClick={() => onPage(offset + page.limit)}>
+      <Button disabled={!page.hasNext} onClick={() => onPage(offset + page.limit)}>
         Next
       </Button>
     </Stack>
@@ -297,10 +312,18 @@ function useDirectory(path: string, endpoint: string, defaults: Record<string, s
     [message, setMessage] = useState('');
   useEffect(() => {
     const next = initial();
+    let active = true;
     setState(next);
     void request<Page<any>>(`${endpoint}?${params(next)}`)
-      .then(setPage)
-      .catch((e) => setMessage(err(e)));
+      .then((result) => {
+        if (active) setPage(result);
+      })
+      .catch((e) => {
+        if (active) setMessage(err(e));
+      });
+    return () => {
+      active = false;
+    };
   }, [l.search]);
   const apply = (next: Record<string, string | number>) => n(`${path}?${params(next)}`);
   return { state, page, message, setMessage, apply };
@@ -319,6 +342,23 @@ function Psiu() {
     [uid, setUid] = useState(''),
     [assignment, setAssignment] = useState<Unit>(),
     [scanning, setScanning] = useState(false);
+  useEffect(() => {
+    if (!d.state.customerId) {
+      setOwner(undefined);
+      return;
+    }
+    let active = true;
+    void request<User>(`/v1/admin/users/${d.state.customerId}`)
+      .then((value) => {
+        if (active) setOwner(adminUser(value));
+      })
+      .catch(() => {
+        if (active) setOwner(undefined);
+      });
+    return () => {
+      active = false;
+    };
+  }, [d.state.customerId]);
   const update = (extra: Record<string, string | number>) => d.apply({ ...d.state, ...extra });
   const post = async (path: string, body?: unknown) => {
     try {
@@ -547,7 +587,13 @@ function Users({ userId }: { userId?: string }) {
     l = useLocation(),
     [email, setEmail] = useState(''),
     [creating, setCreating] = useState(false);
-  if (userId) return <UserDetail id={userId} onBack={() => n('/admin/users')} />;
+  if (userId)
+    return (
+      <UserDetail
+        id={userId}
+        onBack={() => n(validReturnTo(new URLSearchParams(l.search).get('returnTo')))}
+      />
+    );
   const update = (x: Record<string, string | number>) => d.apply({ ...d.state, ...x });
   const returnTo = `/admin/users?${params(d.state)}`;
   const columns = [
@@ -666,28 +712,30 @@ function UserDetail({ id, onBack }: { id: string; onBack: () => void }) {
     [m, setM] = useState('');
   const load = () =>
     void request<User>(`/v1/admin/users/${id}`)
-      .then(setU)
+      .then((value) => setU(adminUser(value)))
       .catch((e) => setM(err(e)));
   useEffect(load, [id]);
   if (!u) return <>{m && <Alert severity="error">{m}</Alert>}</>;
   const save = async () => {
     try {
       setU(
-        await request<User>(`/v1/admin/users/${u.id}`, {
-          method: 'PUT',
-          body: JSON.stringify({
-            firstName: u.firstName,
-            lastName: u.lastName,
-            address: {
-              line1: u.addressLine1,
-              line2: u.addressLine2,
-              city: u.addressCity,
-              region: u.addressRegion,
-              postalCode: u.addressPostalCode,
-              countryCode: u.addressCountryCode,
-            },
+        adminUser(
+          await request<User>(`/v1/admin/users/${u.id}`, {
+            method: 'PUT',
+            body: JSON.stringify({
+              firstName: u.firstName,
+              lastName: u.lastName,
+              address: {
+                line1: u.addressLine1,
+                line2: u.addressLine2,
+                city: u.addressCity,
+                region: u.addressRegion,
+                postalCode: u.addressPostalCode,
+                countryCode: u.addressCountryCode,
+              },
+            }),
           }),
-        }),
+        ),
       );
       setEditing(false);
     } catch (e) {
@@ -907,6 +955,23 @@ function Samples() {
       ownerId: '',
     }),
     [owner, setOwner] = useState<User>();
+  useEffect(() => {
+    if (!d.state.ownerId) {
+      setOwner(undefined);
+      return;
+    }
+    let active = true;
+    void request<User>(`/v1/admin/users/${d.state.ownerId}`)
+      .then((value) => {
+        if (active) setOwner(adminUser(value));
+      })
+      .catch(() => {
+        if (active) setOwner(undefined);
+      });
+    return () => {
+      active = false;
+    };
+  }, [d.state.ownerId]);
   const update = (x: Record<string, string | number>) => d.apply({ ...d.state, ...x });
   const columns = [
     { id: 'owner', label: 'Owner', cell: (x: any) => x.email },
@@ -1000,6 +1065,23 @@ function Reports() {
     }),
     n = useNavigate(),
     [owner, setOwner] = useState<User>();
+  useEffect(() => {
+    if (!d.state.ownerId) {
+      setOwner(undefined);
+      return;
+    }
+    let active = true;
+    void request<User>(`/v1/admin/users/${d.state.ownerId}`)
+      .then((value) => {
+        if (active) setOwner(adminUser(value));
+      })
+      .catch(() => {
+        if (active) setOwner(undefined);
+      });
+    return () => {
+      active = false;
+    };
+  }, [d.state.ownerId]);
   const update = (x: Record<string, string | number>) => d.apply({ ...d.state, ...x });
   const columns = [
     { id: 'report', label: 'Report', cell: (x: any) => x.reportName },
