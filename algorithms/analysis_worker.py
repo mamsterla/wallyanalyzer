@@ -2,6 +2,7 @@
 from __future__ import annotations
 import base64
 import hashlib
+import json
 import os
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -13,8 +14,16 @@ s3=boto3.client('s3')
 RAW_BUCKET=os.environ['SAMPLE_BUCKET_NAME']; REPORT_BUCKET=os.environ['REPORT_BUCKET_NAME']
 REPORT_PREFIX=os.environ.get('REPORT_PREFIX', 'reports/')
 
-def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
-    if event.get('algorithmVersion')!='1.0.0' or not isinstance(event.get('inputs'),list) or not event['inputs']:
+def handler(event: dict[str, Any] | str, _context: Any) -> dict[str, Any]:
+    # Step Functions can deliver Lambda payloads as a JSON text value when a
+    # previous Lambda result is selected through a JSONPath. Accept only an
+    # object after decoding; all other payload shapes remain invalid.
+    if isinstance(event, str):
+        try:
+            event = json.loads(event)
+        except json.JSONDecodeError as error:
+            raise ValueError('Report worker payload is not JSON.') from error
+    if not isinstance(event, dict) or event.get('algorithmVersion')!='1.0.0' or not isinstance(event.get('inputs'),list) or not event['inputs']: 
         raise ValueError('Unsupported report worker input.')
     report_id=str(event['reportId']); prefix=str(event['outputPrefix'])
     if not prefix.startswith(REPORT_PREFIX) or not prefix.endswith(f'/{report_id}/'):
