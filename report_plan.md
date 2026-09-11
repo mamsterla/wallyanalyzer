@@ -144,8 +144,8 @@ A persistent, on-demand smoke lane validates deployed asynchronous processing wi
 - Private RDS instance hosts a separate `wally_report_smoke` database and generated least-privilege role; its credential remains only in Secrets Manager.
 - A VPC-attached idempotent bootstrap custom resource creates the role/database through the existing private proxy using the master secret reference. It does not alter the `wally` database.
 - Smoke raw/report objects use dedicated `smoke/raw/` and `smoke/reports/` prefixes. The separate Standard state machine, manual dispatcher, workflow functions, worker IAM, and security group use only the smoke database secret and those prefixes. There is no EventBridge target for the smoke dispatcher.
-- Remaining work: make the report workflow prefix-aware for the smoke lane; migrate the smoke database with the application/report schema; add an on-demand runner that writes a generated 60-second stereo PCM 1 kHz WAV, inserts synthetic identity/system/PSIU/sample/report records only in the smoke database, invokes the smoke dispatcher, waits for terminal state, validates JSON/SVG/PDF `%PDF`/manifest artifacts, and cleans synthetic rows/objects.
-- The runner must record safe correlation IDs on failure and never read or modify the production `wally` database.
+- The prefix-aware workflow is bound by the smoke wrappers to `smoke/raw/` and `smoke/reports/`; the dedicated worker accepts only its smoke report prefix. The manually invoked VPC `ReportSmokeRunnerFunction` migrates the smoke database, writes a deterministic 60-second stereo 48 kHz PCM 1 kHz WAV, inserts synthetic identity/system/PSIU/sample/report rows only in that database, invokes only the smoke dispatcher, waits with a bounded poll, validates JSON/SVG/PDF `%PDF-`/manifest provenance, then deletes synthetic rows and exact smoke objects on success.
+- The runner retains isolated smoke diagnostics on failure and returns only a safe correlation ID. It never receives the production database secret or has IAM access to `raw/*` or `reports/*`.
 
 ## Open Decisions Before Implementation
 

@@ -7,6 +7,8 @@ import { PostgresReportOutbox, dispatchReportOutbox } from '../services/reportRe
 import { isOpaqueRawObjectKey } from '../services/sampleUploads.js';
 
 const rawBucket=required('SAMPLE_BUCKET_NAME'), reportBucket=required('REPORT_BUCKET_NAME');
+const rawPrefix=()=>process.env.RAW_PREFIX ?? 'raw/';
+const reportPrefix=()=>process.env.REPORT_PREFIX ?? 'reports/';
 const s3=new S3Client({});
 let pool:Pool|undefined;
 async function db(){return pool??=new Pool(await databaseSettings());}
@@ -15,7 +17,9 @@ type WorkflowInput={requestId:string;reportId:string};
 type PinnedInput={sampleId:string;objectKey:string;versionId:string;checksumSha256:string;contentType:string};
 type WorkerArtifact={kind:string;objectKey:string;objectVersionId:string;contentType:string;byteLength:number;checksumSha256:string};
 const checksumBase64=(hex:string)=>Buffer.from(hex,'hex').toString('base64');
-const prefixFor=(ownerId:string,reportId:string)=>`reports/${ownerId}/${reportId}/`;
+const prefixFor=(ownerId:string,reportId:string)=>`${reportPrefix()}${ownerId}/${reportId}/`;
+const allowedRawKey=(key:string)=>new RegExp(`^${escapeRegExp(rawPrefix())}[0-9a-f-]{36}/[0-9a-f-]{36}/input\\.wav$`,'i').test(key);
+const escapeRegExp=(value:string)=>value.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
 
 /** Scheduler target: claims committed outbox rows and starts a stable, idempotent execution name. */
 export async function dispatch(){
@@ -39,7 +43,7 @@ export async function preflight(event:WorkflowInput){
   const first=r.rows[0]; const inputs:PinnedInput[]=[];
   for(const row of r.rows){
     const key=row.pinned_object_key??row.object_key;
-    if(!isOpaqueRawObjectKey(key))throw new Error('This legacy upload must be uploaded again before it can be processed into a report.');
+    if(!(rawPrefix()==='raw/' ? isOpaqueRawObjectKey(key) : allowedRawKey(key)))throw new Error('This report input key is not permitted for this workflow.');
     const versionId=row.pinned_version_id;
     const head=await s3.send(new HeadObjectCommand({Bucket:rawBucket,Key:key,...(versionId?{VersionId:versionId}:{}),ChecksumMode:'ENABLED'}));
     if(!head.VersionId||!head.ChecksumSHA256)throw new Error('Raw input has no immutable versioned checksum.');

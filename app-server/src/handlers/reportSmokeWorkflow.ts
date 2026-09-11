@@ -10,7 +10,10 @@ function bindSmokeDatabase() {
   if (!secret || !database) throw new Error('Smoke database configuration is required.');
   process.env.DATABASE_SECRET_ARN = secret;
   process.env.DATABASE_NAME = database;
+  process.env.RAW_PREFIX = requiredPrefix('SMOKE_RAW_PREFIX');
+  process.env.REPORT_PREFIX = requiredPrefix('SMOKE_REPORT_PREFIX');
 }
+function requiredPrefix(name:string) { const value=process.env[name]; if (!value || !value.endsWith('/')) throw new Error(`Missing ${name}`); return value; }
 
 export async function dispatch() { bindSmokeDatabase(); return workflow.dispatch(); }
 export async function preflight(event: Parameters<typeof workflow.preflight>[0]) { bindSmokeDatabase(); return workflow.preflight(event); }

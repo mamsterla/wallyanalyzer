@@ -11,12 +11,13 @@ from wally_report_worker import build_tracking_error_artifacts
 
 s3=boto3.client('s3')
 RAW_BUCKET=os.environ['SAMPLE_BUCKET_NAME']; REPORT_BUCKET=os.environ['REPORT_BUCKET_NAME']
+REPORT_PREFIX=os.environ.get('REPORT_PREFIX', 'reports/')
 
 def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
     if event.get('algorithmVersion')!='1.0.0' or not isinstance(event.get('inputs'),list) or not event['inputs']:
         raise ValueError('Unsupported report worker input.')
     report_id=str(event['reportId']); prefix=str(event['outputPrefix'])
-    if not prefix.startswith('reports/') or not prefix.endswith(f'/{report_id}/'):
+    if not prefix.startswith(REPORT_PREFIX) or not prefix.endswith(f'/{report_id}/'):
         raise ValueError('Report prefix is invalid.')
     with TemporaryDirectory() as tmp:
         root=Path(tmp); inputs=[]

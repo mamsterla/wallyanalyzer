@@ -71,6 +71,20 @@ In the CodePipeline console, approve `ApproveDomainActivation`. The build uses t
 
 Activation requests an ACM certificate for apex and `www`, creates Route 53 aliases, redirects HTTP to HTTPS and `www` to apex, and changes browser runtime configuration to the canonical hostname. If the certificate is already issued and the listener/aliases already match the desired state, CDK reports no changes and the activation execution succeeds. Do not detach or delete the old certificate/listener until the new certificate is `ISSUED`, the listener is healthy, and `https://wally-analytics.app/health` returns `200`.
 
+## Isolated report smoke workflow
+
+Run this only after a reviewed deployment has created `ReportSmokeRunnerFunctionName`. It creates no customer records: it migrates only `wally_report_smoke`, writes a deterministic 60-second stereo 48 kHz PCM 1 kHz fixture under `smoke/raw/`, invokes the isolated dispatcher/state machine, validates immutable artifact/provenance records, then deletes its synthetic rows and exact smoke objects on success. Failures retain only smoke-database and smoke-prefix diagnostics.
+
+```bash
+SMOKE_RUNNER=$(aws cloudformation describe-stacks --stack-name WallyPlatform-production \
+  --query "Stacks[0].Outputs[?OutputKey=='ReportSmokeRunnerFunctionName'].OutputValue" --output text)
+aws lambda invoke --function-name "$SMOKE_RUNNER" --cli-binary-format raw-in-base64-out \
+  --payload '{}' /tmp/wally-report-smoke-result.json
+cat /tmp/wally-report-smoke-result.json
+```
+
+Do not invoke the individual smoke dispatcher or state-machine functions, use production `raw/` or `reports/` keys, read the smoke secret, or manually remove failure diagnostics before incident review. A successful response reports only the smoke correlation ID and `completed`; it never returns credentials or audio bytes.
+
 ## Private database operator access
 
 The bastion has no public IP or inbound SSH. Use Session Manager only and port forward through it to the RDS Proxy. Do not expose RDS, RDS Proxy, or the bastion.

@@ -393,7 +393,7 @@ export class WallyPlatformStack extends cdk.Stack {
     const smokeFailedFn=smokeWorkflowLambda('SmokeReportFailureFunction','handlers/reportSmokeWorkflow.fail');
     const smokeRequestFinalizerFn=smokeWorkflowLambda('SmokeReportRequestFinalizerFunction','handlers/reportSmokeWorkflow.finalizeRequest');
     const smokeDispatcherFn=smokeWorkflowLambda('SmokeReportDispatcherFunction','handlers/reportSmokeWorkflow.dispatch');
-    const smokeAnalysisWorker=new lambda.DockerImageFunction(this,'SmokeAnalysisWorkerFunction',{code:workerImage,timeout:cdk.Duration.minutes(15),memorySize:3008,ephemeralStorageSize:cdk.Size.gibibytes(4),vpc,vpcSubnets:{subnetType:ec2.SubnetType.PRIVATE_ISOLATED},securityGroups:[smokeWorkflowSecurityGroup],environment:{SAMPLE_BUCKET_NAME:sampleBucket.bucketName,REPORT_BUCKET_NAME:reportBucket.bucketName,SMOKE_RAW_PREFIX:'smoke/raw/',SMOKE_REPORT_PREFIX:'smoke/reports/'},logGroup:workflowLogGroup});
+    const smokeAnalysisWorker=new lambda.DockerImageFunction(this,'SmokeAnalysisWorkerFunction',{code:workerImage,timeout:cdk.Duration.minutes(15),memorySize:3008,ephemeralStorageSize:cdk.Size.gibibytes(4),vpc,vpcSubnets:{subnetType:ec2.SubnetType.PRIVATE_ISOLATED},securityGroups:[smokeWorkflowSecurityGroup],environment:{SAMPLE_BUCKET_NAME:sampleBucket.bucketName,REPORT_BUCKET_NAME:reportBucket.bucketName,REPORT_PREFIX:'smoke/reports/'},logGroup:workflowLogGroup});
     for(const fn of [smokePreflightFn,smokeFinalizerFn,smokeFailedFn,smokeRequestFinalizerFn,smokeDispatcherFn]){smokeDatabaseSecret.grantRead(fn);fn.addToRolePolicy(new iam.PolicyStatement({actions:['s3:GetObject'],resources:[sampleBucket.arnForObjects('smoke/raw/*'),reportBucket.arnForObjects('smoke/reports/*')]}));}
     smokeFinalizerFn.addToRolePolicy(new iam.PolicyStatement({actions:['s3:PutObject'],resources:[reportBucket.arnForObjects('smoke/reports/*')]}));
     smokeAnalysisWorker.addToRolePolicy(new iam.PolicyStatement({actions:['s3:GetObject','s3:GetObjectVersion'],resources:[sampleBucket.arnForObjects('smoke/raw/*')]}));
@@ -407,6 +407,12 @@ export class WallyPlatformStack extends cdk.Stack {
     const smokeFinish=new sfnTasks.LambdaInvoke(this,'SmokeReportRequestFinalize',{lambdaFunction:smokeRequestFinalizerFn,payload:sfn.TaskInput.fromObject({'requestId.$':'$.requestId'}),outputPath:'$.Payload'});
     const smokeReportStateMachine=new sfn.StateMachine(this,'SmokeReportStateMachine',{definitionBody:sfn.DefinitionBody.fromChainable(smokeMap.next(smokeFinish)),timeout:cdk.Duration.hours(1),stateMachineType:sfn.StateMachineType.STANDARD,logs:{level:sfn.LogLevel.OFF}});
     smokeDispatcherFn.addEnvironment('REPORT_STATE_MACHINE_ARN',smokeReportStateMachine.stateMachineArn);smokeReportStateMachine.grantStartExecution(smokeDispatcherFn);
+    // This VPC Lambda is the only manual entry point. It has no event source and can invoke
+    // only the isolated dispatcher after migrating and seeding the separate smoke database.
+    const smokeRunnerFn=new lambda.DockerImageFunction(this,'ReportSmokeRunnerFunction',{code:workflowImageFor('handlers/reportSmokeRunner.run'),vpc,vpcSubnets:{subnetType:ec2.SubnetType.PRIVATE_ISOLATED},securityGroups:[smokeWorkflowSecurityGroup],timeout:cdk.Duration.minutes(15),memorySize:1024,environment:{DATABASE_PROXY_HOST:databaseProxy.endpoint,DATABASE_SSL:'require',SMOKE_DATABASE_SECRET_ARN:smokeDatabaseSecret.secretArn,SMOKE_DATABASE_NAME:smokeDatabaseName,SAMPLE_BUCKET_NAME:sampleBucket.bucketName,REPORT_BUCKET_NAME:reportBucket.bucketName,SMOKE_RAW_PREFIX:'smoke/raw/',SMOKE_REPORT_PREFIX:'smoke/reports/',SMOKE_DISPATCHER_FUNCTION_NAME:smokeDispatcherFn.functionName},logGroup:workflowLogGroup});
+    smokeDatabaseSecret.grantRead(smokeRunnerFn);
+    smokeRunnerFn.addToRolePolicy(new iam.PolicyStatement({actions:['s3:GetObject','s3:GetObjectVersion','s3:PutObject','s3:DeleteObject'],resources:[sampleBucket.arnForObjects('smoke/raw/*'),reportBucket.arnForObjects('smoke/reports/*')]}));
+    smokeDispatcherFn.grantInvoke(smokeRunnerFn);
     const applicationService = new ecs.FargateService(this, 'PrivateApplicationService', {
       cluster,
       taskDefinition,
@@ -646,6 +652,7 @@ export class WallyPlatformStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'SampleBucketName', { value: sampleBucket.bucketName });
     new cdk.CfnOutput(this, 'ReportBucketName', { value: reportBucket.bucketName });
     new cdk.CfnOutput(this, 'DatabaseProxyEndpoint', { value: databaseProxy.endpoint });
+    new cdk.CfnOutput(this, 'ReportSmokeRunnerFunctionName', { value: smokeRunnerFn.functionName, description: 'Manually invoked isolated Tracking Error smoke runner.' });
     new cdk.CfnOutput(this, 'BootstrapAdministratorSecretArn', { value: bootstrapAdminSecret.secretArn });
     new cdk.CfnOutput(this, 'BootstrapAdministratorTaskDefinitionArn', { value: bootstrapTaskDefinition.taskDefinitionArn });
     new cdk.CfnOutput(this, 'ApplicationTaskDefinitionArn', { value: taskDefinition.taskDefinitionArn });
