@@ -6,71 +6,516 @@ const PAGE_MAX = 100;
 export type Page = { limit?: number; offset?: number };
 export type CursorPage = { limit?: number; cursor?: string };
 export type SortPage = Page & { sortBy?: string; sortDirection?: string };
-export type AdminAddress = { line1?: string; line2?: string; city?: string; region?: string; postalCode?: string; countryCode?: string };
+export type AdminAddress = {
+  line1?: string;
+  line2?: string;
+  city?: string;
+  region?: string;
+  postalCode?: string;
+  countryCode?: string;
+};
 export type AdminProfile = { firstName?: string; lastName?: string; address?: AdminAddress };
 
 export function page(value: Page = {}) {
-  const limit = value.limit ?? 25; const offset = value.offset ?? 0;
-  if (!Number.isInteger(limit) || limit < 1 || limit > PAGE_MAX) throw new HttpError(400, `limit must be an integer from 1 to ${PAGE_MAX}.`);
-  if (!Number.isInteger(offset) || offset < 0) throw new HttpError(400, 'offset must be a nonnegative integer.');
+  const limit = value.limit ?? 25;
+  const offset = value.offset ?? 0;
+  if (!Number.isInteger(limit) || limit < 1 || limit > PAGE_MAX)
+    throw new HttpError(400, `limit must be an integer from 1 to ${PAGE_MAX}.`);
+  if (!Number.isInteger(offset) || offset < 0)
+    throw new HttpError(400, 'offset must be a nonnegative integer.');
   return { limit, offset };
 }
 
 export class PostgresAdminDataRepository {
   constructor(private readonly pool: Pool) {}
-  async touchLastActive(ownerId: string) { await this.pool.query(`update users set last_active_at=now() where id=$1 and (last_active_at is null or last_active_at < now()-interval '15 minutes')`, [ownerId]); }
+  async touchLastActive(ownerId: string) {
+    await this.pool.query(
+      `update users set last_active_at=now() where id=$1 and (last_active_at is null or last_active_at < now()-interval '15 minutes')`,
+      [ownerId],
+    );
+  }
   async users(value: { q?: string; lifecycle?: string } & SortPage = {}) {
-    const p=page(value), q=directoryQuery(value.q), term=`%${escapeLike(q)}%`, lifecycle=enumFilter(value.lifecycle,['draft','ready','invited','active','suspended','cancelled'],'lifecycle');
-    const order=sortOrder(value,{created:'u.created_at',email:'u.email',name:"coalesce(u.last_name,'')",lifecycle:'u.lifecycle',balance:'balance',lastActive:'u.last_active_at'},'created');
-    const r=await this.pool.query(`select u.id,u.email,u.first_name,u.last_name,u.lifecycle,u.created_at,u.last_active_at,coalesce((select l.balance_after from credit_ledger_entries l where l.owner_id=u.id order by l.created_at desc,id desc limit 1),0) balance,coalesce(json_agg(json_build_object('id',p.id,'serialNumber',p.serial_number,'status',p.status)) filter(where p.id is not null),'[]') units from users u left join psiu_assignments a on a.user_id=u.id and a.unassigned_at is null left join psiu_units p on p.id=a.psiu_unit_id where u.role='user' and ($1='' or u.email ilike $2 escape '\\' or coalesce(u.first_name,'') ilike $2 escape '\\' or coalesce(u.last_name,'') ilike $2 escape '\\' or exists(select 1 from psiu_assignments aa join psiu_units pp on pp.id=aa.psiu_unit_id where aa.user_id=u.id and aa.unassigned_at is null and pp.serial_number ilike $2 escape '\\')) and ($3::text is null or u.lifecycle=$3::customer_lifecycle) group by u.id order by ${order},u.id ${order.endsWith(' desc')?'desc':'asc'} limit $4 offset $5`,[q,term,lifecycle,p.limit,p.offset]);
-    return {items:r.rows.slice(0,p.limit),limit:p.limit,offset:p.offset};
+    const p = page(value),
+      q = directoryQuery(value.q),
+      term = `%${escapeLike(q)}%`,
+      lifecycle = enumFilter(
+        value.lifecycle,
+        ['draft', 'ready', 'invited', 'active', 'suspended', 'cancelled'],
+        'lifecycle',
+      );
+    const order = sortOrder(
+      value,
+      {
+        created: 'u.created_at',
+        email: 'u.email',
+        name: "coalesce(u.last_name,'')",
+        lifecycle: 'u.lifecycle',
+        balance: 'balance',
+        lastActive: 'u.last_active_at',
+      },
+      'created',
+    );
+    const r = await this.pool.query(
+      `select u.id,u.email,u.first_name,u.last_name,u.lifecycle,u.created_at,u.last_active_at,coalesce((select l.balance_after from credit_ledger_entries l where l.owner_id=u.id order by l.created_at desc,id desc limit 1),0) balance,coalesce(json_agg(json_build_object('id',p.id,'serialNumber',p.serial_number,'status',p.status)) filter(where p.id is not null),'[]') units from users u left join psiu_assignments a on a.user_id=u.id and a.unassigned_at is null left join psiu_units p on p.id=a.psiu_unit_id where u.role='user' and ($1='' or u.email ilike $2 escape '\\' or coalesce(u.first_name,'') ilike $2 escape '\\' or coalesce(u.last_name,'') ilike $2 escape '\\' or exists(select 1 from psiu_assignments aa join psiu_units pp on pp.id=aa.psiu_unit_id where aa.user_id=u.id and aa.unassigned_at is null and pp.serial_number ilike $2 escape '\\')) and ($3::text is null or u.lifecycle=$3::customer_lifecycle) group by u.id order by ${order},u.id ${order.endsWith(' desc') ? 'desc' : 'asc'} limit $4 offset $5`,
+      [q, term, lifecycle, p.limit, p.offset],
+    );
+    return { items: r.rows.slice(0, p.limit), limit: p.limit, offset: p.offset };
   }
   async typeahead(q: string) {
-    const value = directoryQuery(q, true); const term = `%${escapeLike(value)}%`;
-    const r = await this.pool.query(`select u.id,u.email,u.first_name,u.last_name from users u where u.role='user' and u.lifecycle in ('draft','ready','invited','active') and (u.email ilike $1 escape '\\' or coalesce(u.first_name,'') ilike $1 escape '\\' or coalesce(u.last_name,'') ilike $1 escape '\\' or exists(select 1 from psiu_assignments a join psiu_units p on p.id=a.psiu_unit_id where a.user_id=u.id and a.unassigned_at is null and p.serial_number ilike $1 escape '\\')) order by u.email,u.id limit 20`, [term]);
-    return r.rows.map(x => ({ ...x, displayName: [x.first_name, x.last_name].filter(Boolean).join(' ') || x.email }));
+    const value = directoryQuery(q, true);
+    const term = `%${escapeLike(value)}%`;
+    const r = await this.pool.query(
+      `select u.id,u.email,u.first_name,u.last_name from users u where u.role='user' and u.lifecycle in ('draft','ready','invited','active') and (u.email ilike $1 escape '\\' or coalesce(u.first_name,'') ilike $1 escape '\\' or coalesce(u.last_name,'') ilike $1 escape '\\' or exists(select 1 from psiu_assignments a join psiu_units p on p.id=a.psiu_unit_id where a.user_id=u.id and a.unassigned_at is null and p.serial_number ilike $1 escape '\\')) order by u.email,u.id limit 20`,
+      [term],
+    );
+    return r.rows.map((x) => ({
+      ...x,
+      displayName: [x.first_name, x.last_name].filter(Boolean).join(' ') || x.email,
+    }));
   }
   async user(id: string) {
-    const r = await this.pool.query(`select u.id,u.email,u.first_name,u.last_name,u.lifecycle,u.created_at,u.last_active_at,u.address_line1,u.address_line2,u.address_city,u.address_region,u.address_postal_code,u.address_country_code,coalesce((select l.balance_after from credit_ledger_entries l where l.owner_id=u.id order by l.created_at desc limit 1),0) balance from users u where u.id=$1 and u.role='user'`, [id]);
+    const r = await this.pool.query(
+      `select u.id,u.email,u.first_name,u.last_name,u.lifecycle,u.created_at,u.last_active_at,u.address_line1,u.address_line2,u.address_city,u.address_region,u.address_postal_code,u.address_country_code,coalesce((select l.balance_after from credit_ledger_entries l where l.owner_id=u.id order by l.created_at desc limit 1),0) balance from users u where u.id=$1 and u.role='user'`,
+      [id],
+    );
     if (!r.rowCount) return undefined;
-    const units = await this.pool.query(`select p.id,p.serial_number,p.opaque_uid,p.status,a.assigned_at,p.unavailable_at from psiu_units p join psiu_assignments a on a.psiu_unit_id=p.id and a.unassigned_at is null where a.user_id=$1 order by a.assigned_at desc`, [id]);
-    return { ...r.rows[0], units: units.rows.map(x => ({ id: x.id, serialNumber: x.serial_number, uid: x.opaque_uid, status: x.status, assignedAt: x.assigned_at?.toISOString(), unavailableAt: x.unavailable_at?.toISOString() })) };
+    const units = await this.pool.query(
+      `select p.id,p.serial_number,p.opaque_uid,p.status,a.assigned_at,p.unavailable_at from psiu_units p join psiu_assignments a on a.psiu_unit_id=p.id and a.unassigned_at is null where a.user_id=$1 order by a.assigned_at desc`,
+      [id],
+    );
+    return {
+      ...r.rows[0],
+      units: units.rows.map((x) => ({
+        id: x.id,
+        serialNumber: x.serial_number,
+        uid: x.opaque_uid,
+        status: x.status,
+        assignedAt: x.assigned_at?.toISOString(),
+        unavailableAt: x.unavailable_at?.toISOString(),
+      })),
+    };
   }
   async updateUser(id: string, actorId: string, value: AdminProfile, requestId?: string) {
     const profile = normalizeProfile(value);
-    const r = await this.pool.query(`update users set first_name=case when $2 then $3 else first_name end,last_name=case when $4 then $5 else last_name end,address_line1=case when $6 then $7 else address_line1 end,address_line2=case when $8 then $9 else address_line2 end,address_city=case when $10 then $11 else address_city end,address_region=case when $12 then $13 else address_region end,address_postal_code=case when $14 then $15 else address_postal_code end,address_country_code=case when $16 then $17 else address_country_code end where id=$1 and role='user' returning id`, [id, profile.present.firstName, profile.firstName, profile.present.lastName, profile.lastName, profile.present.address.line1, profile.address.line1, profile.present.address.line2, profile.address.line2, profile.present.address.city, profile.address.city, profile.present.address.region, profile.address.region, profile.present.address.postalCode, profile.address.postalCode, profile.present.address.countryCode, profile.address.countryCode]);
+    const r = await this.pool.query(
+      `update users set first_name=case when $2 then $3 else first_name end,last_name=case when $4 then $5 else last_name end,address_line1=case when $6 then $7 else address_line1 end,address_line2=case when $8 then $9 else address_line2 end,address_city=case when $10 then $11 else address_city end,address_region=case when $12 then $13 else address_region end,address_postal_code=case when $14 then $15 else address_postal_code end,address_country_code=case when $16 then $17 else address_country_code end where id=$1 and role='user' returning id`,
+      [
+        id,
+        profile.present.firstName,
+        profile.firstName,
+        profile.present.lastName,
+        profile.lastName,
+        profile.present.address.line1,
+        profile.address.line1,
+        profile.present.address.line2,
+        profile.address.line2,
+        profile.present.address.city,
+        profile.address.city,
+        profile.present.address.region,
+        profile.address.region,
+        profile.present.address.postalCode,
+        profile.address.postalCode,
+        profile.present.address.countryCode,
+        profile.address.countryCode,
+      ],
+    );
     if (!r.rowCount) throw new HttpError(404, 'Customer not found.');
-    await this.pool.query(`insert into audit_events(id,actor_id,action,subject_type,subject_id,request_id,metadata) values($1,$2,'customer.profile_updated','user',$3,$4,'{}'::jsonb)`, [randomUUID(), actorId, id, requestId ?? null]);
+    await this.pool.query(
+      `insert into audit_events(id,actor_id,action,subject_type,subject_id,request_id,metadata) values($1,$2,'customer.profile_updated','user',$3,$4,'{}'::jsonb)`,
+      [randomUUID(), actorId, id, requestId ?? null],
+    );
     return this.user(id);
   }
-  async adjustCredits(ownerId: string, actorId: string, value: { delta: number; note: string; kind?: 'grant' | 'administrative_adjustment' }) {
-    const delta = value.delta; const note = value.note?.trim();
-    if (value.kind !== undefined && value.kind !== 'grant' && value.kind !== 'administrative_adjustment') throw new HttpError(400, 'Credit adjustment kind must be grant or administrative_adjustment.');
-    if (!Number.isInteger(delta) || !delta || !note || note.length > 2000) throw new HttpError(400, 'Nonblank note and nonzero integer credit amount required.');
-    const c = await this.pool.connect(); try { await c.query('begin'); const owner = await c.query(`select id from users where id=$1 and role='user' for update`, [ownerId]); if (!owner.rowCount) throw new HttpError(404, 'Customer not found.'); const prior = await c.query<{ balance_after: number }>(`select balance_after from credit_ledger_entries where owner_id=$1 order by created_at desc limit 1 for update`, [ownerId]); const balance = (prior.rows[0]?.balance_after ?? 0) + delta; if (balance < 0) throw new HttpError(409, 'Credit balance cannot be negative.'); const r = await c.query(`insert into credit_ledger_entries(id,owner_id,kind,delta,balance_after,note,actor_id) values($1,$2,$3,$4,$5,$6,$7) returning id,kind,delta,balance_after,note,created_at`, [randomUUID(), ownerId, value.kind ?? 'administrative_adjustment', delta, balance, note, actorId]); await c.query('commit'); return r.rows[0]; } catch (e) { await c.query('rollback'); throw e; } finally { c.release(); }
+  async adjustCredits(
+    ownerId: string,
+    actorId: string,
+    value: { delta: number; note: string; kind?: 'grant' | 'administrative_adjustment' },
+  ) {
+    const delta = value.delta;
+    const note = value.note?.trim();
+    if (
+      value.kind !== undefined &&
+      value.kind !== 'grant' &&
+      value.kind !== 'administrative_adjustment'
+    )
+      throw new HttpError(
+        400,
+        'Credit adjustment kind must be grant or administrative_adjustment.',
+      );
+    if (!Number.isInteger(delta) || !delta || !note || note.length > 2000)
+      throw new HttpError(400, 'Nonblank note and nonzero integer credit amount required.');
+    const c = await this.pool.connect();
+    try {
+      await c.query('begin');
+      const owner = await c.query(`select id from users where id=$1 and role='user' for update`, [
+        ownerId,
+      ]);
+      if (!owner.rowCount) throw new HttpError(404, 'Customer not found.');
+      const prior = await c.query<{ balance_after: number }>(
+        `select balance_after from credit_ledger_entries where owner_id=$1 order by created_at desc limit 1 for update`,
+        [ownerId],
+      );
+      const balance = (prior.rows[0]?.balance_after ?? 0) + delta;
+      if (balance < 0) throw new HttpError(409, 'Credit balance cannot be negative.');
+      const r = await c.query(
+        `insert into credit_ledger_entries(id,owner_id,kind,delta,balance_after,note,actor_id) values($1,$2,$3,$4,$5,$6,$7) returning id,kind,delta,balance_after,note,created_at`,
+        [
+          randomUUID(),
+          ownerId,
+          value.kind ?? 'administrative_adjustment',
+          delta,
+          balance,
+          note,
+          actorId,
+        ],
+      );
+      await c.query('commit');
+      return r.rows[0];
+    } catch (e) {
+      await c.query('rollback');
+      throw e;
+    } finally {
+      c.release();
+    }
   }
-  async credits(ownerId: string, value: Page = {}) { const p = page(value); const r = await this.pool.query(`select id,kind,delta,balance_after,note,created_at from credit_ledger_entries where owner_id=$1 order by created_at desc,id desc limit $2 offset $3`, [ownerId, p.limit, p.offset]); const balance = await this.pool.query<{ balance: number }>(`select coalesce((select balance_after from credit_ledger_entries where owner_id=$1 order by created_at desc,id desc limit 1),0) balance`, [ownerId]); return { items: r.rows, balance: balance.rows[0]?.balance ?? 0, limit: p.limit, offset: p.offset }; }
-  async creditStats(value: { from?: string; to?: string } = {}) { const r = await this.pool.query(`select date_trunc('day',created_at) day,kind,coalesce(reference_type,'unattributed') product,count(*) entry_count,sum(delta) delta from credit_ledger_entries where ($1::timestamptz is null or created_at >= $1) and ($2::timestamptz is null or created_at < $2) group by 1,2,3 order by day desc,kind`, [value.from ?? null, value.to ?? null]); return r.rows; }
-  async units(value: { q?: string; customerId?: string; status?: string; assignment?: string } & SortPage = {}) {
-    const p=page(value),q=directoryQuery(value.q),term=`%${escapeLike(q)}%`,status=enumFilter(value.status,['enabled','disabled','unavailable'],'status'),assignment=enumFilter(value.assignment,['assigned','unassigned'],'assignment');
-    const order=sortOrder(value,{serial:'p.serial_number',uid:'p.opaque_uid',status:'p.status',owner:'u.email',assigned:'a.assigned_at',unavailable:'p.unavailable_at'},'serial');
-    const r=await this.pool.query(`select p.id,p.serial_number,p.opaque_uid,p.status,p.unavailable_at,a.assigned_at,u.id customer_id,u.email customer_email,u.first_name customer_first_name,u.last_name customer_last_name from psiu_units p left join psiu_assignments a on a.psiu_unit_id=p.id and a.unassigned_at is null left join users u on u.id=a.user_id where ($1='' or p.serial_number ilike $2 escape '\\' or p.opaque_uid ilike $2 escape '\\') and ($3::uuid is null or u.id=$3) and ($4::text is null or p.status=$4::psiu_unit_status) and ($5::text is null or ($5='assigned' and u.id is not null) or ($5='unassigned' and u.id is null)) order by ${order},p.id ${order.endsWith(' desc')?'desc':'asc'} limit $6 offset $7`,[q,term,value.customerId??null,status,assignment,p.limit,p.offset]);
-    return {items:r.rows.slice(0,p.limit).map(x=>({id:x.id,serialNumber:x.serial_number,uid:x.opaque_uid,status:x.status,unavailableAt:x.unavailable_at?.toISOString(),assignedAt:x.assigned_at?.toISOString(),customer:x.customer_id?{id:x.customer_id,email:x.customer_email,firstName:x.customer_first_name??undefined,lastName:x.customer_last_name??undefined}:undefined})),limit:p.limit,offset:p.offset};
+  async credits(ownerId: string, value: Page = {}) {
+    const p = page(value);
+    const r = await this.pool.query(
+      `select id,kind,delta,balance_after,note,created_at from credit_ledger_entries where owner_id=$1 order by created_at desc,id desc limit $2 offset $3`,
+      [ownerId, p.limit, p.offset],
+    );
+    const balance = await this.pool.query<{ balance: number }>(
+      `select coalesce((select balance_after from credit_ledger_entries where owner_id=$1 order by created_at desc,id desc limit 1),0) balance`,
+      [ownerId],
+    );
+    return {
+      items: r.rows,
+      balance: balance.rows[0]?.balance ?? 0,
+      limit: p.limit,
+      offset: p.offset,
+    };
   }
-  async passwordResetCustomer(id: string) { const r=await this.pool.query<{id:string;email:string;lifecycle:string;cognito_subject:string|null}>(`select id,email,lifecycle,cognito_subject from users where id=$1 and role='user'`,[id]); if(!r.rowCount) throw new HttpError(404,'Customer not found.'); return {id:r.rows[0].id,email:r.rows[0].email,lifecycle:r.rows[0].lifecycle,cognitoSubject:r.rows[0].cognito_subject??undefined}; }
-  async auditPasswordReset(id:string,actor:string,requestId?:string) { await this.pool.query(`insert into audit_events(id,actor_id,action,subject_type,subject_id,request_id,metadata) values($1,$2,'customer.password_reset_requested','user',$3,$4,'{}'::jsonb)`,[randomUUID(),actor,id,requestId??null]); }
-  async samples(value: { ownerId?: string; psiuUnitId?: string; source?: string; state?: string; q?: string } & SortPage = {}) { const p=page(value); const q=directoryQuery(value.q); const term=`%${escapeLike(q)}%`; const source=enumFilter(value.source,['manual_file','psiu_capture'],'source'); const state=enumFilter(value.state,['intent','uploaded','failed'],'state'); const order=sortOrder(value,{created:'s.created_at',recorded:'s.recorded_at',uploaded:'s.uploaded_at',owner:'u.email',psiu:'p.serial_number',source:'s.source',state:'s.upload_state'},'created'); const r=await this.pool.query(`select s.id,s.owner_id,s.psiu_unit_id,s.source,s.upload_state,s.metadata,s.system_snapshot,s.recorded_at,s.created_at,s.uploaded_at,u.email,p.serial_number from samples s join users u on u.id=s.owner_id join psiu_units p on p.id=s.psiu_unit_id where ($1::uuid is null or s.owner_id=$1) and ($2::uuid is null or s.psiu_unit_id=$2) and ($3::text is null or s.source=$3) and ($4::text is null or s.upload_state=$4::sample_upload_state) and ($5='' or p.serial_number ilike $6 escape '\\' or p.opaque_uid ilike $6 escape '\\') order by ${order},s.id ${order.endsWith(' desc')?'desc':'asc'} limit $7 offset $8`,[value.ownerId??null,value.psiuUnitId??null,source,state,q,term,p.limit,p.offset]); return {items:r.rows,limit:p.limit,offset:p.offset}; }
-  async reports(value:{q?:string;ownerId?:string;type?:string;status?:string;preset?:string}&SortPage={}) { const p=page(value); const q=directoryQuery(value.q); const term=`%${escapeLike(q)}%`; const order=sortOrder(value,{created:'ar.created_at',status:'ar.status',owner:'u.email',report:'d.display_name',preset:'p.display_name',system:"rr.system_snapshot->>'name'"},'created'); const r=await this.pool.query(`select ar.id,ar.status,ar.created_at,u.id owner_id,u.email,u.first_name,u.last_name,d.key definition_key,d.display_name,p.key preset_key,p.display_name preset_name,p.version preset_version,rr.system_snapshot from analysis_reports ar join report_requests rr on rr.id=ar.request_id join users u on u.id=rr.owner_id join report_definitions d on d.id=ar.definition_id join report_presets p on p.id=ar.preset_id where ($1='' or rr.system_snapshot->>'name' ilike $2 escape '\\' or rr.system_snapshot::text ilike $2 escape '\\') and ($3::uuid is null or u.id=$3) and ($4::text is null or d.key=$4) and ($5::text is null or ar.status=$5) and ($6::text is null or p.key=$6) order by ${order},ar.id ${order.endsWith(' desc')?'desc':'asc'} limit $7 offset $8`,[q,term,value.ownerId??null,value.type??null,value.status??null,value.preset??null,p.limit,p.offset]); return {items:r.rows.map((x:any)=>({id:x.id,status:x.status,createdAt:x.created_at?.toISOString?.()??x.created_at,reportType:x.definition_key,reportName:x.display_name,presetKey:x.preset_key,presetName:x.preset_name,presetVersion:x.preset_version,systemName:x.system_snapshot?.name??'Unknown system',owner:{id:x.owner_id,email:x.email,firstName:x.first_name??undefined,lastName:x.last_name??undefined}})),limit:p.limit,offset:p.offset}; }
-  async creditEntries(value:SortPage={}) { const p=page(value); const order=sortOrder(value,{created:'l.created_at',kind:'l.kind',delta:'l.delta',balance:'l.balance_after',owner:'u.email',note:'l.note'},'created'); const r=await this.pool.query(`select l.id,l.kind,l.delta,l.balance_after,l.note,l.created_at,u.id owner_id,u.email from credit_ledger_entries l join users u on u.id=l.owner_id order by ${order},l.id ${order.endsWith(' desc')?'desc':'asc'} limit $1 offset $2`,[p.limit,p.offset]); return {items:r.rows,limit:p.limit,offset:p.offset}; }
-  async sampleStats(adminId: string) { const r = await this.pool.query<{ total:string; d7:string; d14:string; d30:string; ytd:string; fresh:string }>(`select count(*) total,count(*) filter(where created_at>=now()-interval '7 days') d7,count(*) filter(where created_at>=now()-interval '14 days') d14,count(*) filter(where created_at>=now()-interval '30 days') d30,count(*) filter(where created_at>=date_trunc('year',now())) ytd,count(*) filter(where created_at>coalesce((select admin_samples_viewed_at from users where id=$1),'epoch')) fresh from samples`, [adminId]); await this.pool.query(`update users set admin_samples_viewed_at=now() where id=$1`, [adminId]); return r.rows[0]; }
+  async creditStats(value: { from?: string; to?: string } = {}) {
+    const r = await this.pool.query(
+      `select date_trunc('day',created_at) day,kind,coalesce(reference_type,'unattributed') product,count(*) entry_count,sum(delta) delta from credit_ledger_entries where ($1::timestamptz is null or created_at >= $1) and ($2::timestamptz is null or created_at < $2) group by 1,2,3 order by day desc,kind`,
+      [value.from ?? null, value.to ?? null],
+    );
+    return r.rows;
+  }
+  async units(
+    value: {
+      q?: string;
+      customerId?: string;
+      status?: string;
+      assignment?: string;
+    } & SortPage = {},
+  ) {
+    const p = page(value),
+      q = directoryQuery(value.q),
+      term = `%${escapeLike(q)}%`,
+      status = enumFilter(value.status, ['enabled', 'disabled', 'unavailable'], 'status'),
+      assignment = enumFilter(value.assignment, ['assigned', 'unassigned'], 'assignment');
+    const order = sortOrder(
+      value,
+      {
+        serial: 'p.serial_number',
+        uid: 'p.opaque_uid',
+        status: 'p.status',
+        owner: 'u.email',
+        assigned: 'a.assigned_at',
+        unavailable: 'p.unavailable_at',
+      },
+      'serial',
+    );
+    const r = await this.pool.query(
+      `select p.id,p.serial_number,p.opaque_uid,p.status,p.unavailable_at,a.assigned_at,u.id customer_id,u.email customer_email,u.first_name customer_first_name,u.last_name customer_last_name from psiu_units p left join psiu_assignments a on a.psiu_unit_id=p.id and a.unassigned_at is null left join users u on u.id=a.user_id where ($1='' or p.serial_number ilike $2 escape '\\' or p.opaque_uid ilike $2 escape '\\') and ($3::uuid is null or u.id=$3) and ($4::text is null or p.status=$4::psiu_unit_status) and ($5::text is null or ($5='assigned' and u.id is not null) or ($5='unassigned' and u.id is null)) order by ${order},p.id ${order.endsWith(' desc') ? 'desc' : 'asc'} limit $6 offset $7`,
+      [q, term, value.customerId ?? null, status, assignment, p.limit, p.offset],
+    );
+    return {
+      items: r.rows
+        .slice(0, p.limit)
+        .map((x) => ({
+          id: x.id,
+          serialNumber: x.serial_number,
+          uid: x.opaque_uid,
+          status: x.status,
+          unavailableAt: x.unavailable_at?.toISOString(),
+          assignedAt: x.assigned_at?.toISOString(),
+          customer: x.customer_id
+            ? {
+                id: x.customer_id,
+                email: x.customer_email,
+                firstName: x.customer_first_name ?? undefined,
+                lastName: x.customer_last_name ?? undefined,
+              }
+            : undefined,
+        })),
+      limit: p.limit,
+      offset: p.offset,
+    };
+  }
+  async passwordResetCustomer(id: string) {
+    const r = await this.pool.query<{
+      id: string;
+      email: string;
+      lifecycle: string;
+      cognito_subject: string | null;
+    }>(`select id,email,lifecycle,cognito_subject from users where id=$1 and role='user'`, [id]);
+    if (!r.rowCount) throw new HttpError(404, 'Customer not found.');
+    return {
+      id: r.rows[0].id,
+      email: r.rows[0].email,
+      lifecycle: r.rows[0].lifecycle,
+      cognitoSubject: r.rows[0].cognito_subject ?? undefined,
+    };
+  }
+  async auditPasswordReset(id: string, actor: string, requestId?: string) {
+    await this.pool.query(
+      `insert into audit_events(id,actor_id,action,subject_type,subject_id,request_id,metadata) values($1,$2,'customer.password_reset_requested','user',$3,$4,'{}'::jsonb)`,
+      [randomUUID(), actor, id, requestId ?? null],
+    );
+  }
+  async samples(
+    value: {
+      ownerId?: string;
+      psiuUnitId?: string;
+      source?: string;
+      state?: string;
+      q?: string;
+    } & SortPage = {},
+  ) {
+    const p = page(value);
+    const q = directoryQuery(value.q);
+    const term = `%${escapeLike(q)}%`;
+    const source = enumFilter(value.source, ['manual_file', 'psiu_capture'], 'source');
+    const state = enumFilter(value.state, ['intent', 'uploaded', 'failed'], 'state');
+    const order = sortOrder(
+      value,
+      {
+        created: 's.created_at',
+        recorded: 's.recorded_at',
+        uploaded: 's.uploaded_at',
+        owner: 'u.email',
+        psiu: 'p.serial_number',
+        source: 's.source',
+        state: 's.upload_state',
+      },
+      'created',
+    );
+    const r = await this.pool.query(
+      `select s.id,s.owner_id,s.psiu_unit_id,s.source,s.upload_state,s.metadata,s.system_snapshot,s.recorded_at,s.created_at,s.uploaded_at,u.email,p.serial_number from samples s join users u on u.id=s.owner_id join psiu_units p on p.id=s.psiu_unit_id where ($1::uuid is null or s.owner_id=$1) and ($2::uuid is null or s.psiu_unit_id=$2) and ($3::text is null or s.source=$3) and ($4::text is null or s.upload_state=$4::sample_upload_state) and ($5='' or p.serial_number ilike $6 escape '\\' or p.opaque_uid ilike $6 escape '\\') order by ${order},s.id ${order.endsWith(' desc') ? 'desc' : 'asc'} limit $7 offset $8`,
+      [value.ownerId ?? null, value.psiuUnitId ?? null, source, state, q, term, p.limit, p.offset],
+    );
+    return { items: r.rows, limit: p.limit, offset: p.offset };
+  }
+  async reports(
+    value: {
+      q?: string;
+      ownerId?: string;
+      type?: string;
+      status?: string;
+      preset?: string;
+    } & SortPage = {},
+  ) {
+    const p = page(value);
+    const q = directoryQuery(value.q);
+    const term = `%${escapeLike(q)}%`;
+    const order = sortOrder(
+      value,
+      {
+        created: 'ar.created_at',
+        status: 'ar.status',
+        owner: 'u.email',
+        report: 'd.display_name',
+        preset: 'p.display_name',
+        system: "rr.system_snapshot->>'name'",
+      },
+      'created',
+    );
+    const r = await this.pool.query(
+      `select ar.id,ar.status,ar.created_at,u.id owner_id,u.email,u.first_name,u.last_name,d.key definition_key,d.display_name,p.key preset_key,p.display_name preset_name,p.version preset_version,rr.system_snapshot from analysis_reports ar join report_requests rr on rr.id=ar.request_id join users u on u.id=rr.owner_id join report_definitions d on d.id=ar.definition_id join report_presets p on p.id=ar.preset_id where ($1='' or rr.system_snapshot->>'name' ilike $2 escape '\\' or rr.system_snapshot::text ilike $2 escape '\\') and ($3::uuid is null or u.id=$3) and ($4::text is null or d.key=$4) and ($5::text is null or ar.status=$5) and ($6::text is null or p.key=$6) order by ${order},ar.id ${order.endsWith(' desc') ? 'desc' : 'asc'} limit $7 offset $8`,
+      [
+        q,
+        term,
+        value.ownerId ?? null,
+        value.type ?? null,
+        value.status ?? null,
+        value.preset ?? null,
+        p.limit,
+        p.offset,
+      ],
+    );
+    return {
+      items: r.rows.map((x: any) => ({
+        id: x.id,
+        status: x.status,
+        createdAt: x.created_at?.toISOString?.() ?? x.created_at,
+        reportType: x.definition_key,
+        reportName: x.display_name,
+        presetKey: x.preset_key,
+        presetName: x.preset_name,
+        presetVersion: x.preset_version,
+        systemName: x.system_snapshot?.name ?? 'Unknown system',
+        owner: {
+          id: x.owner_id,
+          email: x.email,
+          firstName: x.first_name ?? undefined,
+          lastName: x.last_name ?? undefined,
+        },
+      })),
+      limit: p.limit,
+      offset: p.offset,
+    };
+  }
+  async creditEntries(value: SortPage = {}) {
+    const p = page(value);
+    const order = sortOrder(
+      value,
+      {
+        created: 'l.created_at',
+        kind: 'l.kind',
+        delta: 'l.delta',
+        balance: 'l.balance_after',
+        owner: 'u.email',
+        note: 'l.note',
+      },
+      'created',
+    );
+    const r = await this.pool.query(
+      `select l.id,l.kind,l.delta,l.balance_after,l.note,l.created_at,u.id owner_id,u.email from credit_ledger_entries l join users u on u.id=l.owner_id order by ${order},l.id ${order.endsWith(' desc') ? 'desc' : 'asc'} limit $1 offset $2`,
+      [p.limit, p.offset],
+    );
+    return { items: r.rows, limit: p.limit, offset: p.offset };
+  }
+  async sampleStats(adminId: string) {
+    const r = await this.pool.query<{
+      total: string;
+      d7: string;
+      d14: string;
+      d30: string;
+      ytd: string;
+      fresh: string;
+    }>(
+      `select count(*) total,count(*) filter(where created_at>=now()-interval '7 days') d7,count(*) filter(where created_at>=now()-interval '14 days') d14,count(*) filter(where created_at>=now()-interval '30 days') d30,count(*) filter(where created_at>=date_trunc('year',now())) ytd,count(*) filter(where created_at>coalesce((select admin_samples_viewed_at from users where id=$1),'epoch')) fresh from samples`,
+      [adminId],
+    );
+    await this.pool.query(`update users set admin_samples_viewed_at=now() where id=$1`, [adminId]);
+    return r.rows[0];
+  }
 }
-function text(value: unknown, max: number, name: string) { if (value === undefined) return undefined; if (typeof value !== 'string') throw new HttpError(400, `${name} must be text.`); const v=value.trim(); if (v.length > max || /[\u0000-\u001f]/.test(v)) throw new HttpError(400, `${name} is invalid.`); return v || undefined; }
-export function normalizeProfile(value: AdminProfile) { if (!value || typeof value !== 'object' || Array.isArray(value)) throw new HttpError(400, 'Profile object required.'); const a=value.address === undefined ? {} : value.address; if (!a || typeof a !== 'object' || Array.isArray(a)) throw new HttpError(400, 'Address must be an object.'); const country=text(a.countryCode,2,'countryCode')?.toUpperCase(); if (country && !/^[A-Z]{2}$/.test(country)) throw new HttpError(400, 'countryCode must be ISO 3166-1 alpha-2.'); return { firstName:text(value.firstName,100,'firstName'), lastName:text(value.lastName,100,'lastName'), address:{line1:text(a.line1,200,'line1'),line2:text(a.line2,200,'line2'),city:text(a.city,100,'city'),region:text(a.region,100,'region'),postalCode:text(a.postalCode,40,'postalCode'),countryCode:country}, present:{firstName:has(value,'firstName'),lastName:has(value,'lastName'),address:{line1:has(a,'line1'),line2:has(a,'line2'),city:has(a,'city'),region:has(a,'region'),postalCode:has(a,'postalCode'),countryCode:has(a,'countryCode')}} }; }
-function has(value: object, key: string) { return Object.prototype.hasOwnProperty.call(value, key); }
-function enumFilter(value:string|undefined, allowed:readonly string[], name:string){const normalized=value?.trim();if(!normalized)return undefined;if(!allowed.includes(normalized))throw new HttpError(400,`${name} is invalid.`);return normalized;}
-function sortOrder(value:{sortBy?:string;sortDirection?:string}, allowed:Record<string,string>, fallback:string){const key=value.sortBy?.trim()||fallback;const column=allowed[key];if(!column)throw new HttpError(400,'sortBy is invalid.');const direction=(value.sortDirection?.trim()||'desc').toLowerCase();if(direction!=='asc'&&direction!=='desc')throw new HttpError(400,'sortDirection is invalid.');return `${column} ${direction}`;}
-function escapeLike(value:string){return value.replace(/[\\%_]/g,'\\$&');}
-function directoryQuery(value:string|undefined, required=false){const q=(value??'').trim();if((required&&q.length<2)||(!required&&q.length===1))throw new HttpError(400,'Search must contain at least 2 characters.');return q;}
-function cursorPage(value:CursorPage){const limit=value.limit??25;if(!Number.isInteger(limit)||limit<1||limit>PAGE_MAX)throw new HttpError(400,`limit must be an integer from 1 to ${PAGE_MAX}.`);return{limit};}
-function decodeCursor(value:string|undefined, kind:string):Record<string,string>|undefined{if(!value)return undefined;try{const data=JSON.parse(Buffer.from(value,'base64url').toString());const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;if(!data||data.kind!==kind||typeof data.id!=='string'||!uuid.test(data.id)||(kind==='users'&&(typeof data.createdAt!=='string'||Number.isNaN(Date.parse(data.createdAt))))||(kind==='units'&&(typeof data.serialNumber!=='string'||data.serialNumber.length>128)))throw Error();return data;}catch{throw new HttpError(400,'Invalid cursor.');}}
-function cursorResult<T>(rows:T[],limit:number,kind:string,key:(row:T)=>Record<string,string>){const items=rows.slice(0,limit);const last=items.at(-1);return{items,limit,nextCursor:rows.length>limit&&last?Buffer.from(JSON.stringify({kind,...key(last)})).toString('base64url'):undefined};}
+function text(value: unknown, max: number, name: string) {
+  if (value === undefined) return undefined;
+  if (typeof value !== 'string') throw new HttpError(400, `${name} must be text.`);
+  const v = value.trim();
+  if (v.length > max || /[\u0000-\u001f]/.test(v)) throw new HttpError(400, `${name} is invalid.`);
+  return v || undefined;
+}
+export function normalizeProfile(value: AdminProfile) {
+  if (!value || typeof value !== 'object' || Array.isArray(value))
+    throw new HttpError(400, 'Profile object required.');
+  const a = value.address === undefined ? {} : value.address;
+  if (!a || typeof a !== 'object' || Array.isArray(a))
+    throw new HttpError(400, 'Address must be an object.');
+  const country = text(a.countryCode, 2, 'countryCode')?.toUpperCase();
+  if (country && !/^[A-Z]{2}$/.test(country))
+    throw new HttpError(400, 'countryCode must be ISO 3166-1 alpha-2.');
+  return {
+    firstName: text(value.firstName, 100, 'firstName'),
+    lastName: text(value.lastName, 100, 'lastName'),
+    address: {
+      line1: text(a.line1, 200, 'line1'),
+      line2: text(a.line2, 200, 'line2'),
+      city: text(a.city, 100, 'city'),
+      region: text(a.region, 100, 'region'),
+      postalCode: text(a.postalCode, 40, 'postalCode'),
+      countryCode: country,
+    },
+    present: {
+      firstName: has(value, 'firstName'),
+      lastName: has(value, 'lastName'),
+      address: {
+        line1: has(a, 'line1'),
+        line2: has(a, 'line2'),
+        city: has(a, 'city'),
+        region: has(a, 'region'),
+        postalCode: has(a, 'postalCode'),
+        countryCode: has(a, 'countryCode'),
+      },
+    },
+  };
+}
+function has(value: object, key: string) {
+  return Object.prototype.hasOwnProperty.call(value, key);
+}
+function enumFilter(value: string | undefined, allowed: readonly string[], name: string) {
+  const normalized = value?.trim();
+  if (!normalized) return undefined;
+  if (!allowed.includes(normalized)) throw new HttpError(400, `${name} is invalid.`);
+  return normalized;
+}
+function sortOrder(
+  value: { sortBy?: string; sortDirection?: string },
+  allowed: Record<string, string>,
+  fallback: string,
+) {
+  const key = value.sortBy?.trim() || fallback;
+  const column = allowed[key];
+  if (!column) throw new HttpError(400, 'sortBy is invalid.');
+  const direction = (value.sortDirection?.trim() || 'desc').toLowerCase();
+  if (direction !== 'asc' && direction !== 'desc')
+    throw new HttpError(400, 'sortDirection is invalid.');
+  return `${column} ${direction}`;
+}
+function escapeLike(value: string) {
+  return value.replace(/[\\%_]/g, '\\$&');
+}
+function directoryQuery(value: string | undefined, required = false) {
+  const q = (value ?? '').trim();
+  if ((required && q.length < 2) || (!required && q.length === 1))
+    throw new HttpError(400, 'Search must contain at least 2 characters.');
+  return q;
+}
+function cursorPage(value: CursorPage) {
+  const limit = value.limit ?? 25;
+  if (!Number.isInteger(limit) || limit < 1 || limit > PAGE_MAX)
+    throw new HttpError(400, `limit must be an integer from 1 to ${PAGE_MAX}.`);
+  return { limit };
+}
+function decodeCursor(value: string | undefined, kind: string): Record<string, string> | undefined {
+  if (!value) return undefined;
+  try {
+    const data = JSON.parse(Buffer.from(value, 'base64url').toString());
+    const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (
+      !data ||
+      data.kind !== kind ||
+      typeof data.id !== 'string' ||
+      !uuid.test(data.id) ||
+      (kind === 'users' &&
+        (typeof data.createdAt !== 'string' || Number.isNaN(Date.parse(data.createdAt)))) ||
+      (kind === 'units' &&
+        (typeof data.serialNumber !== 'string' || data.serialNumber.length > 128))
+    )
+      throw Error();
+    return data;
+  } catch {
+    throw new HttpError(400, 'Invalid cursor.');
+  }
+}
+function cursorResult<T>(
+  rows: T[],
+  limit: number,
+  kind: string,
+  key: (row: T) => Record<string, string>,
+) {
+  const items = rows.slice(0, limit);
+  const last = items.at(-1);
+  return {
+    items,
+    limit,
+    nextCursor:
+      rows.length > limit && last
+        ? Buffer.from(JSON.stringify({ kind, ...key(last) })).toString('base64url')
+        : undefined,
+  };
+}
