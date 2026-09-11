@@ -11,7 +11,8 @@ const [appSource, controllerSource, selectSource, themeSource] = await Promise.a
 describe('design-system selects', () => {
   it('replaces native browser selects with accessible styled MUI menus', () => {
     expect(appSource).toContain("WallySelect");
-    expect(controllerSource).toContain("WallySelect");
+    // Capture is PSIU-only and has no user-selectable inputs; it must still avoid native selects.
+    expect(controllerSource).not.toMatch(/native:\s*true|<option/);
     expect(`${appSource}\n${controllerSource}`).not.toMatch(/native:\s*true|<option/);
     expect(selectSource).toContain('MenuItem');
     expect(selectSource).toContain("className: 'wally-select-menu'");

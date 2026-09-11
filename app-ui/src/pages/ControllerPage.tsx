@@ -7,21 +7,102 @@ import { RecordArtwork } from '../features/controller/RecordArtwork.js';
 import { createPsuClient, PsiuUnavailableError } from '../features/controller/psiuClient.js';
 import { apiBaseUrl as api } from '../runtimeConfig.js';
 import { ReportPicker } from './SampleUploadPanel.js';
-import { WallySelect } from '../designSystemSelect.js';
 
-type CapturePhase='checking'|'unavailable'|'ready'|'starting'|'capturing'|'stopping'|'completed'|'processing';
-export function queueCapturedPsiuWav(file:File,psiuUnitId:string,observedPsiuUid:string,units:CustomerUnit[]){if(!psiuUnitId||!observedPsiuUid||!units.some(unit=>unit.id===psiuUnitId&&unit.uid===observedPsiuUid&&unit.status==='enabled'))throw new PsiuUnavailableError();return{file,clientFileId:crypto.randomUUID().replaceAll('-',''),psiuUnitId,observedPsiuUid,recordedAt:new Date(file.lastModified).toISOString(),source:'psiu_capture' as const};}
-async function request<T>(path:string,init?:RequestInit):Promise<T>{const token=await accessToken();const response=await fetch(`${api}${path}`, {...init,headers:{...init?.headers,authorization:`Bearer ${token}`,'content-type':'application/json'}});if(!response.ok)throw Error((await response.json().catch(()=>({}))).message??'Request failed.');return response.status===204?undefined as T:response.json();}
-export function captureEligibility(status:PsiuStatus,units:CustomerUnit[],systems:UserSystem[]):{ok:true;unit:CustomerUnit}|{ok:false;message:string}{if(!systems.some(x=>x.active))return{ok:false,message:'Create and select an active system before capture.'};const unit=units.find(x=>x.uid===status.uid);if(!unit)return{ok:false,message:'This PSIU UID is not assigned to your account.'};if(unit.status!=='enabled')return{ok:false,message:`This assigned PSIU is ${unit.status}. Contact support.`};return{ok:true,unit};}
-export function ControllerPage({units,systems}:{units:CustomerUnit[];systems:UserSystem[]}){
- const client=useMemo(()=>createPsuClient(),[]),nav=useNavigate();const[phase,setPhase]=useState<CapturePhase>('checking'),[status,setStatus]=useState<PsiuStatus|null>(null),[unit,setUnit]=useState<CustomerUnit>(),[notice,setNotice]=useState('Connecting to the local PSIU bridge.'),[dialog,setDialog]=useState(false),[definitions,setDefinitions]=useState<ReportDefinition[]>([]),[error,setError]=useState('');
- const refresh=useCallback(async()=>{try{const next=await client.getStatus();setStatus(next);setPhase(next.recording?'capturing':'ready');setNotice(next.recording?'PSIU is recording.':'PSIU is ready to capture.');}catch{setPhase('unavailable');setNotice('Local PSIU bridge is unavailable. Start the paired local bridge, then retry.');}},[client]);useEffect(()=>{void refresh();},[refresh]);
- const start=async()=>{setPhase('starting');try{const next=await client.getStatus(),eligible=captureEligibility(next,units,systems);if(!eligible.ok){setStatus(next);setPhase('ready');setNotice(eligible.message);return;}setUnit(eligible.unit);const recording=await client.startCapture();setStatus(recording);setPhase('capturing');setNotice('PSIU is recording. Monitor progress, then stop capture.');}catch{setPhase('unavailable');setNotice('Capture did not start. Check the paired local bridge and PSIU.');}};
- const stop=async()=>{setPhase('stopping');try{const next=await client.stopCapture();setStatus(next);setPhase('completed');setDefinitions(await request<ReportDefinition[]>('/v1/reports/definitions'));setDialog(true);setNotice('Capture complete. Choose reports to process or discard it.');}catch{setPhase('unavailable');setNotice('Capture could not be stopped through the local bridge.');}};
- useEffect(()=>{if(phase!=='capturing')return;const timer=window.setInterval(()=>void client.getStatus().then(next=>{setStatus(next);if(!next.recording){setPhase('ready');setNotice('PSIU stopped recording.');}}).catch(()=>setNotice('PSIU status update delayed.')),2000);return()=>window.clearInterval(timer);},[client,phase]);
- const discard=()=>{setDialog(false);setPhase('ready');setUnit(undefined);setNotice('Capture discarded. PSIU is ready to capture.');};
- const process=async(reports:CreateReportRequest['reports'])=>{if(!unit||!status)return;setError('');setPhase('processing');try{const wav=await client.getCompletedCapture();if(!wav)throw Error('PSIU has no completed WAV file.');const file=new File([wav],`psiu-${status.uid}-${Date.now()}.wav`,{type:'audio/wav'});const idempotencyKey=crypto.randomUUID().replaceAll('-','');const inputs=[{clientFileId:crypto.randomUUID().replaceAll('-',''),fileName:file.name,contentType:'audio/wav',byteLength:file.size,recordedAt:new Date().toISOString(),source:'psiu_capture' as const}];const batch=await request<CreateSampleUploadBatchResponse>('/v1/samples/upload-batches',{method:'POST',body:JSON.stringify({idempotencyKey,psiuUnitId:unit.id,systemId:systems.find(x=>x.active)?.id,source:'psiu_capture',observedPsiuUid:status.uid,files:inputs})});const intent=batch.uploads[0];if(!intent)throw Error('Upload intent is unavailable.');const put=await fetch(intent.uploadUrl,{method:'PUT',headers:intent.requiredHeaders,body:file});if(!put.ok)throw Error('Capture upload failed.');await request(`/v1/samples/${intent.sampleId}/complete`,{method:'POST'});await request('/v1/reports/requests',{method:'POST',body:JSON.stringify({idempotencyKey:crypto.randomUUID().replaceAll('-',''),batchId:batch.batchId,reports})});setDialog(false);setPhase('ready');setNotice('Processing queued. Track progress in the Home activity queue.');nav('/');}catch(e){setPhase('completed');setError(e instanceof Error?e.message:'Unable to process this sample.');}};
- const eligible=status?captureEligibility(status,units,systems):{ok:false as const,message:'Checking local bridge.'};const busy=['checking','starting','stopping','processing'].includes(phase);
- return <Stack spacing={3}><Box><Typography variant="h3">Sample Capture</Typography><Typography color="text.secondary">Capture through your paired local bridge. WAV files can only be processed from this PSIU.</Typography></Box><Alert severity={phase==='unavailable'||!eligible.ok?'info':'success'} action={phase==='unavailable'?<Button color="inherit" onClick={()=>void refresh()}>Retry bridge</Button>:undefined}>{notice}</Alert><Grid container spacing={3}><Grid size={{xs:12,md:5}}><Card><CardContent><Typography variant="h6">PSIU connection</Typography>{status?<Stack mt={2} spacing={1}><Detail label="Unit ID" value={status.uid}/><Detail label="Recorder" value={status.recorderState}/><Detail label="Sample rate" value={`${status.sampleRateHz} Hz`}/></Stack>:<Typography mt={2}>No local bridge connection.</Typography>}</CardContent></Card></Grid><Grid size={{xs:12,md:7}}><Card><CardContent><Stack spacing={2} alignItems="center"><Typography variant="h6" alignSelf="start">Capture control</Typography><RecordArtwork state={phase==='capturing'||busy?'spinning':'stopped'}/>{phase==='capturing'?<Button variant="contained" color="secondary" size="large" onClick={()=>void stop()}>Stop capture</Button>:<Button variant="contained" size="large" disabled={busy||phase==='unavailable'||!eligible.ok} onClick={()=>void start()}>Start capture</Button>}{phase==='capturing'&&status&&<Typography>Pages written: {status.pagesWritten} · Dropped halves: {status.droppedHalves}</Typography>}</Stack></CardContent></Card></Grid></Grid><ReportPicker open={dialog} definitions={definitions} error={error} onClose={discard} onSubmit={process} cancelLabel="Discard"/></Stack>;
+type CapturePhase = 'checking' | 'unavailable' | 'ready' | 'starting' | 'capturing' | 'stopping' | 'completed' | 'processing';
+
+export function queueCapturedPsiuWav(file: File, psiuUnitId: string, observedPsiuUid: string, units: CustomerUnit[]) {
+  if (!psiuUnitId || !observedPsiuUid || !units.some(unit => unit.id === psiuUnitId && unit.uid === observedPsiuUid && unit.status === 'enabled')) throw new PsiuUnavailableError();
+  return { file, clientFileId: crypto.randomUUID().replaceAll('-', ''), psiuUnitId, observedPsiuUid, recordedAt: new Date(file.lastModified).toISOString(), source: 'psiu_capture' as const };
 }
-function Detail({label,value}:{label:string;value:string}){return <Box><Typography variant="caption" color="text.secondary">{label}</Typography><Typography>{value}</Typography></Box>;}
+
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const token = await accessToken();
+  const response = await fetch(`${api}${path}`, { ...init, headers: { ...init?.headers, authorization: `Bearer ${token}`, 'content-type': 'application/json' } });
+  if (!response.ok) throw Error((await response.json().catch(() => ({}))).message ?? 'Request failed.');
+  return response.status === 204 ? undefined as T : response.json();
+}
+
+export function captureEligibility(status: PsiuStatus, units: CustomerUnit[], systems: UserSystem[]): { ok: true; unit: CustomerUnit } | { ok: false; message: string } {
+  if (!systems.some(item => item.active)) return { ok: false, message: 'Create and select an active system before capture.' };
+  const unit = eligibleUnit(status, units);
+  return unit ? { ok: true, unit } : { ok: false, message: 'This PSIU UID is not assigned and enabled for capture.' };
+}
+function eligibleUnit(status: PsiuStatus, units: CustomerUnit[]) { return units.find(item => item.uid === status.uid && item.status === 'enabled'); }
+
+export function ControllerPage({ units, systems }: { units: CustomerUnit[]; systems: UserSystem[] }) {
+  const client = useMemo(() => createPsuClient(), []);
+  const navigate = useNavigate();
+  const [phase, setPhase] = useState<CapturePhase>('checking');
+  const [status, setStatus] = useState<PsiuStatus | null>(null);
+  const [unit, setUnit] = useState<CustomerUnit>();
+  const [notice, setNotice] = useState('Connecting to the local PSIU bridge.');
+  const [dialog, setDialog] = useState(false);
+  const [definitions, setDefinitions] = useState<ReportDefinition[]>([]);
+  const [error, setError] = useState('');
+
+  const refresh = useCallback(async () => {
+    try {
+      const next = await client.getStatus();
+      setStatus(next);
+      const assignedUnit = eligibleUnit(next, units);
+      if (next.recording && !assignedUnit) {
+        setUnit(undefined); setPhase('unavailable'); setNotice('PSIU is recording, but its enabled assignment is unavailable. Restore the assignment before stopping and processing this capture.'); return;
+      }
+      if (assignedUnit) setUnit(assignedUnit);
+      setPhase(next.recording ? 'capturing' : 'ready');
+      setNotice(next.recording ? 'PSIU is recording.' : 'PSIU is ready to capture.');
+    } catch { setPhase('unavailable'); setNotice('Local PSIU bridge is unavailable. Start the paired local bridge, then retry.'); }
+  }, [client, units]);
+  useEffect(() => { void refresh(); }, [refresh]);
+
+  const start = async () => {
+    setPhase('starting'); setError('');
+    try {
+      const checked = await client.getStatus();
+      const eligibility = captureEligibility(checked, units, systems);
+      if (!eligibility.ok) { setStatus(checked); setPhase('ready'); setNotice(eligibility.message); return; }
+      const next = await client.startCapture(); setStatus(next); setUnit(eligibility.unit);
+      if (!next.recording) { setPhase('ready'); setNotice('PSIU did not confirm recording. Capture was not started.'); return; }
+      setPhase('capturing'); setNotice('PSIU is recording. Monitor progress, then stop capture.');
+    } catch { setPhase('unavailable'); setNotice('Capture did not start. Check the paired local bridge and PSIU.'); }
+  };
+  const stop = async () => {
+    setPhase('stopping'); setError('');
+    try {
+      const next = await client.stopCapture(); setStatus(next);
+      if (next.recording) { setPhase('capturing'); setNotice('PSIU still reports recording. Wait briefly, then stop capture again.'); return; }
+      const assignedUnit = unit ?? eligibleUnit(next, units);
+      if (!assignedUnit) { setPhase('unavailable'); setNotice('PSIU stopped, but its enabled assignment is unavailable. Restore the assignment before processing this capture.'); return; }
+      setUnit(assignedUnit); setDefinitions(await request<ReportDefinition[]>('/v1/reports/definitions')); setPhase('completed'); setDialog(true); setNotice('Capture complete. Choose reports to process or discard it.');
+    } catch { setPhase('unavailable'); setNotice('Capture could not be stopped through the local bridge.'); }
+  };
+  useEffect(() => {
+    if (phase !== 'capturing') return;
+    const timer = window.setInterval(() => void client.getStatus().then(next => {
+      setStatus(next);
+      if (!next.recording) { setPhase('ready'); setNotice('PSIU stopped recording. Press Start capture only after resolving the completed recording.'); }
+    }).catch(() => setNotice('PSIU status update delayed.')), 2000);
+    return () => window.clearInterval(timer);
+  }, [client, phase]);
+
+  const discard = () => { setDialog(false); setPhase('ready'); setUnit(undefined); setError(''); setNotice('Capture discarded. PSIU is ready to capture.'); };
+  const process = async (reports: CreateReportRequest['reports']) => {
+    if (!unit || !status) return;
+    setError(''); setPhase('processing');
+    try {
+      const wav = await client.getCompletedCapture(); if (!wav) throw Error('PSIU has no completed WAV file.');
+      const file = new File([wav], `psiu-${status.uid}-${Date.now()}.wav`, { type: 'audio/wav' });
+      const idempotencyKey = crypto.randomUUID().replaceAll('-', '');
+      const batch = await request<CreateSampleUploadBatchResponse>('/v1/samples/upload-batches', { method: 'POST', body: JSON.stringify({ idempotencyKey, psiuUnitId: unit.id, systemId: systems.find(item => item.active)?.id, source: 'psiu_capture', observedPsiuUid: status.uid, files: [{ clientFileId: crypto.randomUUID().replaceAll('-', ''), fileName: file.name, contentType: 'audio/wav', byteLength: file.size, recordedAt: new Date().toISOString(), source: 'psiu_capture' }] }) });
+      const intent = batch.uploads[0]; if (!intent) throw Error('Upload intent is unavailable.');
+      const put = await fetch(intent.uploadUrl, { method: 'PUT', headers: intent.requiredHeaders, body: file }); if (!put.ok) throw Error('Capture upload failed.');
+      await request(`/v1/samples/${intent.sampleId}/complete`, { method: 'POST' });
+      await request('/v1/reports/requests', { method: 'POST', body: JSON.stringify({ idempotencyKey: crypto.randomUUID().replaceAll('-', ''), batchId: batch.batchId, reports }) });
+      setDialog(false); setPhase('ready'); setNotice('Processing queued. Track progress in the Home activity queue.'); navigate('/');
+    } catch (reason) { setPhase('completed'); setError(reason instanceof Error ? reason.message : 'Unable to process this sample.'); }
+  };
+  const eligibility = status ? captureEligibility(status, units, systems) : { ok: false as const, message: 'Checking local bridge.' };
+  const busy = ['checking', 'starting', 'stopping', 'processing'].includes(phase);
+  return <Stack spacing={3}><Box><Typography variant="h3">Sample Capture</Typography><Typography color="text.secondary">Capture through your paired local bridge. WAV files can only be processed from this PSIU.</Typography></Box><Alert severity={phase === 'unavailable' || !eligibility.ok ? 'info' : 'success'} action={phase === 'unavailable' ? <Button color="inherit" onClick={() => void refresh()}>Retry bridge</Button> : undefined}>{notice}</Alert><Grid container spacing={3}><Grid size={{ xs: 12, md: 5 }}><Card><CardContent><Typography variant="h6">PSIU connection</Typography>{status ? <Stack mt={2} spacing={1}><Detail label="Unit ID" value={status.uid}/><Detail label="Recorder" value={status.recorderState}/><Detail label="Sample rate" value={`${status.sampleRateHz} Hz`}/></Stack> : <Typography mt={2}>No local bridge connection.</Typography>}</CardContent></Card></Grid><Grid size={{ xs: 12, md: 7 }}><Card><CardContent><Stack spacing={2} alignItems="center"><Typography variant="h6" alignSelf="start">Capture control</Typography><RecordArtwork state={phase === 'capturing' || busy ? 'spinning' : 'stopped'}/>{phase === 'capturing' ? <Button variant="contained" color="secondary" size="large" onClick={() => void stop()}>Stop capture</Button> : <Button variant="contained" size="large" disabled={busy || phase === 'unavailable' || !eligibility.ok} onClick={() => void start()}>Start capture</Button>}{phase === 'capturing' && status && <Typography>Pages written: {status.pagesWritten} · Dropped halves: {status.droppedHalves}</Typography>}</Stack></CardContent></Card></Grid></Grid><ReportPicker open={dialog} definitions={definitions} error={error} onClose={discard} onSubmit={process} cancelLabel="Discard"/></Stack>;
+}
+function Detail({ label, value }: { label: string; value: string }) { return <Box><Typography variant="caption" color="text.secondary">{label}</Typography><Typography>{value}</Typography></Box>; }
