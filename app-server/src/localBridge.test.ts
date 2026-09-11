@@ -53,6 +53,18 @@ test('resolves psiu.local before each protected request and blocks rebinding bef
   try { const response = await fetch(`http://127.0.0.1:${address.port}/psiu/status`); assert.equal(response.status, 403); assert.equal(upstreamCalls, 0); } finally { await close(server); }
 });
 
+test('bridge rejects upstream redirects without following a second target', async () => {
+  let calls = 0, redirect = '';
+  const upstream: typeof fetch = async (_input, init) => { calls += 1; redirect = String(init?.redirect); return new Response(null, { status: 302, headers: { location: 'http://8.8.8.8/' } }); };
+  const { server, base } = await runningServer(upstream);
+  try {
+    const response = await fetch(`${base}/psiu/status`, { headers: { origin: 'https://wally-analytics.app' } });
+    assert.equal(response.status, 302);
+    assert.equal(calls, 1);
+    assert.equal(redirect, 'error');
+  } finally { await close(server); }
+});
+
 test('invalid paired target rejects before any authorization can be forwarded', async () => {
   let calls = 0;
   await assert.rejects(() => createLocalServer({ environment: { NODE_ENV: 'development', PSIU_BASE_URL: 'http://8.8.8.8' }, authorization: 'Basic never-forward', fetchImplementation: (async () => { calls += 1; return new Response(); }) as typeof fetch }), /private, link-local, or loopback/);
