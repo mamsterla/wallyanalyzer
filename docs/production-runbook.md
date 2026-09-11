@@ -73,7 +73,19 @@ Activation requests an ACM certificate for apex and `www`, creates Route 53 alia
 
 ## Isolated report smoke workflow
 
-Run this only after a reviewed deployment has created `ReportSmokeRunnerFunctionName`. It creates no customer records: it migrates only `wally_report_smoke`, writes a deterministic 60-second stereo 48 kHz PCM 1 kHz fixture under `smoke/raw/`, invokes the isolated dispatcher/state machine, validates immutable artifact/provenance records, then deletes its synthetic rows and exact smoke objects on success. Failures retain only smoke-database and smoke-prefix diagnostics.
+Run this only after a reviewed deployment has created `ReportSmokeRunnerFunctionName` **and an operator has completed the one-time private database bootstrap below**. It creates no customer records: it migrates only `wally_report_smoke`, writes a deterministic 60-second stereo 48 kHz PCM 1 kHz fixture under `smoke/raw/`, invokes the isolated dispatcher/state machine, validates immutable artifact/provenance records, then deletes its synthetic rows and exact smoke objects on success. Failures retain only smoke-database and smoke-prefix diagnostics.
+
+### One-time smoke database bootstrap
+
+CloudFormation never deploys a Lambda or service role that can read the platform-admin database credential. Before the first runner invocation, an approved database operator must start a private SSM port-forward to the RDS Proxy, then run `app-server/scripts/bootstrap-smoke-database.mjs` from the reviewed source checkout with their short-lived AWS identity. The script reads the two secret references in memory, creates or updates only the `wally_report_smoke` login/database, and exits; it does not print, persist, or export secret values. Use the stack's database-proxy endpoint and report-smoke secret ARN, discover the master secret ARN through approved RDS operator access, and pass only ARNs/host/database as arguments. Do not grant this access to Lambda, ECS, CodeBuild, or Step Functions.
+
+```bash
+node app-server/scripts/bootstrap-smoke-database.mjs \
+  --proxy-host=127.0.0.1 --master-secret-arn=arn:... \
+  --smoke-secret-arn=arn:... --database=wally_report_smoke
+```
+
+The runner, smoke workflow, and smoke worker receive only the smoke secret and cannot read the platform-admin secret. The CDK smoke assertion verifies this boundary and that the dispatcher targets only the isolated state machine.
 
 ```bash
 SMOKE_RUNNER=$(aws cloudformation describe-stacks --stack-name WallyPlatform-production \

@@ -6,8 +6,9 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "check": "tsc --noEmit -p tsconfig.json",
-    "synth": "cdk synth -c environment=production",
-    "deploy:production": "cdk deploy WallyPlatform-production -c environment=production --require-approval broadening"
+    "synth": "cdk synth -c environment=production && node scripts/assert-smoke-workflow.mjs",
+    "deploy:production": "cdk deploy WallyPlatform-production -c environment=production --require-approval broadening",
+    "test:smoke-workflow": "node scripts/assert-smoke-workflow.mjs"
   },
   "dependencies": {
     "aws-cdk-lib": "^2.197.0",

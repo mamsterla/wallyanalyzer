@@ -350,12 +350,9 @@ export class WallyPlatformStack extends cdk.Stack {
     const workflowImageFor = (handler:string) => lambda.DockerImageCode.fromImageAsset(path.resolve(process.cwd(), '..'), { file: 'app-server/Dockerfile.report-workflow', buildArgs: { NODE_IMAGE: nodeImage }, platform: ecrAssets.Platform.LINUX_AMD64, cmd: [handler] });
     const workerImage = lambda.DockerImageCode.fromImageAsset(path.resolve(process.cwd(), '..'), { file: 'algorithms/Dockerfile.analysis-worker', platform: ecrAssets.Platform.LINUX_AMD64 });
     const workflowLogGroup = new logs.LogGroup(this, 'ReportWorkflowLogGroup', { retention: logs.RetentionDays.ONE_MONTH, removalPolicy: retention });
-    // The smoke lane uses a separate generated principal and database on this private RDS instance.
-    // Secret values are resolved only by the bootstrap function at runtime.
-    const smokeBootstrapFn=new lambda.DockerImageFunction(this,'ReportSmokeDatabaseBootstrapFunction',{code:workflowImageFor('handlers/smokeDbBootstrap.onEvent'),vpc,vpcSubnets:{subnetType:ec2.SubnetType.PRIVATE_ISOLATED},securityGroups:[workflowSecurityGroup],timeout:cdk.Duration.minutes(2),memorySize:512,environment:{DATABASE_PROXY_HOST:databaseProxy.endpoint,MASTER_DATABASE_SECRET_ARN:database.secret!.secretArn,SMOKE_DATABASE_SECRET_ARN:smokeDatabaseSecret.secretArn,SMOKE_DATABASE_NAME:smokeDatabaseName},logGroup:workflowLogGroup});
-    database.secret!.grantRead(smokeBootstrapFn);smokeDatabaseSecret.grantRead(smokeBootstrapFn);
-    const smokeBootstrapProvider=new cr.Provider(this,'ReportSmokeDatabaseBootstrapProvider',{onEventHandler:smokeBootstrapFn});
-    new cdk.CustomResource(this,'ReportSmokeDatabaseBootstrap',{serviceToken:smokeBootstrapProvider.serviceToken});
+    // An operator creates this isolated role/database once through the private SSM
+    // tunnel before the runner is invoked. Do not add a deployed bootstrap Lambda:
+    // no steady-state workload may read the platform-admin database secret.
     const workflowEnvironment = { DATABASE_PROXY_HOST: databaseProxy.endpoint, DATABASE_NAME: 'wally', DATABASE_SSL: 'require', DATABASE_SECRET_ARN: database.secret!.secretArn, SAMPLE_BUCKET_NAME: sampleBucket.bucketName, REPORT_BUCKET_NAME: reportBucket.bucketName };
     const workflowLambda = (id:string, handler:string) => new lambda.DockerImageFunction(this, id, { code: workflowImageFor(handler), vpc, vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED }, securityGroups: [workflowSecurityGroup], timeout: cdk.Duration.minutes(2), memorySize: 512, environment: workflowEnvironment, logGroup: workflowLogGroup });
     const preflightFn=workflowLambda('ReportPreflightFunction','handlers/reportWorkflow.preflight');
@@ -526,7 +523,7 @@ export class WallyPlatformStack extends cdk.Stack {
           version: '0.2',
           phases: {
             install: { 'runtime-versions': { nodejs: 24 }, commands: ['npm ci'] },
-            build: { commands: ['npm run check', 'npm run build', 'npm run test', 'cd infra && npx cdk synth -c nodeBaseImage=public.ecr.aws/docker/library/node:24-alpine -c environment=production -c applicationHostedZoneId=Z0640322GREKLUZ06W3O -c applicationExpectedNameServers=ns-723.awsdns-26.net,ns-386.awsdns-48.com,ns-1026.awsdns-00.org,ns-1580.awsdns-05.co.uk -c legacyApplicationCertificateArn=arn:aws:acm:us-east-1:265404809336:certificate/52ff0b5a-79fb-4504-ac2e-9c5ce89f303c -c applicationActivation=true'] },
+            build: { commands: ['npm run check', 'npm run build', 'npm run test', 'cd infra && npx cdk synth -c nodeBaseImage=public.ecr.aws/docker/library/node:24-alpine -c environment=production -c applicationHostedZoneId=Z0640322GREKLUZ06W3O -c applicationExpectedNameServers=ns-723.awsdns-26.net,ns-386.awsdns-48.com,ns-1026.awsdns-00.org,ns-1580.awsdns-05.co.uk -c legacyApplicationCertificateArn=arn:aws:acm:us-east-1:265404809336:certificate/52ff0b5a-79fb-4504-ac2e-9c5ce89f303c -c applicationActivation=true && node scripts/assert-smoke-workflow.mjs'] },
           },
         }),
       });
@@ -535,7 +532,7 @@ export class WallyPlatformStack extends cdk.Stack {
           version: '0.2',
           phases: {
             install: { 'runtime-versions': { nodejs: 24 }, commands: ['npm ci'] },
-            build: { commands: ['npm run check', 'npm run build', 'npm run test', 'cd infra && npx cdk deploy WallyPlatform-production -c nodeBaseImage=public.ecr.aws/docker/library/node:24-alpine -c environment=production -c applicationHostedZoneId=Z0640322GREKLUZ06W3O -c applicationExpectedNameServers=ns-723.awsdns-26.net,ns-386.awsdns-48.com,ns-1026.awsdns-00.org,ns-1580.awsdns-05.co.uk -c legacyApplicationCertificateArn=arn:aws:acm:us-east-1:265404809336:certificate/52ff0b5a-79fb-4504-ac2e-9c5ce89f303c -c applicationActivation=true --require-approval never'] },
+            build: { commands: ['npm run check', 'npm run build', 'npm run test', 'cd infra && npx cdk deploy WallyPlatform-production -c nodeBaseImage=public.ecr.aws/docker/library/node:24-alpine -c environment=production -c applicationHostedZoneId=Z0640322GREKLUZ06W3O -c applicationExpectedNameServers=ns-723.awsdns-26.net,ns-386.awsdns-48.com,ns-1026.awsdns-00.org,ns-1580.awsdns-05.co.uk -c legacyApplicationCertificateArn=arn:aws:acm:us-east-1:265404809336:certificate/52ff0b5a-79fb-4504-ac2e-9c5ce89f303c -c applicationActivation=true --require-approval never && node scripts/assert-smoke-workflow.mjs'] },
             post_build: { commands: ['echo "Foundation deployment preserves the activated HTTPS listener, certificate, and canonical Route 53 aliases."'] },
           },
         }),
@@ -548,7 +545,7 @@ export class WallyPlatformStack extends cdk.Stack {
           phases: {
             install: { 'runtime-versions': { nodejs: 24 }, commands: ['npm ci'] },
             pre_build: { commands: ['bash infra/scripts/domain-activation-preflight.sh'] },
-            build: { commands: ['npm run check', 'npm run build', 'npm run test', 'cd infra && npx cdk deploy WallyPlatform-production -c nodeBaseImage=public.ecr.aws/docker/library/node:24-alpine -c environment=production -c applicationHostedZoneId=Z0640322GREKLUZ06W3O -c applicationExpectedNameServers=ns-723.awsdns-26.net,ns-386.awsdns-48.com,ns-1026.awsdns-00.org,ns-1580.awsdns-05.co.uk -c legacyApplicationCertificateArn=arn:aws:acm:us-east-1:265404809336:certificate/52ff0b5a-79fb-4504-ac2e-9c5ce89f303c -c applicationActivation=true --require-approval never'] },
+            build: { commands: ['npm run check', 'npm run build', 'npm run test', 'cd infra && npx cdk deploy WallyPlatform-production -c nodeBaseImage=public.ecr.aws/docker/library/node:24-alpine -c environment=production -c applicationHostedZoneId=Z0640322GREKLUZ06W3O -c applicationExpectedNameServers=ns-723.awsdns-26.net,ns-386.awsdns-48.com,ns-1026.awsdns-00.org,ns-1580.awsdns-05.co.uk -c legacyApplicationCertificateArn=arn:aws:acm:us-east-1:265404809336:certificate/52ff0b5a-79fb-4504-ac2e-9c5ce89f303c -c applicationActivation=true --require-approval never && node scripts/assert-smoke-workflow.mjs'] },
           },
         }),
         environment: {

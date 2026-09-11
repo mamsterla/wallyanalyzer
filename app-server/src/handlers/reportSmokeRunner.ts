@@ -10,16 +10,21 @@ const presetId = '10000000-0000-4000-8000-000000000002';
 const pollIntervalMs = 5_000;
 const pollTimeoutMs = 12 * 60_000;
 
-type Seed = { ownerId:string; unitId:string; assignmentId:string; systemId:string; batchId:string; sampleId:string; requestId:string; reportId:string; rawKey:string; rawVersionId?:string; reportPrefix:string };
+export type SmokeSeed = { ownerId:string; unitId:string; assignmentId:string; systemId:string; batchId:string; sampleId:string; requestId:string; reportId:string; rawKey:string; rawVersionId?:string; reportPrefix:string };
+type Seed = SmokeSeed;
 type Artifact = { kind:string; object_key:string; object_version_id:string };
 type ObjectBody = { kind:string; body:Buffer };
 
-function smokeEnvironment() {
-  const secret = required('SMOKE_DATABASE_SECRET_ARN');
-  const database = required('SMOKE_DATABASE_NAME');
-  const rawPrefix = requiredPrefix('SMOKE_RAW_PREFIX');
-  const reportPrefix = requiredPrefix('SMOKE_REPORT_PREFIX');
-  return { secret, database, rawPrefix, reportPrefix };
+export function smokeEnvironment(environment:NodeJS.ProcessEnv=process.env) {
+  const secret = required('SMOKE_DATABASE_SECRET_ARN', environment);
+  const database = required('SMOKE_DATABASE_NAME', environment);
+  const rawPrefix = requiredPrefix('SMOKE_RAW_PREFIX', environment);
+  const reportPrefix = requiredPrefix('SMOKE_REPORT_PREFIX', environment);
+  const dispatcher = required('SMOKE_DISPATCHER_FUNCTION_NAME', environment);
+  if (database !== 'wally_report_smoke') throw new Error('Smoke runner must use only wally_report_smoke.');
+  if (rawPrefix !== 'smoke/raw/' || reportPrefix !== 'smoke/reports/') throw new Error('Smoke runner must use only the fixed smoke prefixes.');
+  if (!dispatcher.includes('SmokeReportDispatcher')) throw new Error('Smoke runner must invoke only the isolated smoke dispatcher.');
+  return { secret, database, rawPrefix, reportPrefix, dispatcher };
 }
 
 function bindSmokeDatabase() {
@@ -52,6 +57,11 @@ export async function run() {
     }
     await pool.end();
   }
+}
+
+/** Ensures every retained failure diagnostic and successful cleanup target is smoke-scoped. */
+export function isSmokeDiagnosticKey(seed:Pick<SmokeSeed,'rawKey'|'reportPrefix'>, key:string) {
+  return key===seed.rawKey || key.startsWith(seed.reportPrefix);
 }
 
 /** Builds opaque smoke-only record IDs and keys before any database mutation. */
@@ -94,9 +104,13 @@ async function putSmokeInput(key:string) {
   return response.VersionId;
 }
 
-async function invokeDispatcher() {
-  const response=await new LambdaClient({}).send(new InvokeCommand({FunctionName:required('SMOKE_DISPATCHER_FUNCTION_NAME'),InvocationType:'RequestResponse',Payload:Buffer.from('{}')}));
+export async function invokeSmokeDispatcher(dispatcher:string, invoke:(command:InvokeCommand)=>Promise<{FunctionError?:string;StatusCode?:number}>) {
+  if (!dispatcher.includes('SmokeReportDispatcher')) throw new Error('Smoke runner must invoke only the isolated smoke dispatcher.');
+  const response=await invoke(new InvokeCommand({FunctionName:dispatcher,InvocationType:'RequestResponse',Payload:Buffer.from('{}')}));
   if(response.FunctionError || response.StatusCode!==200) throw new Error('Smoke dispatcher invocation failed.');
+}
+async function invokeDispatcher() {
+  await invokeSmokeDispatcher(smokeEnvironment().dispatcher, (command)=>new LambdaClient({}).send(command));
 }
 
 async function waitForCompletion(pool:Pool, reportId:string):Promise<Artifact[]> {
@@ -138,26 +152,37 @@ export function assertSmokeArtifacts(expected:{reportId:string;sampleId:string;r
   if(value.reportId!==expected.reportId || !Array.isArray(value.inputProvenance) || value.inputProvenance.length!==1 || value.inputProvenance[0]?.sampleId!==expected.sampleId || value.inputProvenance[0]?.objectKey!==expected.rawKey || !expected.rawKey.startsWith('smoke/raw/') || !expected.reportPrefix.startsWith('smoke/reports/')) throw new Error('Smoke manifest provenance is not isolated.');
 }
 
+type Transaction = { query:(text:string, values?:unknown[])=>Promise<unknown> };
+/** Delete child records first. Nothing outside the synthetic smoke graph is addressed. */
+export async function cleanupSmokeRows(client:Transaction, seed:SmokeSeed) {
+  await client.query('delete from report_artifacts where report_id=$1',[seed.reportId]);
+  await client.query('delete from analysis_report_inputs where report_id=$1',[seed.reportId]);
+  await client.query('delete from report_outbox where report_request_id=$1',[seed.requestId]);
+  await client.query('delete from analysis_reports where id=$1',[seed.reportId]);
+  await client.query('delete from report_requests where id=$1',[seed.requestId]);
+  await client.query('delete from samples where id=$1',[seed.sampleId]);
+  await client.query('delete from sample_upload_batches where id=$1',[seed.batchId]);
+  await client.query('delete from user_systems where id=$1',[seed.systemId]);
+  await client.query('delete from psiu_assignments where id=$1',[seed.assignmentId]);
+  await client.query('delete from psiu_units where id=$1',[seed.unitId]);
+  await client.query('delete from users where id=$1',[seed.ownerId]);
+}
+
 async function cleanupSmokeRun(pool:Pool, seed:Seed, artifacts:Artifact[]) {
   const client=await pool.connect();
   try {
     await client.query('begin');
-    await client.query('delete from report_requests where id=$1',[seed.requestId]);
-    await client.query('delete from samples where id=$1',[seed.sampleId]);
-    await client.query('delete from sample_upload_batches where id=$1',[seed.batchId]);
-    await client.query('delete from user_systems where id=$1',[seed.systemId]);
-    await client.query('delete from psiu_assignments where id=$1',[seed.assignmentId]);
-    await client.query('delete from psiu_units where id=$1',[seed.unitId]);
-    await client.query('delete from users where id=$1',[seed.ownerId]);
+    await cleanupSmokeRows(client, seed);
     await client.query('commit');
   } catch (error) { await client.query('rollback'); throw error; } finally { client.release(); }
   const s3=new S3Client({});
   if(!seed.rawVersionId) throw new Error('Smoke input version is required for cleanup.');
+  if (!isSmokeDiagnosticKey(seed, seed.rawKey) || artifacts.some((artifact)=>!isSmokeDiagnosticKey(seed, artifact.object_key))) throw new Error('Smoke cleanup refused a non-smoke object.');
   await Promise.all([s3.send(new DeleteObjectCommand({Bucket:required('SAMPLE_BUCKET_NAME'),Key:seed.rawKey,VersionId:seed.rawVersionId})),...artifacts.map((artifact)=>s3.send(new DeleteObjectCommand({Bucket:required('REPORT_BUCKET_NAME'),Key:artifact.object_key,VersionId:artifact.object_version_id})))]);
 }
 
 /** The runner only accepts a completed report; every other terminal state retains smoke diagnostics. */
 export const isTerminalSmokeStatus=(status:string|undefined)=>status==='completed'||status==='failed'||status==='cancelled';
 const sleep=(ms:number)=>new Promise<void>((resolve)=>setTimeout(resolve,ms));
-function required(name:string){const value=process.env[name];if(!value)throw new Error(`Missing ${name}`);return value;}
-function requiredPrefix(name:string){const value=required(name);if(!value.endsWith('/'))throw new Error(`Invalid ${name}`);return value;}
+function required(name:string, environment:NodeJS.ProcessEnv=process.env){const value=environment[name];if(!value)throw new Error(`Missing ${name}`);return value;}
+function requiredPrefix(name:string, environment:NodeJS.ProcessEnv=process.env){const value=required(name, environment);if(!value.endsWith('/'))throw new Error(`Invalid ${name}`);return value;}
