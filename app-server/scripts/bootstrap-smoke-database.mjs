@@ -43,6 +43,8 @@ await client.connect();
 try {
   try { await client.query(`create role ${identifier(smoke.username)} login password ${literal(smoke.password)}`); }
   catch (error) { if (!duplicateRole(error)) throw error; await client.query(`alter role ${identifier(smoke.username)} login password ${literal(smoke.password)}`); }
+  const current = await client.query('select current_user as name');
+  await client.query(`grant ${identifier(smoke.username)} to ${identifier(current.rows[0].name)}`);
   const existing = await client.query('select 1 from pg_database where datname=$1', [database]);
   if (!existing.rowCount) await client.query(`create database ${identifier(database)} owner ${identifier(smoke.username)}`);
 } finally {
