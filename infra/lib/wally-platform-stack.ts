@@ -94,6 +94,7 @@ export class WallyPlatformStack extends cdk.Stack {
     loadBalancerSecurityGroup.addEgressRule(serviceSecurityGroup, ec2.Port.tcp(80), 'HTTP to application tasks');
     serviceSecurityGroup.addIngressRule(loadBalancerSecurityGroup, ec2.Port.tcp(80), 'HTTP from temporary browser load balancer');
     const workflowSecurityGroup = new ec2.SecurityGroup(this, 'ReportWorkflowSecurityGroup', { vpc, allowAllOutbound: false, description: 'Private report workflow Lambdas' });
+    const smokeWorkflowSecurityGroup = new ec2.SecurityGroup(this, 'ReportSmokeWorkflowSecurityGroup', { vpc, allowAllOutbound: false, description: 'Private isolated report smoke workflow Lambdas' });
     const endpointSecurityGroup = new ec2.SecurityGroup(this, 'VpcEndpointSecurityGroup', {
       vpc,
       allowAllOutbound: false,
@@ -101,8 +102,10 @@ export class WallyPlatformStack extends cdk.Stack {
     });
     endpointSecurityGroup.addIngressRule(serviceSecurityGroup, ec2.Port.tcp(443), 'HTTPS from private application tasks');
     endpointSecurityGroup.addIngressRule(workflowSecurityGroup, ec2.Port.tcp(443), 'HTTPS from report workflow Lambdas');
+    endpointSecurityGroup.addIngressRule(smokeWorkflowSecurityGroup, ec2.Port.tcp(443), 'HTTPS from report smoke workflow Lambdas');
     serviceSecurityGroup.addEgressRule(endpointSecurityGroup, ec2.Port.tcp(443), 'HTTPS to approved AWS PrivateLink endpoints');
     workflowSecurityGroup.addEgressRule(endpointSecurityGroup, ec2.Port.tcp(443), 'HTTPS to approved AWS PrivateLink endpoints');
+    smokeWorkflowSecurityGroup.addEgressRule(endpointSecurityGroup, ec2.Port.tcp(443), 'HTTPS to approved AWS PrivateLink endpoints');
 
     vpc.addGatewayEndpoint('S3GatewayEndpoint', { service: ec2.GatewayVpcEndpointAwsService.S3 });
     const s3PrefixList = new cr.AwsCustomResource(this, 'S3ManagedPrefixList', {
@@ -121,6 +124,7 @@ export class WallyPlatformStack extends cdk.Stack {
       'HTTPS to S3 image layers through the gateway endpoint',
     );
     workflowSecurityGroup.addEgressRule(ec2.Peer.prefixList(s3PrefixList.getResponseField('PrefixLists.0.PrefixListId')), ec2.Port.tcp(443), 'HTTPS to S3 report artifacts through the gateway endpoint');
+    smokeWorkflowSecurityGroup.addEgressRule(ec2.Peer.prefixList(s3PrefixList.getResponseField('PrefixLists.0.PrefixListId')), ec2.Port.tcp(443), 'HTTPS to S3 smoke report artifacts through the gateway endpoint');
     [
       ec2.InterfaceVpcEndpointAwsService.ECR,
       ec2.InterfaceVpcEndpointAwsService.ECR_DOCKER,
@@ -175,9 +179,11 @@ export class WallyPlatformStack extends cdk.Stack {
     proxySecurityGroup.addIngressRule(serviceSecurityGroup, ec2.Port.tcp(5432), 'PostgreSQL from private application tasks');
     proxySecurityGroup.addIngressRule(bastionSecurityGroup, ec2.Port.tcp(5432), 'PostgreSQL from Session Manager bastion');
     proxySecurityGroup.addIngressRule(workflowSecurityGroup, ec2.Port.tcp(5432), 'PostgreSQL from report workflow Lambdas');
+    proxySecurityGroup.addIngressRule(smokeWorkflowSecurityGroup, ec2.Port.tcp(5432), 'PostgreSQL from isolated smoke workflow Lambdas');
     proxySecurityGroup.addEgressRule(databaseSecurityGroup, ec2.Port.tcp(5432), 'PostgreSQL to database');
     serviceSecurityGroup.addEgressRule(proxySecurityGroup, ec2.Port.tcp(5432), 'PostgreSQL through RDS Proxy');
     workflowSecurityGroup.addEgressRule(proxySecurityGroup, ec2.Port.tcp(5432), 'PostgreSQL through RDS Proxy');
+    smokeWorkflowSecurityGroup.addEgressRule(proxySecurityGroup, ec2.Port.tcp(5432), 'PostgreSQL through RDS Proxy');
     databaseSecurityGroup.addIngressRule(proxySecurityGroup, ec2.Port.tcp(5432), 'PostgreSQL only through RDS Proxy');
 
     const bastionRole = new iam.Role(this, 'DatabaseBastionRole', {
@@ -377,6 +383,30 @@ export class WallyPlatformStack extends cdk.Stack {
     const reportStateMachine=new sfn.StateMachine(this,'ReportStateMachine',{definitionBody:sfn.DefinitionBody.fromChainable(map.next(finish)),timeout:cdk.Duration.hours(1),stateMachineType:sfn.StateMachineType.STANDARD,logs:{level:sfn.LogLevel.OFF}});
     dispatcherFn.addEnvironment('REPORT_STATE_MACHINE_ARN',reportStateMachine.stateMachineArn);reportStateMachine.grantStartExecution(dispatcherFn);
     new events.Rule(this,'ReportOutboxDispatchSchedule',{schedule:events.Schedule.rate(cdk.Duration.minutes(1)),targets:[new targets.LambdaFunction(dispatcherFn)]});
+
+    // Isolated smoke lane. It has no EventBridge target: the future smoke runner invokes
+    // SmokeReportDispatcherFunction on demand after preparing its dedicated database.
+    const smokeWorkflowEnvironment={DATABASE_PROXY_HOST:databaseProxy.endpoint,DATABASE_SSL:'require',SMOKE_DATABASE_SECRET_ARN:smokeDatabaseSecret.secretArn,SMOKE_DATABASE_NAME:smokeDatabaseName,SAMPLE_BUCKET_NAME:sampleBucket.bucketName,REPORT_BUCKET_NAME:reportBucket.bucketName,SMOKE_RAW_PREFIX:'smoke/raw/',SMOKE_REPORT_PREFIX:'smoke/reports/'};
+    const smokeWorkflowLambda=(id:string,handler:string)=>new lambda.DockerImageFunction(this,id,{code:workflowImageFor(handler),vpc,vpcSubnets:{subnetType:ec2.SubnetType.PRIVATE_ISOLATED},securityGroups:[smokeWorkflowSecurityGroup],timeout:cdk.Duration.minutes(2),memorySize:512,environment:smokeWorkflowEnvironment,logGroup:workflowLogGroup});
+    const smokePreflightFn=smokeWorkflowLambda('SmokeReportPreflightFunction','handlers/reportSmokeWorkflow.preflight');
+    const smokeFinalizerFn=smokeWorkflowLambda('SmokeReportFinalizerFunction','handlers/reportSmokeWorkflow.finalize');
+    const smokeFailedFn=smokeWorkflowLambda('SmokeReportFailureFunction','handlers/reportSmokeWorkflow.fail');
+    const smokeRequestFinalizerFn=smokeWorkflowLambda('SmokeReportRequestFinalizerFunction','handlers/reportSmokeWorkflow.finalizeRequest');
+    const smokeDispatcherFn=smokeWorkflowLambda('SmokeReportDispatcherFunction','handlers/reportSmokeWorkflow.dispatch');
+    const smokeAnalysisWorker=new lambda.DockerImageFunction(this,'SmokeAnalysisWorkerFunction',{code:workerImage,timeout:cdk.Duration.minutes(15),memorySize:3008,ephemeralStorageSize:cdk.Size.gibibytes(4),vpc,vpcSubnets:{subnetType:ec2.SubnetType.PRIVATE_ISOLATED},securityGroups:[smokeWorkflowSecurityGroup],environment:{SAMPLE_BUCKET_NAME:sampleBucket.bucketName,REPORT_BUCKET_NAME:reportBucket.bucketName,SMOKE_RAW_PREFIX:'smoke/raw/',SMOKE_REPORT_PREFIX:'smoke/reports/'},logGroup:workflowLogGroup});
+    for(const fn of [smokePreflightFn,smokeFinalizerFn,smokeFailedFn,smokeRequestFinalizerFn,smokeDispatcherFn]){smokeDatabaseSecret.grantRead(fn);fn.addToRolePolicy(new iam.PolicyStatement({actions:['s3:GetObject'],resources:[sampleBucket.arnForObjects('smoke/raw/*'),reportBucket.arnForObjects('smoke/reports/*')]}));}
+    smokeFinalizerFn.addToRolePolicy(new iam.PolicyStatement({actions:['s3:PutObject'],resources:[reportBucket.arnForObjects('smoke/reports/*')]}));
+    smokeAnalysisWorker.addToRolePolicy(new iam.PolicyStatement({actions:['s3:GetObject','s3:GetObjectVersion'],resources:[sampleBucket.arnForObjects('smoke/raw/*')]}));
+    smokeAnalysisWorker.addToRolePolicy(new iam.PolicyStatement({actions:['s3:PutObject'],resources:[reportBucket.arnForObjects('smoke/reports/*')]}));
+    const smokePreflight=new sfnTasks.LambdaInvoke(this,'SmokeReportPreflight',{lambdaFunction:smokePreflightFn,payloadResponseOnly:true,resultPath:'$.preflight'});
+    const smokeWorker=new sfnTasks.LambdaInvoke(this,'SmokeReportWorker',{lambdaFunction:smokeAnalysisWorker,payload:sfn.TaskInput.fromJsonPathAt('$.preflight'),payloadResponseOnly:true,resultPath:'$.worker'});
+    const smokeFinalize=new sfnTasks.LambdaInvoke(this,'SmokeReportFinalize',{lambdaFunction:smokeFinalizerFn,payload:sfn.TaskInput.fromObject({'reportId.$':'$.reportId','artifacts.$':'$.worker.artifacts'}),payloadResponseOnly:true,resultPath:'$.finalized'});
+    const smokeFail=new sfnTasks.LambdaInvoke(this,'SmokeReportMarkFailed',{lambdaFunction:smokeFailedFn,payload:sfn.TaskInput.fromObject({'reportId.$':'$.reportId','error.$':'$.failure.Error'}),payloadResponseOnly:true,resultPath:'$.failed'});
+    smokePreflight.addRetry({maxAttempts:3,interval:cdk.Duration.seconds(5),backoffRate:2}).addCatch(smokeFail,{resultPath:'$.failure'});smokeWorker.addRetry({maxAttempts:2,interval:cdk.Duration.seconds(10),backoffRate:2}).addCatch(smokeFail,{resultPath:'$.failure'});smokeFinalize.addRetry({maxAttempts:5,interval:cdk.Duration.seconds(5),backoffRate:2}).addCatch(smokeFail,{resultPath:'$.failure'});
+    const smokeMap=new sfn.Map(this,'SmokeReportFanout',{itemsPath:'$.reportIds',maxConcurrency:1,resultPath:'$.fanout',parameters:{'requestId.$':'$.requestId','reportId.$':'$$.Map.Item.Value'}}).iterator(smokePreflight.next(smokeWorker).next(smokeFinalize));
+    const smokeFinish=new sfnTasks.LambdaInvoke(this,'SmokeReportRequestFinalize',{lambdaFunction:smokeRequestFinalizerFn,payload:sfn.TaskInput.fromObject({'requestId.$':'$.requestId'}),outputPath:'$.Payload'});
+    const smokeReportStateMachine=new sfn.StateMachine(this,'SmokeReportStateMachine',{definitionBody:sfn.DefinitionBody.fromChainable(smokeMap.next(smokeFinish)),timeout:cdk.Duration.hours(1),stateMachineType:sfn.StateMachineType.STANDARD,logs:{level:sfn.LogLevel.OFF}});
+    smokeDispatcherFn.addEnvironment('REPORT_STATE_MACHINE_ARN',smokeReportStateMachine.stateMachineArn);smokeReportStateMachine.grantStartExecution(smokeDispatcherFn);
     const applicationService = new ecs.FargateService(this, 'PrivateApplicationService', {
       cluster,
       taskDefinition,
