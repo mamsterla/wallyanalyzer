@@ -51,6 +51,24 @@ test('user and PSIU directories enforce two-character queries, escape wildcards,
   await assert.rejects(() => repository.typeahead('x'), (e:unknown) => e instanceof HttpError && e.statusCode===400);
 });
 
+test('admin enum filters normalize blanks, cast safely, and reject invalid values', async () => {
+  const calls: Array<{ sql:string; values:unknown[] }> = [];
+  const pool = { query: async (sql:string, values:unknown[] = []) => { calls.push({sql,values}); return { rows: [] }; } };
+  const repository = new PostgresAdminDataRepository(pool as never);
+  await repository.users({ lifecycle:' ' });
+  await repository.units({ status:'', assignment:' ' });
+  await repository.samples({ source:'', state:' ' });
+  assert.match(calls[0]!.sql, /u\.lifecycle=\$3::customer_lifecycle/);
+  assert.equal(calls[0]!.values[2], undefined);
+  assert.match(calls[1]!.sql, /p\.status=\$4::psiu_unit_status/);
+  assert.equal(calls[1]!.values[3], undefined);
+  assert.match(calls[2]!.sql, /s\.upload_state=\$4::sample_upload_state/);
+  assert.deepEqual(calls[2]!.values.slice(2,4), [undefined, undefined]);
+  await assert.rejects(() => repository.users({ lifecycle:'unknown' }), (e:unknown) => e instanceof HttpError && e.statusCode===400);
+  await assert.rejects(() => repository.units({ status:'unknown' }), (e:unknown) => e instanceof HttpError && e.statusCode===400);
+  await assert.rejects(() => repository.samples({ source:'unknown' }), (e:unknown) => e instanceof HttpError && e.statusCode===400);
+});
+
 test('PSIU and sample owner filters require selected IDs while general search stays device-only', async () => {
   const calls: Array<{ sql:string; values:unknown[] }> = [];
   const pool = { query: async (sql:string, values:unknown[] = []) => { calls.push({sql,values}); return { rows: [] }; } };
