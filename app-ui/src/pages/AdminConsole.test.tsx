@@ -72,6 +72,24 @@ describe('scalable admin directories', () => {
     );
   });
 
+  it('reloads the first PSIU directory page when an owner is selected or cleared', async () => {
+    request.mockImplementation((path: string) => {
+      if (path.startsWith('/v1/admin/users/typeahead?')) return Promise.resolve([user]);
+      if (path.startsWith('/v1/admin/psiu-units?')) return Promise.resolve({ items: [], limit: 25, nextCursor: 'page-2' });
+      return Promise.resolve([]);
+    });
+    show('/admin/psiu?cursor=old-page');
+    await screen.findByLabelText('Filter by owner');
+    fireEvent.change(screen.getByLabelText('Filter by owner'), { target: { value: 'Pa' } });
+    await screen.findByRole('option', { name: /Pat Person/ });
+    fireEvent.click(screen.getByRole('option', { name: /Pat Person/ }));
+    await waitFor(() => expect(request).toHaveBeenCalledWith(expect.stringContaining('customerId=user-1')));
+    const ownerRequest = request.mock.calls.map(([path]) => String(path)).find((path) => path.includes('customerId=user-1'))!;
+    expect(ownerRequest).not.toContain('cursor=');
+    fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
+    await waitFor(() => expect(request.mock.calls.map(([path]) => String(path)).some((path) => path.startsWith('/v1/admin/psiu-units?') && !path.includes('customerId=') && !path.includes('cursor='))).toBe(true));
+  });
+
   it('opens a deep-linked read-only user detail, then exposes editable profile fields', async () => {
     request.mockImplementation((path: string) =>
       path === '/v1/admin/users/user-1' ? Promise.resolve(user) : Promise.resolve(undefined),

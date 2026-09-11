@@ -82,7 +82,8 @@ export function AdminConsole() {
   );
 }
 function directoryUrl(base: string, q: string, filters: Record<string, string>, cursor?: string) {
-  const x = new URLSearchParams({ limit: '25', ...filters });
+  const x = new URLSearchParams({ limit: '25' });
+  for (const [key, value] of Object.entries(filters)) if (value) x.set(key, value);
   if (q.trim()) x.set('q', q.trim());
   if (cursor) x.set('cursor', cursor);
   return `${base}?${x}`;
@@ -161,7 +162,7 @@ function Psiu() {
       250,
     );
     return () => clearTimeout(t);
-  }, [q, status, assignment, cursor]);
+  }, [q, status, assignment, owner?.id, cursor]);
   useEffect(() => {
     if (!selected || assignQ.trim().length < 2) {
       setPeople([]);
@@ -183,6 +184,12 @@ function Psiu() {
     setCursor(undefined);
     setHistory([]);
     navigateDirectory(nextQ, { status: nextStatus, assignment: nextAssignment, customerId: owner?.id ?? '' });
+  };
+  const updateOwner = (person?: User) => {
+    setOwner(person);
+    setCursor(undefined);
+    setHistory([]);
+    navigateDirectory(q, { status, assignment, customerId: person?.id ?? '' });
   };
   const go = (nextCursor: string | undefined, nextHistory: string[]) => {
     setCursor(nextCursor);
@@ -260,7 +267,7 @@ function Psiu() {
           Add PSIU
         </Button>
       </Stack>
-      <UserTypeahead label="Filter by owner" selected={owner} onSelect={(person)=>{setOwner(person);setCursor(undefined);setHistory([]);}}/>
+      <UserTypeahead label="Filter by owner" selected={owner} onSelect={updateOwner}/>
       <TextField
         label="Search serial or UID"
         value={q}
