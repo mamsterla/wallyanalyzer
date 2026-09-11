@@ -69,6 +69,19 @@ test('admin enum filters normalize blanks, cast safely, and reject invalid value
   await assert.rejects(() => repository.samples({ source:'unknown' }), (e:unknown) => e instanceof HttpError && e.statusCode===400);
 });
 
+test('admin report, sample, and credit sorting is whitelisted and deterministic', async () => {
+  const calls: Array<{sql:string;values:unknown[]}> = [];
+  const repository = new PostgresAdminDataRepository({ query: async (sql:string,values:unknown[]=[])=>(calls.push({sql,values}),{rows:[]}) } as never);
+  await repository.samples({ sortBy:'owner', sortDirection:'asc' });
+  await repository.reports({ sortBy:'status', sortDirection:'desc' });
+  await repository.creditEntries({ sortBy:'delta', sortDirection:'asc' });
+  assert.match(calls[0]!.sql, /order by u\.email asc,s\.id asc/);
+  assert.match(calls[1]!.sql, /order by ar\.status desc,ar\.id desc/);
+  assert.match(calls[2]!.sql, /order by l\.delta asc,l\.id asc/);
+  await assert.rejects(() => repository.samples({ sortBy:'drop table' }), (e:unknown) => e instanceof HttpError && e.statusCode===400);
+  await assert.rejects(() => repository.creditEntries({ sortDirection:'sideways' }), (e:unknown) => e instanceof HttpError && e.statusCode===400);
+});
+
 test('PSIU and sample owner filters require selected IDs while general search stays device-only', async () => {
   const calls: Array<{ sql:string; values:unknown[] }> = [];
   const pool = { query: async (sql:string, values:unknown[] = []) => { calls.push({sql,values}); return { rows: [] }; } };

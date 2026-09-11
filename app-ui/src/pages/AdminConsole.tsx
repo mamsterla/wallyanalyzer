@@ -1,4 +1,4 @@
-import { Alert, Box, Button, Divider, Paper, Stack, TextField, Typography } from '@mui/material';
+import { Alert, Box, Button, Divider, Paper, Stack, TextField, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TableSortLabel } from '@mui/material';
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { request } from '../api.js';
@@ -43,9 +43,9 @@ export function AdminConsole() {
     s = parts[2] || 'psiu';
   return (
     <Stack direction={{ xs: 'column', md: 'row' }} spacing={3}>
-      <Paper component="nav" sx={{ p: 1, minWidth: 220, height: 'fit-content' }}>
-        <Typography variant="h6" sx={{ p: 1 }}>
-          Administration
+      <Paper component="nav" sx={{ p: 1, width: { md: 76 }, minWidth: { md: 76 }, '&:hover': { width: { md: 220 } }, overflow: 'hidden', transition: 'width 160ms', height: 'fit-content' }}>
+        <Typography variant="h6" sx={{ p: 1, whiteSpace: 'nowrap' }}>
+          Admin
         </Typography>
         {[
           ['psiu', 'PSIU Management'],
@@ -57,7 +57,7 @@ export function AdminConsole() {
           <Button
             key={id}
             fullWidth
-            sx={{ justifyContent: 'flex-start' }}
+            sx={{ justifyContent: 'flex-start', whiteSpace: 'nowrap' }}
             variant={s === id ? 'contained' : 'text'}
             onClick={() => n(`/admin/${id}`)}
           >
@@ -96,6 +96,8 @@ function directoryPath(base: string, q: string, filters: Record<string, string>,
   const search = x.toString();
   return search ? `${base}?${search}` : base;
 }
+function SortableTable({columns,items,sortBy,sortDirection,onSort,row}:{columns:Array<{id:string;label:string;render:(x:any)=>React.ReactNode}>;items:any[];sortBy:string;sortDirection:string;onSort:(id:string)=>void;row:(x:any)=>React.ReactNode}){return <TableContainer component={Paper} sx={{maxWidth:'100%',overflowX:'auto'}}><Table size="small" stickyHeader aria-label="Directory results"><TableHead><TableRow>{columns.map(c=><TableCell key={c.id}><TableSortLabel active={sortBy===c.id} direction={sortBy===c.id?sortDirection as 'asc'|'desc':'asc'} onClick={()=>onSort(c.id)}>{c.label}</TableSortLabel></TableCell>)}</TableRow></TableHead><TableBody>{items.map(x=><TableRow key={x.id}>{row(x)}</TableRow>)}</TableBody></Table></TableContainer>}
+function OffsetPager({page,onPage}:{page:Page<any>;onPage:(offset:number)=>void}){const offset=page.offset??0;return <Stack direction="row" spacing={1} alignItems="center"><Button disabled={!offset} onClick={()=>onPage(Math.max(0,offset-page.limit))}>Previous</Button><Typography variant="body2">{offset+1}–{offset+page.items.length}</Typography><Button disabled={page.items.length<page.limit} onClick={()=>onPage(offset+page.limit)}>Next</Button></Stack>}
 function UserTypeahead({label,onSelect,selected}:TypeaheadProps){const[q,setQ]=useState(''),[items,setItems]=useState<User[]>([]),[loading,setLoading]=useState(false),[active,setActive]=useState(0),version=useRef(0);useEffect(()=>{if(q.trim().length<2){setItems([]);return;}const current=++version.current;setLoading(true);const t=setTimeout(()=>void request<User[]>(`/v1/admin/users/typeahead?q=${encodeURIComponent(q)}`).then(x=>{if(current===version.current){setItems(x);setActive(0);}}).finally(()=>{if(current===version.current)setLoading(false)}),250);return()=>clearTimeout(t)},[q]);if(selected)return <Stack direction="row" spacing={1} alignItems="center"><Typography>{name(selected)}</Typography><Button onClick={()=>{setQ('');setItems([]);onSelect(undefined as never)}}>Clear</Button></Stack>;return <Box><TextField label={label} value={q} onChange={e=>setQ(e.target.value)} helperText={q.length===1?'Enter at least 2 characters.':'Search begins at 2 characters.'} inputProps={{role:'combobox','aria-expanded':items.length>0,'aria-controls':`${label}-options`}} onKeyDown={e=>{if(e.key==='ArrowDown'){e.preventDefault();setActive(x=>Math.min(x+1,items.length-1))}if(e.key==='ArrowUp'){e.preventDefault();setActive(x=>Math.max(x-1,0))}if(e.key==='Enter'&&items[active])onSelect(items[active]!);}}/>{loading&&<Typography variant="body2">Searching…</Typography>}{q.length>=2&&!loading&&items.length===0&&<Typography variant="body2">No users found.</Typography>}{items.length>0&&<Paper id={`${label}-options`} role="listbox">{items.map((x,i)=><Button key={x.id} role="option" aria-selected={i===active} fullWidth sx={{justifyContent:'flex-start'}} onClick={()=>onSelect(x)}>{name(x)}</Button>)}</Paper>}</Box>}
 function Psiu() {
   const l = useLocation(),
