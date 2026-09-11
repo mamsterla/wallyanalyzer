@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AdminConsole } from './AdminConsole.js';
@@ -64,6 +64,47 @@ describe('administrator directory tables', () => {
     expect(screen.getByText('1 Logic Lane')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Back to users' }));
     expect(screen.getByTestId('location').textContent).toBe('/admin/reports?status=completed');
+  });
+  it('maps populated snake_case user directory names before rendering', async () => {
+    request.mockResolvedValue({
+      items: [{ id: 'ada', email: 'ada@example.com', first_name: 'Ada', last_name: 'Lovelace', lifecycle: 'active', balance: 0 }],
+      limit: 25,
+      offset: 0,
+      hasNext: false,
+    });
+    show('/admin/users');
+    expect(await screen.findByRole('button', { name: 'Ada Lovelace · ada@example.com' })).toBeTruthy();
+  });
+  it('ignores stale typeahead responses and errors after the query changes', async () => {
+    vi.useFakeTimers();
+    let resolveFirst!: (value: unknown) => void;
+    let rejectFirst!: (reason?: unknown) => void;
+    let resolveSecond!: (value: unknown) => void;
+    request.mockImplementation((url: string) => {
+      if (url.includes('typeahead?q=al')) return new Promise((resolve, reject) => { resolveFirst = resolve; rejectFirst = reject; });
+      if (url.includes('typeahead?q=be')) return new Promise((resolve) => { resolveSecond = resolve; });
+      return Promise.resolve({ items: [], limit: 25, offset: 0, hasNext: false });
+    });
+    try {
+      show('/admin/credits');
+      const input = screen.getByLabelText('Customer');
+      fireEvent.change(input, { target: { value: 'al' } });
+      await act(async () => { await vi.advanceTimersByTimeAsync(250); });
+      fireEvent.change(input, { target: { value: 'be' } });
+      await act(async () => { await vi.advanceTimersByTimeAsync(250); });
+      await act(async () => {
+        resolveSecond([{ id: 'beta', email: 'beta@example.com', first_name: 'Beta', last_name: 'Person', lifecycle: 'active', balance: 0 }]);
+        await Promise.resolve();
+      });
+      expect(screen.getByRole('option', { name: 'Beta Person · beta@example.com' })).toBeTruthy();
+      await act(async () => {
+        rejectFirst(Error('stale request'));
+        await Promise.resolve();
+      });
+      expect(screen.getByRole('option', { name: 'Beta Person · beta@example.com' })).toBeTruthy();
+    } finally {
+      vi.useRealTimers();
+    }
   });
   it('ignores a stale directory response after the search URL changes', async () => {
     let first!: (value: unknown) => void;

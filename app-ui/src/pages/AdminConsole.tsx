@@ -14,7 +14,7 @@ import {
   TableRow,
   TableSortLabel,
 } from '@mui/material';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { request } from '../api.js';
 import { hardDeletePsiuRequest } from './adminActions.js';
@@ -233,8 +233,10 @@ function Pager({
 }
 function UserTypeahead({ label, onSelect, selected }: TypeaheadProps) {
   const [q, setQ] = useState(''),
-    [items, setItems] = useState<User[]>([]);
+    [items, setItems] = useState<User[]>([]),
+    requestVersion = useRef(0);
   useEffect(() => {
+    const version = ++requestVersion.current;
     if (q.trim().length < 2) {
       setItems([]);
       return;
@@ -242,8 +244,12 @@ function UserTypeahead({ label, onSelect, selected }: TypeaheadProps) {
     const t = setTimeout(
       () =>
         void request<User[]>(`/v1/admin/users/typeahead?q=${encodeURIComponent(q)}`)
-          .then(setItems)
-          .catch(() => setItems([])),
+          .then((result) => {
+            if (version === requestVersion.current) setItems(result.map(adminUser));
+          })
+          .catch(() => {
+            if (version === requestVersion.current) setItems([]);
+          }),
       250,
     );
     return () => clearTimeout(t);
@@ -686,7 +692,7 @@ function Users({ userId }: { userId?: string }) {
       <TableView
         label="User directory"
         columns={columns}
-        items={d.page.items}
+        items={d.page.items.map(adminUser)}
         sortBy={d.state.sortBy}
         sortDirection={d.state.sortDirection}
         onSort={(id) =>
