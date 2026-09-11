@@ -45,9 +45,23 @@ Required response behavior:
 5. Request an authenticated signed upload from `/v1/samples/uploads`; upload directly to S3; call sample completion endpoint after checksum verification.
 6. Test CORS and hardware workflow in a real LAN browser matrix before public release.
 
-## Milestone 1 local-capture exception
+## Production local bridge design
 
-Milestone 1 uses a verified PSIU Basic Auth credential for `POST /api/sampling` only. The local Compose proxy retrieves it at runtime from the `PSIU_CREDENTIAL_SECRET_ARN` AWS Secrets Manager reference; it is never persisted, logged, or sent to AWS by the proxy. Replace it with per-unit device credentials before release.
+The production controller uses a customer-local bridge rather than browser-to-PSIU direct requests. This avoids HTTPS mixed-content failures while preserving the LAN-only PSIU boundary.
+
+- The bridge binds only to loopback and exposes only fixed `/uid`, `/status`, `/capture`, and `/wav` routes. It never proxies arbitrary URLs and never accepts a cloud-initiated connection.
+- The bridge allows requests only from the explicit production UI origin and approved local-development origin. It handles required preflight requests without forwarding them to the PSIU.
+- First use requires **one-time local pairing**: the customer enters the PSIU device authorization into the bridge setup. The bridge stores it in the operating system credential store; it never sends, logs, or copies this value to Wally, AWS, browser storage, source control, or application configuration.
+- The browser receives only PSIU status and WAV bytes through the bridge. After the user selects reports, it obtains a tenant-scoped presigned S3 upload intent from the Wally API, transfers the WAV bytes to private S3, verifies completion, and queues reports. The PSIU never receives AWS credentials or S3 URLs.
+- The existing Compose-local proxy remains a development harness only. It must not retrieve a shared PSIU credential from AWS Secrets Manager for customer production use.
+
+## Controller interaction contract
+
+1. Start capture through the bridge and poll bridge status while the PSIU records.
+2. Stop capture through the bridge; retrieve the completed WAV only after the user chooses **Process this sample**.
+3. The dialog offers report selection or **Discard**. Discard clears local capture state and returns to ready; it does not upload bytes.
+4. Processing creates the authenticated upload intent, streams the completed WAV bridge-to-browser-to-S3, completes verification, and atomically queues the selected reports.
+5. The home activity queue shows queued, running, completed, and failed report status. No manual browser WAV selection is available.
 
 ## Inventory lifecycle
 
