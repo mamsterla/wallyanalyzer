@@ -16,6 +16,7 @@ function responseFor(url: string) {
   if (url.endsWith('/v1/me/credits')) return { balance: 8, items: [], limit: 25, offset: 0 };
   if (url.endsWith('/v1/samples')) return [{ id: 'sample-1', uploadState: 'uploaded' }];
   if (url.endsWith('/v1/me/systems')) return [];
+  if (url.includes('/v1/reports?')) return { items: [] }; 
   return {};
 }
 
@@ -25,9 +26,10 @@ describe('Home', () => {
     render(<MemoryRouter><Home /></MemoryRouter>);
     await screen.findByText('8');
     const grid = screen.getByTestId('home-dashboard-grid');
-    expect(grid.children).toHaveLength(3);
+    expect(grid.children).toHaveLength(4);
     expect(screen.getByRole('heading', { name: 'Actions' }).compareDocumentPosition(screen.getByRole('heading', { name: 'News' }))).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     expect(screen.getByRole('heading', { name: 'Credits' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Activity queue' })).toBeTruthy();
     expect(screen.getByTestId('home-actions-empty-row')).toBeTruthy();
     expect(screen.getByTestId('home-news-row')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Buy credits' })).toBeTruthy();

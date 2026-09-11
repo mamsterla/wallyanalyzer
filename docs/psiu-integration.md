@@ -51,7 +51,7 @@ The production controller uses a customer-local bridge rather than browser-to-PS
 
 - The bridge binds only to loopback and exposes only fixed `/uid`, `/status`, `/capture`, and `/wav` routes. It never proxies arbitrary URLs and never accepts a cloud-initiated connection.
 - The bridge allows requests only from the explicit production UI origin and approved local-development origin. It handles required preflight requests without forwarding them to the PSIU.
-- First use requires **one-time local pairing**: the customer enters the PSIU device authorization into the bridge setup. The bridge stores it in the operating system credential store; it never sends, logs, or copies this value to Wally, AWS, browser storage, source control, or application configuration.
+- First use requires **one-time local pairing**: after building the local bridge, run `npm run bridge:pair --workspace=@wally/app-server` on the customer machine. The bridge stores the entered PSIU authorization in the operating system credential store; it never sends, logs, or copies this value to Wally, AWS, browser storage, source control, or application configuration. Start it with `npm run bridge --workspace=@wally/app-server` before opening Sample Capture.
 - The browser receives only PSIU status and WAV bytes through the bridge. After the user selects reports, it obtains a tenant-scoped presigned S3 upload intent from the Wally API, transfers the WAV bytes to private S3, verifies completion, and queues reports. The PSIU never receives AWS credentials or S3 URLs.
 - The existing Compose-local proxy remains a development harness only. It must not retrieve a shared PSIU credential from AWS Secrets Manager for customer production use.
 
