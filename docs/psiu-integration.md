@@ -20,7 +20,7 @@ Required firmware/browser capabilities:
 
 ### Current firmware evidence
 
-`GET /status` exposes live recorder counters. On the verified PSIU, `pages_written × 2,048 words/page × 2 bytes/word` exactly matched completed `/wav` `data_bytes`; use this as the current-capture byte count.
+`GET /status` exposes live recorder counters. On the verified PSIU, `pages_written × 2,048 words/page × 2 bytes/word` exactly matched completed `/audio.wav` `data_bytes`; use this as the current-capture byte count.
 
 A local device check returned `GET http://psiu.local/status` with no `Access-Control-Allow-*` headers. `OPTIONS http://psiu.local/api/sampling`, with origin `http://localhost:8081` and requested `authorization,content-type` headers, returned `403` with no CORS headers. The browser cannot call PSIU directly, but the local same-origin Compose proxy supports capture until firmware handles this CORS flow.
 
@@ -51,7 +51,8 @@ The production controller uses a customer-local bridge rather than browser-to-PS
 
 - The bridge binds only to loopback and exposes only fixed `/uid`, `/status`, `/capture`, and `/wav` routes. It never proxies arbitrary URLs and never accepts a cloud-initiated connection.
 - The bridge allows requests only from the explicit production UI origin and approved local-development origin. It handles required preflight requests without forwarding them to the PSIU.
-- First use requires **one-time local pairing**: after building the local bridge, run `npm run bridge:pair --workspace=@wally/app-server` on the customer machine. The bridge stores the entered PSIU authorization in the operating system credential store; it never sends, logs, or copies this value to Wally, AWS, browser storage, source control, or application configuration. Start it with `npm run bridge --workspace=@wally/app-server` before opening Sample Capture.
+- First use requires **one-time local pairing** on macOS: after building the local bridge, run `npm run bridge:pair --workspace=@wally/app-server -- --psiu-base-url http://psiu.local`. Native macOS dialogs collect the PSIU username and password without terminal echo. The bridge validates the target is `psiu.local` or a private, link-local, or loopback origin, then stores the target and authorization together in the macOS Keychain. It never sends, logs, or copies authorization to Wally, AWS, browser storage, source control, or application configuration. Start it with `npm run bridge --workspace=@wally/app-server` before opening Sample Capture.
+- Docker Compose is a development harness only. Its `NODE_ENV=development` bridge may resolve `PSIU_CREDENTIAL_SECRET_ARN` through the developer AWS profile; customer bridge mode never reads that variable or calls AWS. Linux customer bridge support requires a future OS credential-store adapter.
 - The browser receives only PSIU status and WAV bytes through the bridge. After the user selects reports, it obtains a tenant-scoped presigned S3 upload intent from the Wally API, transfers the WAV bytes to private S3, verifies completion, and queues reports. The PSIU never receives AWS credentials or S3 URLs.
 - The existing Compose-local proxy remains a development harness only. It must not retrieve a shared PSIU credential from AWS Secrets Manager for customer production use.
 
