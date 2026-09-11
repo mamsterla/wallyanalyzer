@@ -23,7 +23,7 @@ def handler(event: dict[str, Any] | str, _context: Any) -> dict[str, Any]:
             event = json.loads(event)
         except json.JSONDecodeError as error:
             raise ValueError('Report worker payload is not JSON.') from error
-    if not isinstance(event, dict) or event.get('algorithmVersion')!='1.0.0' or not isinstance(event.get('inputs'),list) or not event['inputs']: 
+    if not isinstance(event, dict) or event.get('algorithmVersion')!='1.0.0' or not isinstance(event.get('inputs'),list) or not event['inputs']:
         raise ValueError('Unsupported report worker input.')
     report_id=str(event['reportId']); prefix=str(event['outputPrefix'])
     if not prefix.startswith(REPORT_PREFIX) or not prefix.endswith(f'/{report_id}/'):
