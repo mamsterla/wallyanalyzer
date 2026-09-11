@@ -137,6 +137,16 @@ Retries use bounded exponential backoff. Retry only transient failures. Determin
 - Tests cover authorization, idempotency, worker input validation, success/failure finalization, and presigned artifact download.
 - CDK synth, local algorithm fixture tests, and production-safe deployment validation pass.
 
+## Isolated Smoke Lane
+
+A persistent, on-demand smoke lane validates deployed asynchronous processing without customer records.
+
+- Private RDS instance hosts a separate `wally_report_smoke` database and generated least-privilege role; its credential remains only in Secrets Manager.
+- A VPC-attached idempotent bootstrap custom resource creates the role/database through the existing private proxy using the master secret reference. It does not alter the `wally` database.
+- Smoke raw/report objects use dedicated `smoke/` prefixes. Smoke workflow resources use only the smoke secret/prefixes.
+- The runner generates a 60-second stereo PCM 1 kHz WAV, inserts synthetic identity/system/PSIU/sample/report records only in the smoke database, waits for workflow completion, and validates JSON, SVG, PDF `%PDF` signature, and manifest artifacts.
+- The runner is on-demand only. It records safe correlation IDs on failure and cleans its synthetic rows/objects after validation.
+
 ## Open Decisions Before Implementation
 
 1. Which `src/wallyanalyzer` algorithm and WAV fixture define the first demo report?

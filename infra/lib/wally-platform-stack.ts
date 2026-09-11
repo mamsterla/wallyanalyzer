@@ -214,9 +214,12 @@ export class WallyPlatformStack extends cdk.Stack {
       deletionProtection: true,
       removalPolicy: retention,
     });
+    // Separate smoke credentials are added to the same private proxy; no workload shares the production database.
+    const smokeDatabaseName='wally_report_smoke';
+    const smokeDatabaseSecret=new secretsmanager.Secret(this,'ReportSmokeDatabaseSecret',{description:'Isolated report smoke-test database credential.',generateSecretString:{secretStringTemplate:JSON.stringify({username:'wally_report_smoke'}),generateStringKey:'password',passwordLength:32,excludePunctuation:true},removalPolicy:retention});
     const databaseProxy = new rds.DatabaseProxy(this, 'ApplicationDatabaseProxy', {
       proxyTarget: rds.ProxyTarget.fromInstance(database),
-      secrets: [database.secret!],
+      secrets: [database.secret!,smokeDatabaseSecret],
       vpc,
       vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
       securityGroups: [proxySecurityGroup],
@@ -341,6 +344,12 @@ export class WallyPlatformStack extends cdk.Stack {
     const workflowImageFor = (handler:string) => lambda.DockerImageCode.fromImageAsset(path.resolve(process.cwd(), '..'), { file: 'app-server/Dockerfile.report-workflow', buildArgs: { NODE_IMAGE: nodeImage }, platform: ecrAssets.Platform.LINUX_AMD64, cmd: [handler] });
     const workerImage = lambda.DockerImageCode.fromImageAsset(path.resolve(process.cwd(), '..'), { file: 'algorithms/Dockerfile.analysis-worker', platform: ecrAssets.Platform.LINUX_AMD64 });
     const workflowLogGroup = new logs.LogGroup(this, 'ReportWorkflowLogGroup', { retention: logs.RetentionDays.ONE_MONTH, removalPolicy: retention });
+    // The smoke lane uses a separate generated principal and database on this private RDS instance.
+    // Secret values are resolved only by the bootstrap function at runtime.
+    const smokeBootstrapFn=new lambda.DockerImageFunction(this,'ReportSmokeDatabaseBootstrapFunction',{code:workflowImageFor('handlers/smokeDbBootstrap.onEvent'),vpc,vpcSubnets:{subnetType:ec2.SubnetType.PRIVATE_ISOLATED},securityGroups:[workflowSecurityGroup],timeout:cdk.Duration.minutes(2),memorySize:512,environment:{DATABASE_PROXY_HOST:databaseProxy.endpoint,MASTER_DATABASE_SECRET_ARN:database.secret!.secretArn,SMOKE_DATABASE_SECRET_ARN:smokeDatabaseSecret.secretArn,SMOKE_DATABASE_NAME:smokeDatabaseName},logGroup:workflowLogGroup});
+    database.secret!.grantRead(smokeBootstrapFn);smokeDatabaseSecret.grantRead(smokeBootstrapFn);
+    const smokeBootstrapProvider=new cr.Provider(this,'ReportSmokeDatabaseBootstrapProvider',{onEventHandler:smokeBootstrapFn});
+    new cdk.CustomResource(this,'ReportSmokeDatabaseBootstrap',{serviceToken:smokeBootstrapProvider.serviceToken});
     const workflowEnvironment = { DATABASE_PROXY_HOST: databaseProxy.endpoint, DATABASE_NAME: 'wally', DATABASE_SSL: 'require', DATABASE_SECRET_ARN: database.secret!.secretArn, SAMPLE_BUCKET_NAME: sampleBucket.bucketName, REPORT_BUCKET_NAME: reportBucket.bucketName };
     const workflowLambda = (id:string, handler:string) => new lambda.DockerImageFunction(this, id, { code: workflowImageFor(handler), vpc, vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED }, securityGroups: [workflowSecurityGroup], timeout: cdk.Duration.minutes(2), memorySize: 512, environment: workflowEnvironment, logGroup: workflowLogGroup });
     const preflightFn=workflowLambda('ReportPreflightFunction','handlers/reportWorkflow.preflight');
