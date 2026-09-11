@@ -98,7 +98,7 @@ async function sampleRoute(request:IncomingMessage,response:ServerResponse,path:
 async function reportRoute(request:IncomingMessage,response:ServerResponse,path:string,ownerId:string,reports:PostgresReportRepository,s3:S3Client,bucketName:string):Promise<void>{
   if(request.method==='GET'&&path==='/v1/reports/definitions')return sendJson(response,200,await reports.definitions());
   if(request.method==='POST'&&path==='/v1/reports/requests')return sendJson(response,201,await reports.create(ownerId,await parseJson<CreateReportRequest>(request)));
-  if(request.method==='GET'&&path==='/v1/reports')return sendJson(response,200,await reports.history(ownerId,{limit:pageQuery(new URL(request.url??'/', 'http://wally.local').searchParams).limit}));
+  if(request.method==='GET'&&path==='/v1/reports'){const query=new URL(request.url??'/', 'http://wally.local').searchParams;return sendJson(response,200,await reports.history(ownerId,{limit:pageQuery(query).limit,cursor:cursorQuery(query)}));}
   const artifact=path.match(/^\/v1\/reports\/([^/]+)\/artifacts\/(manifest|metrics_json|graph_svg|report_pdf)\/download$/);if(request.method==='GET'&&artifact){if(!bucketName)throw new HttpError(503,'Report storage is unavailable.');const key=await reports.artifact(ownerId,artifact[1],artifact[2]);if(!key)throw new HttpError(404,'Report artifact not found.');return sendJson(response,200,{downloadUrl:await getSignedUrl(s3,new GetObjectCommand({Bucket:bucketName,Key:key}),{expiresIn:900}),expiresAt:new Date(Date.now()+900000).toISOString()});}
   throw new HttpError(404,'Route not found.');
 }
