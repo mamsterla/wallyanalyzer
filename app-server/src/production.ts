@@ -295,7 +295,9 @@ async function adminRoute(
     return sendJson(response, 200, await repo.customers());
   if (request.method === 'POST' && path === '/v1/admin/customers') {
     const x = await parseJson<CreateCustomerRequest>(request);
-    return sendJson(response, 201, await repo.createCustomer(email(x.email), actor, reqId));
+    const customer = await repo.createCustomer(email(x.email), actor, reqId);
+    await invite(customer.id, actor, repo, cognito, reqId);
+    return sendJson(response, 201, await repo.customer(customer.id));
   }
   // Backward-compatible legacy fulfillment: create detached records, assign the unit, then invite.
   if (request.method === 'POST' && path === '/v1/admin/fulfillment') {

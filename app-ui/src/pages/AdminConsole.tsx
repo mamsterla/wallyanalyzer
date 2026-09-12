@@ -602,6 +602,15 @@ function Users({ userId }: { userId?: string }) {
     );
   const update = (x: Record<string, string | number>) => d.apply({ ...d.state, ...x });
   const returnTo = `/admin/users?${params(d.state)}`;
+  const sendPasswordReset = async (user: User) => {
+    if (!window.confirm(`Send a password reset email to ${user.email}?`)) return;
+    try {
+      await request(`/v1/admin/customers/${user.id}/reset-password`, { method: 'POST' });
+      d.setMessage(`Password reset email requested for ${user.email}.`);
+    } catch (e) {
+      d.setMessage(err(e));
+    }
+  };
   const columns = [
     {
       id: 'name',
@@ -618,6 +627,19 @@ function Users({ userId }: { userId?: string }) {
     { id: 'email', label: 'Email', cell: (u: User) => u.email },
     { id: 'lifecycle', label: 'Lifecycle', cell: (u: User) => u.lifecycle },
     { id: 'balance', label: 'Credits', cell: (u: User) => u.balance },
+    {
+      id: 'passwordReset',
+      label: 'Password reset',
+      sortable: false,
+      cell: (u: User) =>
+        ['invited', 'active'].includes(u.lifecycle) ? (
+          <Button size="small" onClick={() => void sendPasswordReset(u)}>
+            Send reset
+          </Button>
+        ) : (
+          '—'
+        ),
+    },
     {
       id: 'created',
       label: 'Created',

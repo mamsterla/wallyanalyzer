@@ -23,6 +23,20 @@ test('legacy fulfillment remains supported and invites the detached customer', a
   try { const result=await call(server,'POST','/v1/admin/fulfillment',{email:'customer@example.com',psiuSerialNumber:'serial',psiuOpaqueUid:'uid'}); assert.equal(result.status,201); assert.deepEqual(calls,['assign','AdminCreateUserCommand','AdminAddUserToGroupCommand','markInvited']); } finally { await new Promise<void>(r=>server.close(()=>r())); }
 });
 
+test('creating a customer provisions and invites its Cognito identity', async () => {
+  const calls: string[] = [];
+  const customer = { id: 'customer', email: 'customer@example.com', lifecycle: 'draft' as const };
+  const repository = {
+    async findActivePrincipal(){ return { id:'admin', role:'admin' as const, lifecycle:'active' }; }, async me(){ return undefined; },
+    async createCustomer(email:string){ assert.equal(email, customer.email); calls.push('createCustomer'); return { ...customer, units: [] }; },
+    async customer(){ return customer; }, async markInvited(){ calls.push('markInvited'); },
+    async pendingCognitoJob(){ return undefined; }, async recordInviteCleanup(){ throw Error('unused'); }, async completeCognitoJob(){},
+  };
+  const cognito = { send: async (command: unknown) => { const name=(command as {constructor:{name:string}}).constructor.name; calls.push(name); if(command instanceof AdminCreateUserCommand)return {User:{Attributes:[{Name:'sub',Value:'subject'}]}}; return {}; } };
+  const server=createProductionServer({pool:{} as never,repository:repository as never,cognito:cognito as never,verify:async()=>({subject:'admin-subject',roles:['admin']})}); await new Promise<void>(r=>server.listen(0,'127.0.0.1',r));
+  try { const result=await call(server,'POST','/v1/admin/customers',{email:customer.email}); assert.equal(result.status,201); assert.deepEqual(calls,['createCustomer','AdminCreateUserCommand','AdminAddUserToGroupCommand','markInvited']); } finally { await new Promise<void>(r=>server.close(()=>r())); }
+});
+
 test('invite group failure persists cleanup work and deletes the created Cognito user', async () => {
   const calls:string[]=[]; const customer={id:'customer',email:'customer@example.com',lifecycle:'draft' as const};
   const repository={async findActivePrincipal(){return{id:'admin',role:'admin' as const,lifecycle:'active'}},async me(){return undefined},async customers(){return[customer]},async customer(){return customer},async units(){return[]},async createCustomer(){throw Error('unused')},async createUnit(){throw Error('unused')},async assign(){},async deassign(){},async setUnitStatus(){},async markInvited(){throw Error('write failed')},async recordInviteCleanup(){calls.push('queued');return{id:'job',customerId:'customer',action:'invite_cleanup' as const,email:customer.email,cognitoSubject:'subject'}},async pendingCognitoJob(){return undefined},async completeCognitoJob(){calls.push('completed')},async activate(){},async setCustomerLifecycle(){return{email:customer.email}},async archive(){return{email:customer.email}}};
