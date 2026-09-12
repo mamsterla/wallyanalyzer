@@ -15,6 +15,12 @@ export function queueCapturedPsiuWav(file: File, psiuUnitId: string, observedPsi
   return { file, clientFileId: crypto.randomUUID().replaceAll('-', ''), psiuUnitId, observedPsiuUid, recordedAt: new Date(file.lastModified).toISOString(), source: 'psiu_capture' as const };
 }
 
+/** S3 stores this immutable checksum with the raw-object version for report provenance. */
+export async function sha256Base64(file: Blob): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', await file.arrayBuffer());
+  return btoa(String.fromCharCode(...new Uint8Array(digest)));
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const token = await accessToken();
   const response = await fetch(`${api}${path}`, { ...init, headers: { ...init?.headers, authorization: `Bearer ${token}`, 'content-type': 'application/json' } });
@@ -104,9 +110,11 @@ export function ControllerPage({ units, systems }: { units: CustomerUnit[]; syst
     try {
       const wav = await client.getCompletedCapture(); if (!wav) throw Error('PSIU has no completed WAV file.');
       const file = new File([wav], `psiu-${unit.uid}-${Date.now()}.wav`, { type: 'audio/wav' });
+      setProcessingMessage('Securing capture integrity…');
+      const sha256Base64Digest = await sha256Base64(file);
       const idempotencyKey = crypto.randomUUID().replaceAll('-', '');
       setProcessingMessage('Preparing secure upload…');
-      const batch = await request<CreateSampleUploadBatchResponse>('/v1/samples/upload-batches', { method: 'POST', body: JSON.stringify({ idempotencyKey, psiuUnitId: unit.id, systemId: systems.find(item => item.active)?.id, source: 'psiu_capture', observedPsiuUid: unit.uid, files: [{ clientFileId: crypto.randomUUID().replaceAll('-', ''), fileName: file.name, contentType: 'audio/wav', byteLength: file.size, recordedAt: new Date().toISOString(), source: 'psiu_capture' }] }) });
+      const batch = await request<CreateSampleUploadBatchResponse>('/v1/samples/upload-batches', { method: 'POST', body: JSON.stringify({ idempotencyKey, psiuUnitId: unit.id, systemId: systems.find(item => item.active)?.id, source: 'psiu_capture', observedPsiuUid: unit.uid, files: [{ clientFileId: crypto.randomUUID().replaceAll('-', ''), fileName: file.name, contentType: 'audio/wav', byteLength: file.size, sha256Base64: sha256Base64Digest, recordedAt: new Date().toISOString(), source: 'psiu_capture' }] }) });
       const intent = batch.uploads[0]; if (!intent) throw Error('Upload intent is unavailable.');
       setProcessingMessage('Uploading capture to Wally…');
       const put = await fetch(intent.uploadUrl, { method: 'PUT', headers: intent.requiredHeaders, body: file }); if (!put.ok) throw Error('Capture upload failed.');

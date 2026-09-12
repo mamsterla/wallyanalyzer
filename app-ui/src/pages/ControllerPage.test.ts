@@ -4,7 +4,7 @@ import { webcrypto } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 
 if (!globalThis.crypto) Object.defineProperty(globalThis, 'crypto', { value: webcrypto });
-import { captureEligibility, queueCapturedPsiuWav } from './ControllerPage.js';
+import { captureEligibility, queueCapturedPsiuWav, sha256Base64 } from './ControllerPage.js';
 
 describe('PSIU capture eligibility', () => {
   const status={uid:'uid-1',uptimeMs:0,sampleRateHz:0,recording:false,xlr:false,bufferCount:0,recorderState:'idle',pagesWritten:0,droppedHalves:0,badBlockCount:0,dmaErrors:0,i2sErrors:0,recordingCount:0};
@@ -13,6 +13,10 @@ describe('PSIU capture eligibility', () => {
 });
 
 describe('PSIU capture handoff', () => {
+  it('calculates an immutable SHA-256 digest for the raw upload', async () => {
+    expect(await sha256Base64(new Blob(['abc']))).toBe('ungWv48Bz+pBQUDeXa4iI7ADYaOWF3qctBD/YfIAFa0=');
+  });
+
   it('adds a completed WAV with a stable client upload identity and assigned unit', () => {
     const file = new NodeFile(['RIFF____WAVE'], 'capture.wav', { type: 'audio/wav', lastModified: 1_700_000_000_000 }) as unknown as File;
     const queued = queueCapturedPsiuWav(file, 'unit-1', 'uid-1', [{ id: 'unit-1', serialNumber: 'serial-1', uid: 'uid-1', status: 'enabled' }]);
