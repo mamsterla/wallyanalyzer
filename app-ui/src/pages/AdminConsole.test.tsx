@@ -26,6 +26,18 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 describe('administrator directory tables', () => {
+  it('pins a collapsible icon navigation rail with accessible section names', () => {
+    request.mockResolvedValue({ items: [], limit: 25, offset: 0 });
+    show('/admin/users');
+    expect(screen.getByText('PSIU Management')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Collapse administrator navigation' }));
+    expect(screen.queryByText('PSIU Management')).toBeNull();
+    expect(screen.getByRole('button', { name: 'PSIU Management' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'User Management' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Expand administrator navigation' }));
+    expect(screen.getByText('PSIU Management')).toBeTruthy();
+  });
+
   it('keeps filters, sorting, page size, and offset in the PSIU URL and request', async () => {
     request.mockResolvedValue({ items: [], limit: 25, offset: 0 });
     show('/admin/psiu');

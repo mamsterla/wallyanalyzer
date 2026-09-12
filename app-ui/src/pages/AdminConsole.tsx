@@ -2,8 +2,10 @@ import {
   Alert,
   Box,
   Button,
+  IconButton,
   Paper,
   Stack,
+  Tooltip,
   TextField,
   Typography,
   Table,
@@ -20,6 +22,13 @@ import { request } from '../api.js';
 import { hardDeletePsiuRequest } from './adminActions.js';
 import { createPsuClient } from '../features/controller/psiuClient.js';
 import { WallySelect } from '../designSystemSelect.js';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import GroupOutlinedIcon from '@mui/icons-material/GroupOutlined';
+import MemoryOutlinedIcon from '@mui/icons-material/MemoryOutlined';
+import CreditCardOutlinedIcon from '@mui/icons-material/CreditCardOutlined';
+import AudioFileOutlinedIcon from '@mui/icons-material/AudioFileOutlined';
+import AssessmentOutlinedIcon from '@mui/icons-material/AssessmentOutlined';
 type User = {
   id: string;
   email: string;
@@ -68,65 +77,30 @@ const adminUser = (value: any): User => ({
 });
 const validReturnTo = (value: string | null) =>
   value?.startsWith('/admin/') ? value : '/admin/users';
-const labels: Record<string, string> = {
-  psiu: 'PSIU Management',
-  users: 'User Management',
-  credits: 'Credits',
-  samples: 'Samples',
-  reports: 'Reports',
-};
+const adminSections = [
+  { id: 'psiu', label: 'PSIU Management', icon: <MemoryOutlinedIcon /> },
+  { id: 'users', label: 'User Management', icon: <GroupOutlinedIcon /> },
+  { id: 'credits', label: 'Credits', icon: <CreditCardOutlinedIcon /> },
+  { id: 'samples', label: 'Samples', icon: <AudioFileOutlinedIcon /> },
+  { id: 'reports', label: 'Reports', icon: <AssessmentOutlinedIcon /> },
+] as const;
 export function AdminConsole() {
-  const l = useLocation(),
-    n = useNavigate(),
-    parts = l.pathname.split('/'),
-    section = parts[2] || 'psiu';
-  return (
-    <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-      <Paper
-        component="nav"
-        aria-label="Administrator sections"
-        sx={{
-          p: 1,
-          width: { md: 72 },
-          minWidth: { md: 72 },
-          '&:hover,&:focus-within': { width: { md: 208 } },
-          overflow: 'hidden',
-          transition: 'width 160ms',
-          height: 'fit-content',
-        }}
-      >
-        <Typography variant="subtitle1" sx={{ p: 1, whiteSpace: 'nowrap' }}>
-          Admin
-        </Typography>
-        {Object.entries(labels).map(([id, text]) => (
-          <Button
-            key={id}
-            fullWidth
-            aria-current={section === id ? 'page' : undefined}
-            sx={{ justifyContent: 'flex-start', whiteSpace: 'nowrap' }}
-            variant={section === id ? 'contained' : 'text'}
-            onClick={() => n(`/admin/${id}`)}
-          >
-            {text}
-          </Button>
-        ))}
-      </Paper>
-      <Box sx={{ flex: 1, minWidth: 0 }}>
-        {section === 'psiu' ? (
-          <Psiu />
-        ) : section === 'users' ? (
-          <Users userId={parts[3]} />
-        ) : section === 'credits' ? (
-          <Credits />
-        ) : section === 'samples' ? (
-          <Samples />
-        ) : (
-          <Reports />
-        )}
-      </Box>
-    </Stack>
-  );
+  const l = useLocation(), n = useNavigate(), parts = l.pathname.split('/'), section = parts[2] || 'psiu';
+  const [collapsed, setCollapsed] = useState(() => readNavigationCollapsed());
+  const toggleNavigation = () => setCollapsed((current) => { const next = !current; persistNavigationCollapsed(next); return next; });
+  return <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems="flex-start">
+    <Paper component="nav" aria-label="Administrator sections" sx={{ p: 1, width: { xs: '100%', md: collapsed ? 72 : 224 }, minWidth: { md: collapsed ? 72 : 224 }, overflow: 'hidden', transition: 'width 160ms,min-width 160ms', position: { md: 'sticky' }, top: { md: 16 }, alignSelf: { md: 'flex-start' } }}>
+      <Stack direction="row" alignItems="center" justifyContent={collapsed ? 'center' : 'space-between'} sx={{ px: collapsed ? 0 : 1, mb: 0.5 }}>
+        {!collapsed && <Typography variant="subtitle1" sx={{ whiteSpace: 'nowrap' }}>Admin</Typography>}
+        <Tooltip title={collapsed ? 'Expand navigation' : 'Collapse navigation'}><IconButton aria-label={collapsed ? 'Expand administrator navigation' : 'Collapse administrator navigation'} onClick={toggleNavigation} size="small">{collapsed ? <ChevronRightIcon /> : <ChevronLeftIcon />}</IconButton></Tooltip>
+      </Stack>
+      {adminSections.map((item) => <Tooltip key={item.id} title={collapsed ? item.label : ''} placement="right"><Button fullWidth aria-label={collapsed ? item.label : undefined} aria-current={section === item.id ? 'page' : undefined} sx={{ justifyContent: collapsed ? 'center' : 'flex-start', minWidth: 0, px: collapsed ? 1 : 1.5, gap: collapsed ? 0 : 1.25, whiteSpace: 'nowrap' }} variant={section === item.id ? 'contained' : 'text'} onClick={() => n(`/admin/${item.id}`)}><Box component="span" sx={{ display: 'inline-flex', fontSize: 22 }}>{item.icon}</Box>{!collapsed && item.label}</Button></Tooltip>)}
+    </Paper>
+    <Box sx={{ flex: 1, minWidth: 0 }}>{section === 'psiu' ? <Psiu /> : section === 'users' ? <Users userId={parts[3]} /> : section === 'credits' ? <Credits /> : section === 'samples' ? <Samples /> : <Reports />}</Box>
+  </Stack>;
 }
+function readNavigationCollapsed() { try { return typeof window !== 'undefined' && window.localStorage?.getItem?.('wally-admin-nav-collapsed') === 'true'; } catch { return false; } }
+function persistNavigationCollapsed(value: boolean) { try { window.localStorage?.setItem?.('wally-admin-nav-collapsed', String(value)); } catch { /* Navigation remains usable when storage is unavailable. */ } }
 function params(values: Record<string, string | number | undefined>) {
   const x = new URLSearchParams();
   Object.entries(values).forEach(([k, v]) => {
