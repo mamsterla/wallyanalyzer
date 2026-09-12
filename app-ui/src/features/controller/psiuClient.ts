@@ -11,8 +11,14 @@ export function createPsuClient(fetchImplementation: FetchLike = fetch): PsiuCli
   return {
     async scanUid() { const value = await requestJson(fetchImplementation, `${base}/uid`); const uid = asRecord(value).uid; if (typeof uid !== 'string' || !uid.trim() || uid.trim().length > 256) throw new PsiuUnavailableError(); return uid.trim(); },
     async getStatus() { return requestStatus(fetchImplementation, `${base}/status`); },
-    async startCapture() { return requestStatus(fetchImplementation, `${base}${localDevelopment ? '/capture' : '/api/sampling'}`, captureInit(true)); },
-    async stopCapture() { return requestStatus(fetchImplementation, `${base}${localDevelopment ? '/capture' : '/api/sampling'}`, captureInit(false)); },
+    async startCapture() {
+      await requestJson(fetchImplementation, `${base}${localDevelopment ? '/capture' : '/api/sampling'}`, captureInit(true));
+      return requestStatus(fetchImplementation, `${base}/status`);
+    },
+    async stopCapture() {
+      await requestJson(fetchImplementation, `${base}${localDevelopment ? '/capture' : '/api/sampling'}`, captureInit(false));
+      return requestStatus(fetchImplementation, `${base}/status`);
+    },
     async getCompletedCapture() { let response: Response; try { response = await fetchImplementation(`${base}${localDevelopment ? '/wav' : '/audio.wav'}`, { headers: { range: 'bytes=0-' } }); } catch { throw new PsiuUnavailableError(); } if (response.status === 404) return null; if (!response.ok || !response.headers.get('content-type')?.toLowerCase().startsWith('audio/wav')) throw new PsiuUnavailableError(); return response.blob(); },
   };
 }

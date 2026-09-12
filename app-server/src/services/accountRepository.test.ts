@@ -21,6 +21,7 @@ test('assigning a second enabled PSIU retains existing customer assignments', as
 
   assert.equal(queries.some((sql) => sql.includes('update psiu_assignments set unassigned_at=now(),unassigned_by=$2 where user_id=$1')), false);
   assert.equal(queries.some((sql) => sql.includes('where psiu_unit_id=$1 and unassigned_at is null')), true);
+  assert.equal(queries.some((sql) => sql.includes("role in ('user','admin')")), true);
   assert.equal(queries.some((sql) => sql.includes('insert into psiu_assignments')), true);
 });
 

@@ -131,6 +131,21 @@ test('user and PSIU directories enforce two-character queries, escape wildcards,
   );
 });
 
+test('PSIU assignment typeahead includes active administrators as customer-capable owners', async () => {
+  const calls: string[] = [];
+  const repository = new PostgresAdminDataRepository({
+    query: async (sql: string) => {
+      calls.push(sql);
+      return { rows: [{ id: 'admin', email: 'admin@example.com', first_name: null, last_name: null }] };
+    },
+  } as never);
+
+  const users = await repository.typeahead('ad');
+
+  assert.equal(users[0]?.displayName, 'admin@example.com');
+  assert.match(calls[0]!, /role in \('user','admin'\)/);
+});
+
 test('admin enum filters normalize blanks, cast safely, and reject invalid values', async () => {
   const calls: Array<{ sql: string; values: unknown[] }> = [];
   const pool = {

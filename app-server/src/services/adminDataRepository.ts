@@ -70,7 +70,7 @@ export class PostgresAdminDataRepository {
     const value = directoryQuery(q, true);
     const term = `%${escapeLike(value)}%`;
     const r = await this.pool.query(
-      `select u.id,u.email,u.first_name,u.last_name from users u where u.role='user' and u.lifecycle in ('draft','ready','invited','active') and (u.email ilike $1 escape '\\' or coalesce(u.first_name,'') ilike $1 escape '\\' or coalesce(u.last_name,'') ilike $1 escape '\\' or exists(select 1 from psiu_assignments a join psiu_units p on p.id=a.psiu_unit_id where a.user_id=u.id and a.unassigned_at is null and p.serial_number ilike $1 escape '\\')) order by u.email,u.id limit 20`,
+      `select u.id,u.email,u.first_name,u.last_name from users u where u.role in ('user','admin') and u.lifecycle in ('draft','ready','invited','active') and (u.email ilike $1 escape '\\' or coalesce(u.first_name,'') ilike $1 escape '\\' or coalesce(u.last_name,'') ilike $1 escape '\\' or exists(select 1 from psiu_assignments a join psiu_units p on p.id=a.psiu_unit_id where a.user_id=u.id and a.unassigned_at is null and p.serial_number ilike $1 escape '\\')) order by u.email,u.id limit 20`,
       [term],
     );
     return r.rows.map((x) => ({

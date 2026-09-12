@@ -29,7 +29,9 @@ describe('PSIU client', () => {
   it('uses direct fixed HTTP firmware routes outside local development for the temporary demonstration', async () => {
     vi.stubGlobal('window', { location: { hostname: 'wally-analytics.app' } });
     const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponse({ accepted: true }))
       .mockResolvedValueOnce(jsonResponse({ ...status, recording: true }))
+      .mockResolvedValueOnce(jsonResponse({ accepted: true }))
       .mockResolvedValueOnce(jsonResponse({ ...status, recording: false }))
       .mockResolvedValueOnce(new Response(new Blob(['RIFF____WAVE'], { type: 'audio/wav' }), { status: 206, headers: { 'content-type': 'audio/wav' } }));
     const client = createPsuClient(fetchMock);
@@ -37,8 +39,10 @@ describe('PSIU client', () => {
     await client.stopCapture();
     await client.getCompletedCapture();
     expect(fetchMock).toHaveBeenNthCalledWith(1, 'http://psiu.local/api/sampling', expect.objectContaining({ method: 'POST', body: '{"running":true}' }));
-    expect(fetchMock).toHaveBeenNthCalledWith(2, 'http://psiu.local/api/sampling', expect.objectContaining({ method: 'POST', body: '{"running":false}' }));
-    expect(fetchMock).toHaveBeenNthCalledWith(3, 'http://psiu.local/audio.wav', expect.objectContaining({ headers: { range: 'bytes=0-' } }));
+    expect(fetchMock).toHaveBeenNthCalledWith(2, 'http://psiu.local/status');
+    expect(fetchMock).toHaveBeenNthCalledWith(3, 'http://psiu.local/api/sampling', expect.objectContaining({ method: 'POST', body: '{"running":false}' }));
+    expect(fetchMock).toHaveBeenNthCalledWith(4, 'http://psiu.local/status');
+    expect(fetchMock).toHaveBeenNthCalledWith(5, 'http://psiu.local/audio.wav', expect.objectContaining({ headers: { range: 'bytes=0-' } }));
     vi.unstubAllGlobals();
   });
 
@@ -57,7 +61,9 @@ describe('PSIU client', () => {
 
   it('sends capture actions only to the same-origin local proxy', async () => {
     const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponse({ accepted: true }))
       .mockResolvedValueOnce(jsonResponse({ ...status, recording: true }))
+      .mockResolvedValueOnce(jsonResponse({ accepted: true }))
       .mockResolvedValueOnce(jsonResponse({ ...status, recording: false }));
     const client = createPsuClient(fetchMock);
 
@@ -65,7 +71,9 @@ describe('PSIU client', () => {
     await client.stopCapture();
 
     expect(fetchMock).toHaveBeenNthCalledWith(1, '/api/psiu/capture', expect.objectContaining({ method: 'POST', body: '{"running":true}' }));
-    expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/psiu/capture', expect.objectContaining({ method: 'POST', body: '{"running":false}' }));
+    expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/psiu/status');
+    expect(fetchMock).toHaveBeenNthCalledWith(3, '/api/psiu/capture', expect.objectContaining({ method: 'POST', body: '{"running":false}' }));
+    expect(fetchMock).toHaveBeenNthCalledWith(4, '/api/psiu/status');
   });
 
   it('returns completed WAV bytes and treats no recording as empty state', async () => {

@@ -647,13 +647,15 @@ function Shell() {
   const [accountAnchor, setAccountAnchor] = useState<HTMLElement | null>(null);
   const [mobileAnchor, setMobileAnchor] = useState<HTMLElement | null>(null);
   const nav = useNavigate();
+  const loadSystems = () =>
+    void request<UserSystem[]>('/v1/me/systems')
+      .then(setSystems)
+      .catch(() => setSystems([]));
   const load = async () => {
     try {
       const next = await request<MeResponse>('/v1/me');
       setMe(next);
-      void request<UserSystem[]>('/v1/me/systems')
-        .then(setSystems)
-        .catch(() => setSystems([]));
+      loadSystems();
     } catch {
       setMe(undefined);
       throw Error('Your account is not ready. Confirm your email to continue.');
@@ -773,7 +775,7 @@ function Shell() {
             />
             <Route path="/account" element={<Account me={me} />} />
             <Route path="/profile" element={<ProfilePage me={me} onSaved={load} />} />
-            <Route path="/systems" element={<SystemsPage />} />
+            <Route path="/systems" element={<SystemsPage onChanged={loadSystems} />} />
             <Route path="/credits" element={<CreditsPage />} />
             <Route path="/reports" element={<ReportsPage />} />
             <Route

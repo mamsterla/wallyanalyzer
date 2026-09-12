@@ -78,11 +78,21 @@ export function ControllerPage({ units, systems }: { units: CustomerUnit[]; syst
     } catch { setPhase('unavailable'); setNotice('Capture could not be stopped through the temporary direct browser connection.'); }
   };
   useEffect(() => {
-    if (phase !== 'capturing') return;
-    const timer = window.setInterval(() => void client.getStatus().then(next => {
-      setStatus(next);
-      if (!next.recording) { setPhase('ready'); setNotice('PSIU stopped recording. Press Start capture only after resolving the completed recording.'); }
-    }).catch(() => setNotice('PSIU status update delayed.')), 2000);
+    if (['starting', 'stopping', 'processing'].includes(phase)) return;
+    const timer = window.setInterval(
+      () =>
+        void client
+          .getStatus()
+          .then((next) => {
+            setStatus(next);
+            if (phase === 'capturing' && !next.recording) {
+              setPhase('ready');
+              setNotice('PSIU stopped recording. Press Start capture only after resolving the completed recording.');
+            }
+          })
+          .catch(() => setNotice('PSIU status update delayed.')),
+      2000,
+    );
     return () => window.clearInterval(timer);
   }, [client, phase]);
 
@@ -92,9 +102,9 @@ export function ControllerPage({ units, systems }: { units: CustomerUnit[]; syst
     setError(''); setPhase('processing');
     try {
       const wav = await client.getCompletedCapture(); if (!wav) throw Error('PSIU has no completed WAV file.');
-      const file = new File([wav], `psiu-${status.uid}-${Date.now()}.wav`, { type: 'audio/wav' });
+      const file = new File([wav], `psiu-${unit.uid}-${Date.now()}.wav`, { type: 'audio/wav' });
       const idempotencyKey = crypto.randomUUID().replaceAll('-', '');
-      const batch = await request<CreateSampleUploadBatchResponse>('/v1/samples/upload-batches', { method: 'POST', body: JSON.stringify({ idempotencyKey, psiuUnitId: unit.id, systemId: systems.find(item => item.active)?.id, source: 'psiu_capture', observedPsiuUid: status.uid, files: [{ clientFileId: crypto.randomUUID().replaceAll('-', ''), fileName: file.name, contentType: 'audio/wav', byteLength: file.size, recordedAt: new Date().toISOString(), source: 'psiu_capture' }] }) });
+      const batch = await request<CreateSampleUploadBatchResponse>('/v1/samples/upload-batches', { method: 'POST', body: JSON.stringify({ idempotencyKey, psiuUnitId: unit.id, systemId: systems.find(item => item.active)?.id, source: 'psiu_capture', observedPsiuUid: unit.uid, files: [{ clientFileId: crypto.randomUUID().replaceAll('-', ''), fileName: file.name, contentType: 'audio/wav', byteLength: file.size, recordedAt: new Date().toISOString(), source: 'psiu_capture' }] }) });
       const intent = batch.uploads[0]; if (!intent) throw Error('Upload intent is unavailable.');
       const put = await fetch(intent.uploadUrl, { method: 'PUT', headers: intent.requiredHeaders, body: file }); if (!put.ok) throw Error('Capture upload failed.');
       await request(`/v1/samples/${intent.sampleId}/complete`, { method: 'POST' });
