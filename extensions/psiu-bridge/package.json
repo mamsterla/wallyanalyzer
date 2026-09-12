@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsc -p tsconfig.json && cp manifest.json dist/manifest.json",
+    "build": "tsc -p tsconfig.json && cp manifest.json dist/manifest.json && rm -rf dist/icons && cp -R icons dist/icons",
+    "package": "npm run build && cd dist && rm -f ../wally-psiu-bridge.zip && zip -qr ../wally-psiu-bridge.zip .",
     "check": "tsc --noEmit -p tsconfig.json"
   }
 }

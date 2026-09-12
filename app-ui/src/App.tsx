@@ -53,6 +53,7 @@ import { ControllerPage } from './pages/ControllerPage.js';
 import { WallySelect } from './designSystemSelect.js';
 import { CreditsPage, ProfilePage, ReportsPage, SystemsPage } from './pages/UserExperiencePages.js';
 import { AdminConsole } from './pages/AdminConsole.js';
+import { isPsiuBridgeInstalled } from './features/controller/psiuClient.js';
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const token = await accessToken();
   const r = await fetch(`${api}${path}`, {
@@ -239,50 +240,27 @@ const dashboardRowSx = {
   borderRadius: 1,
   p: 1.5,
 };
+export function psiuBridgeStoreUrl(userAgent: string): string | undefined {
+  if (/Edg\//.test(userAgent)) return 'https://microsoftedge.microsoft.com/addons/search/Wally%20PSIU%20Bridge';
+  if (/Chrome\//.test(userAgent) && !/Edg\//.test(userAgent)) return 'https://chromewebstore.google.com/search/Wally%20PSIU%20Bridge';
+  return undefined;
+}
 function Actions() {
   const [a, setA] = useState<UserAlert[]>([]);
+  const [bridgeInstalled, setBridgeInstalled] = useState<boolean>();
   useEffect(() => {
     void request<UserAlert[]>('/v1/me/alerts').then(setA);
+    void isPsiuBridgeInstalled().then(setBridgeInstalled);
   }, []);
+  const bridgeUrl = psiuBridgeStoreUrl(navigator.userAgent);
+  const needsBridge = bridgeInstalled === false;
   return (
     <Paper component="section" aria-labelledby="home-actions-title" sx={{ p: 2, height: '100%' }}>
-      <Typography id="home-actions-title" variant="h5" sx={dashboardTitleSx}>
-        Actions
-      </Typography>
+      <Typography id="home-actions-title" variant="h5" sx={dashboardTitleSx}>Actions</Typography>
       <Stack spacing={1} mt={1.5}>
-        {a.length ? (
-          a.map((x) => (
-            <Box component="article" key={x.id} sx={dashboardRowSx}>
-              <Stack
-                direction={{ xs: 'column', sm: 'row' }}
-                spacing={1}
-                alignItems={{ sm: 'center' }}
-              >
-                <Box sx={{ flexGrow: 1 }}>
-                  <Typography fontWeight={700}>{x.title}</Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {x.message}
-                  </Typography>
-                </Box>
-                {x.actionRoute && <Button href={x.actionRoute}>{x.actionLabel}</Button>}
-                {actionIsDismissible(x) && (
-                  <Button
-                    onClick={async () => {
-                      await request(`/v1/me/alerts/${x.id}/dismiss`, { method: 'POST' });
-                      setA((v) => v.filter((y) => y.id !== x.id));
-                    }}
-                  >
-                    Dismiss
-                  </Button>
-                )}
-              </Stack>
-            </Box>
-          ))
-        ) : (
-          <Box data-testid="home-actions-empty-row" sx={dashboardRowSx}>
-            <Typography color="text.secondary">No actions waiting.</Typography>
-          </Box>
-        )}
+        {needsBridge && <Box component="article" data-testid="home-psiu-bridge-action" sx={dashboardRowSx}><Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ sm: 'center' }}><Box sx={{ flexGrow: 1 }}><Typography fontWeight={700}>Install Wally PSIU Bridge</Typography><Typography variant="body2" color="text.secondary">Required to capture from your local PSIU on this desktop.</Typography></Box>{bridgeUrl ? <Button component="a" href={bridgeUrl} target="_blank" rel="noreferrer">Install extension</Button> : <Typography variant="body2">Use Chrome or Microsoft Edge on desktop.</Typography>}</Stack></Box>}
+        {a.map((x) => <Box component="article" key={x.id} sx={dashboardRowSx}><Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ sm: 'center' }}><Box sx={{ flexGrow: 1 }}><Typography fontWeight={700}>{x.title}</Typography><Typography variant="body2" color="text.secondary">{x.message}</Typography></Box>{x.actionRoute && <Button href={x.actionRoute}>{x.actionLabel}</Button>}{actionIsDismissible(x) && <Button onClick={async () => { await request(`/v1/me/alerts/${x.id}/dismiss`, { method: 'POST' }); setA((v) => v.filter((y) => y.id !== x.id)); }}>Dismiss</Button>}</Stack></Box>)}
+        {!a.length && !needsBridge && <Box data-testid="home-actions-empty-row" sx={dashboardRowSx}><Typography color="text.secondary">No actions waiting.</Typography></Box>}
       </Stack>
     </Paper>
   );

@@ -23,6 +23,11 @@ function createDirectClient(fetchImplementation: FetchLike, base: string): PsiuC
   };
 }
 
+export async function isPsiuBridgeInstalled(): Promise<boolean> {
+  if (typeof window === 'undefined' || ['localhost', '127.0.0.1'].includes(window.location.hostname)) return true;
+  try { await bridgeRequest('probe', undefined, 1_500); return true; } catch { return false; }
+}
+
 export function createExtensionClient(): PsiuClient {
   return {
     async scanUid() { return uid(await bridgeRequest('uid')); },
@@ -33,10 +38,10 @@ export function createExtensionClient(): PsiuClient {
   };
 }
 
-function bridgeRequest(command: Exclude<BridgeCommand, 'audio'>, running?: boolean): Promise<unknown> {
+function bridgeRequest(command: Exclude<BridgeCommand, 'audio'>, running?: boolean, timeoutMs = 10_000): Promise<unknown> {
   return new Promise((resolve, reject) => {
     const requestId = crypto.randomUUID();
-    const timer = window.setTimeout(() => finish(new PsiuUnavailableError()), 10_000);
+    const timer = window.setTimeout(() => finish(new PsiuUnavailableError()), timeoutMs);
     const onMessage = (event: MessageEvent<unknown>) => {
       if (event.source !== window || event.origin !== window.location.origin) return;
       const message = event.data as Partial<BridgeResponse> | null;
