@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "Wally PSIU Bridge",
+  "version": "0.1.0",
+  "description": "Connects Wally Analyzer to an assigned local PSIU.",
+  "permissions": [],
+  "host_permissions": ["http://psiu.local/*"],
+  "background": { "service_worker": "service-worker.js", "type": "module" },
+  "content_scripts": [
+    {
+      "matches": ["https://wally-analytics.app/*", "http://localhost/*", "http://127.0.0.1/*"],
+      "js": ["content-script.js"],
+      "run_at": "document_start"
+    }
+  ]
+}

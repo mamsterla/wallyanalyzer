@@ -1,0 +1,10 @@
+{
+  "name": "@wally/psiu-bridge",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json && cp manifest.json dist/manifest.json",
+    "check": "tsc --noEmit -p tsconfig.json"
+  }
+}
