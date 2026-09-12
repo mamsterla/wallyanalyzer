@@ -60,6 +60,12 @@ test('report history uses owner-scoped created_at/id keyset cursor without page 
   assert.equal(decodeReportCursor(first.nextCursor!).id, ids[1]);
 });
 
+test('report history normalizes JSON-aggregated artifact timestamps from Postgres', async () => {
+  const pool = { query: async () => ({ rows: [{ ...row(ids[0], '2026-01-03T00:00:00.000Z'), artifacts: [{ kind: 'report_pdf', content_type: 'application/pdf', created_at: '2026-01-03T00:01:00.000Z' }] }] }) };
+  const page = await new PostgresReportRepository(pool as never).history('owner-a');
+  assert.equal(page.items[0]?.artifacts[0]?.createdAt, '2026-01-03T00:01:00.000Z');
+});
+
 test('report history rejects malformed and forged cursors', () => {
   for (const cursor of [
     '',
