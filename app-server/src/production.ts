@@ -64,7 +64,7 @@ export function createProductionServer(dependencies: ProductionDependencies) {
   const experience = new PostgresUserExperienceRepository(pool);
   const adminData = dependencies.adminData ?? new PostgresAdminDataRepository(pool);
   const alerts = new PostgresUserAlertsRepository(pool);
-  const s3 = dependencies.s3 ?? new S3Client({});
+  const s3 = dependencies.s3 ?? new S3Client({ requestChecksumCalculation: 'WHEN_REQUIRED' });
   const bucketName = dependencies.sampleBucketName ?? process.env.SAMPLE_BUCKET_NAME ?? '';
   const cognito = dependencies.cognito ?? new CognitoIdentityProviderClient({});
   const verify = dependencies.verify ?? verifyCognitoAccessToken;
