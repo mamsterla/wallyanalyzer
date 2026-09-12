@@ -343,7 +343,16 @@ function AccountOverview() {
 }
 function ActivityQueue() {
   const [items, setItems] = useState<Array<{ id:string; reportType:string; status:string; createdAt:string }>>([]);
-  useEffect(() => { void request<{items?:Array<{id:string;reportType:string;status:string;createdAt:string}>}>('/v1/reports?limit=10').then(value => setItems(value.items ?? [])).catch(() => setItems([])); }, []);
+  useEffect(() => {
+    let mounted = true;
+    const load = () =>
+      void request<{items?:Array<{id:string;reportType:string;status:string;createdAt:string}>}>('/v1/reports?limit=10')
+        .then((value) => mounted && setItems(value.items ?? []))
+        .catch(() => mounted && setItems([]));
+    load();
+    const timer = window.setInterval(load, 5000);
+    return () => { mounted = false; window.clearInterval(timer); };
+  }, []);
   return <Paper component="section" aria-labelledby="home-activity-title" sx={{p:2,height:'100%'}}><Typography id="home-activity-title" variant="h5" sx={dashboardTitleSx}>Activity queue</Typography><Stack spacing={1} mt={1.5}>{items.length ? items.map(item => <Box key={item.id} sx={dashboardRowSx}><Typography fontWeight={700}>{item.reportType} · {item.status}</Typography><Typography variant="body2" color="text.secondary">{new Date(item.createdAt).toLocaleString()}</Typography></Box>) : <Typography color="text.secondary">No processing activity yet.</Typography>}</Stack></Paper>;
 }
 export function Home() {

@@ -1,4 +1,4 @@
-import { Alert, Box, Button, Card, CardContent, Dialog, DialogActions, DialogContent, DialogTitle, Grid, Stack, Typography } from '@mui/material';
+import { Alert, Box, Button, Card, CardContent, CircularProgress, Dialog, DialogContent, DialogTitle, Grid, Stack, Typography } from '@mui/material';
 import type { CreateReportRequest, CreateSampleUploadBatchResponse, CustomerUnit, PsiuStatus, ReportDefinition, UserSystem } from '@wally/contracts';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -39,6 +39,7 @@ export function ControllerPage({ units, systems }: { units: CustomerUnit[]; syst
   const [dialog, setDialog] = useState(false);
   const [definitions, setDefinitions] = useState<ReportDefinition[]>([]);
   const [error, setError] = useState('');
+  const [processingMessage, setProcessingMessage] = useState('');
 
   const refresh = useCallback(async () => {
     try {
@@ -78,14 +79,14 @@ export function ControllerPage({ units, systems }: { units: CustomerUnit[]; syst
     } catch { setPhase('unavailable'); setNotice('Capture could not be stopped through the temporary direct browser connection.'); }
   };
   useEffect(() => {
-    if (['starting', 'stopping', 'processing'].includes(phase)) return;
+    if (phase !== 'capturing') return;
     const timer = window.setInterval(
       () =>
         void client
           .getStatus()
           .then((next) => {
             setStatus(next);
-            if (phase === 'capturing' && !next.recording) {
+            if (!next.recording) {
               setPhase('ready');
               setNotice('PSIU stopped recording. Press Start capture only after resolving the completed recording.');
             }
@@ -99,21 +100,25 @@ export function ControllerPage({ units, systems }: { units: CustomerUnit[]; syst
   const discard = () => { setDialog(false); setPhase('ready'); setUnit(undefined); setError(''); setNotice('Capture discarded. PSIU is ready to capture.'); };
   const process = async (reports: CreateReportRequest['reports']) => {
     if (!unit || !status) return;
-    setError(''); setPhase('processing');
+    setError(''); setDialog(false); setPhase('processing'); setProcessingMessage('Retrieving capture from PSIU…');
     try {
       const wav = await client.getCompletedCapture(); if (!wav) throw Error('PSIU has no completed WAV file.');
       const file = new File([wav], `psiu-${unit.uid}-${Date.now()}.wav`, { type: 'audio/wav' });
       const idempotencyKey = crypto.randomUUID().replaceAll('-', '');
+      setProcessingMessage('Preparing secure upload…');
       const batch = await request<CreateSampleUploadBatchResponse>('/v1/samples/upload-batches', { method: 'POST', body: JSON.stringify({ idempotencyKey, psiuUnitId: unit.id, systemId: systems.find(item => item.active)?.id, source: 'psiu_capture', observedPsiuUid: unit.uid, files: [{ clientFileId: crypto.randomUUID().replaceAll('-', ''), fileName: file.name, contentType: 'audio/wav', byteLength: file.size, recordedAt: new Date().toISOString(), source: 'psiu_capture' }] }) });
       const intent = batch.uploads[0]; if (!intent) throw Error('Upload intent is unavailable.');
+      setProcessingMessage('Uploading capture to Wally…');
       const put = await fetch(intent.uploadUrl, { method: 'PUT', headers: intent.requiredHeaders, body: file }); if (!put.ok) throw Error('Capture upload failed.');
+      setProcessingMessage('Verifying capture…');
       await request(`/v1/samples/${intent.sampleId}/complete`, { method: 'POST' });
+      setProcessingMessage('Queueing report…');
       await request('/v1/reports/requests', { method: 'POST', body: JSON.stringify({ idempotencyKey: crypto.randomUUID().replaceAll('-', ''), batchId: batch.batchId, reports }) });
-      setDialog(false); setPhase('ready'); setNotice('Processing queued. Track progress in the Home activity queue.'); navigate('/');
-    } catch (reason) { setPhase('completed'); setError(reason instanceof Error ? reason.message : 'Unable to process this sample.'); }
+      setPhase('ready'); setNotice('Processing queued. Track progress in the Home activity queue.'); navigate('/');
+    } catch (reason) { setPhase('completed'); setDialog(true); setError(reason instanceof Error ? reason.message : 'Unable to process this sample.'); }
   };
   const eligibility = status ? captureEligibility(status, units, systems) : { ok: false as const, message: 'Checking PSIU connection.' };
   const busy = ['checking', 'starting', 'stopping', 'processing'].includes(phase);
-  return <Stack spacing={3}><Box><Typography variant="h3">Sample Capture</Typography><Typography color="text.secondary">Temporary direct-browser PSIU mode. WAV files can only be processed from this PSIU.</Typography></Box><Alert severity={phase === 'unavailable' || !eligibility.ok ? 'info' : 'success'} action={phase === 'unavailable' ? <Button color="inherit" onClick={() => void refresh()}>Retry PSIU</Button> : undefined}>{notice}</Alert><Grid container spacing={3}><Grid size={{ xs: 12, md: 5 }}><Card><CardContent><Typography variant="h6">PSIU connection</Typography>{status ? <Stack mt={2} spacing={1}><Detail label="Unit ID" value={status.uid}/><Detail label="Recorder" value={status.recorderState}/><Detail label="Sample rate" value={`${status.sampleRateHz} Hz`}/></Stack> : <Typography mt={2}>No PSIU connection.</Typography>}</CardContent></Card></Grid><Grid size={{ xs: 12, md: 7 }}><Card><CardContent><Stack spacing={2} alignItems="center"><Typography variant="h6" alignSelf="start">Capture control</Typography><RecordArtwork state={phase === 'capturing' || busy ? 'spinning' : 'stopped'}/>{phase === 'capturing' ? <Button variant="contained" color="secondary" size="large" onClick={() => void stop()}>Stop capture</Button> : <Button variant="contained" size="large" disabled={busy || phase === 'unavailable' || !eligibility.ok} onClick={() => void start()}>Start capture</Button>}{phase === 'capturing' && status && <Typography>Pages written: {status.pagesWritten} · Dropped halves: {status.droppedHalves}</Typography>}</Stack></CardContent></Card></Grid></Grid><ReportPicker open={dialog} definitions={definitions} error={error} onClose={discard} onSubmit={process} cancelLabel="Discard"/></Stack>;
+  return <Stack spacing={3}><Box><Typography variant="h3">Sample Capture</Typography><Typography color="text.secondary">Temporary direct-browser PSIU mode. WAV files can only be processed from this PSIU.</Typography></Box><Alert severity={phase === 'unavailable' || !eligibility.ok ? 'info' : 'success'} action={phase === 'unavailable' ? <Button color="inherit" onClick={() => void refresh()}>Retry PSIU</Button> : undefined}>{notice}</Alert><Grid container spacing={3}><Grid size={{ xs: 12, md: 5 }}><Card><CardContent><Typography variant="h6">PSIU connection</Typography>{status ? <Stack mt={2} spacing={1}><Detail label="Unit ID" value={status.uid}/><Detail label="Recorder" value={status.recorderState}/><Detail label="Sample rate" value={`${status.sampleRateHz} Hz`}/></Stack> : <Typography mt={2}>No PSIU connection.</Typography>}</CardContent></Card></Grid><Grid size={{ xs: 12, md: 7 }}><Card><CardContent><Stack spacing={2} alignItems="center"><Typography variant="h6" alignSelf="start">Capture control</Typography><RecordArtwork state={phase === 'capturing' || busy ? 'spinning' : 'stopped'}/>{phase === 'capturing' ? <Button variant="contained" color="secondary" size="large" onClick={() => void stop()}>Stop capture</Button> : <Button variant="contained" size="large" disabled={busy || phase === 'unavailable' || !eligibility.ok} onClick={() => void start()}>Start capture</Button>}{phase === 'capturing' && status && <Typography>Pages written: {status.pagesWritten} · Dropped halves: {status.droppedHalves}</Typography>}</Stack></CardContent></Card></Grid></Grid><ReportPicker open={dialog} definitions={definitions} error={error} onClose={discard} onSubmit={process} cancelLabel="Discard"/><Dialog open={phase === 'processing'} aria-labelledby="capture-processing-title"><DialogTitle id="capture-processing-title">Processing capture</DialogTitle><DialogContent><Stack spacing={2} alignItems="center" sx={{py:2,minWidth:280}}><CircularProgress size={56}/><Typography>{processingMessage}</Typography><Typography variant="body2" color="text.secondary" align="center">Keep this page open while Wally transfers and verifies the capture.</Typography></Stack></DialogContent></Dialog></Stack>;
 }
 function Detail({ label, value }: { label: string; value: string }) { return <Box><Typography variant="caption" color="text.secondary">{label}</Typography><Typography>{value}</Typography></Box>; }
