@@ -30,7 +30,7 @@ export function validateUploadBatch(request: CreateSampleUploadBatchRequest): vo
 export async function presignUpload(intent: UploadIntentRow, bucketName:string, s3:S3Client) {
   const command = new PutObjectCommand({ Bucket:bucketName, Key:intent.objectKey, ContentType:intent.contentType, Tagging:UNACCEPTED_UPLOAD_TAG, ...(intent.sha256Base64 ? { ChecksumSHA256:intent.sha256Base64 } : {}) });
   const uploadUrl = await getSignedUrl(s3, command, { expiresIn: URL_TTL_SECONDS });
-  return { sampleId:intent.sampleId, clientFileId:intent.clientFileId, fileName:intent.fileName, uploadUrl, expiresAt:new Date(Date.now()+URL_TTL_SECONDS*1000).toISOString(), requiredHeaders:{ 'content-type':intent.contentType, 'x-amz-tagging':UNACCEPTED_UPLOAD_TAG, ...(intent.sha256Base64 ? { 'x-amz-checksum-sha256':intent.sha256Base64 } : {}) } };
+  return { sampleId:intent.sampleId, clientFileId:intent.clientFileId, fileName:intent.fileName, uploadUrl, expiresAt:new Date(Date.now()+URL_TTL_SECONDS*1000).toISOString(), requiredHeaders:{ 'content-type':intent.contentType, ...(intent.sha256Base64 ? { 'x-amz-checksum-sha256':intent.sha256Base64 } : {}) } };
 }
 
 export async function verifyWavObject(intent: UploadIntentRow, bucketName:string, s3:S3Client): Promise<{ sampleRateHz:number; channels:number; bitsPerSample:number; durationMs:number }> {
