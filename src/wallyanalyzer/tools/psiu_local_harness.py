@@ -155,6 +155,79 @@ def estimate_tone_hz(samples: np.ndarray, rate: int, nominal_hz: float) -> list[
     return output
 
 
+def _peak_bin(frequencies: np.ndarray, dbfs: np.ndarray, target_hz: float, search_hz: float = 50) -> int:
+    candidates = np.flatnonzero((frequencies >= target_hz - search_hz) & (frequencies <= target_hz + search_hz))
+    if not len(candidates):
+        raise ValueError(f"No FFT bins are available near {target_hz:.1f} Hz.")
+    return int(candidates[np.argmax(dbfs[candidates])])
+
+
+def spectral_diagnostics(samples: np.ndarray, rate: int, nominal_hz: float) -> tuple[list[dict[str, Any]], np.ndarray, list[np.ndarray]]:
+    """Return channel-level FFT signal, noise floor, and harmonic measurements."""
+    length = min(len(samples), round(rate * 10))
+    if length < round(rate * 1):
+        raise ValueError("Need at least one second of program material for FFT diagnostics.")
+    window = np.hanning(length)
+    frequencies = np.fft.rfftfreq(length, 1 / rate)
+    upper_noise_hz = min(20_000.0, rate / 2 - 1)
+    diagnostics: list[dict[str, Any]] = []
+    spectra: list[np.ndarray] = []
+    for channel in range(samples.shape[1]):
+        peak_amplitude = 2 * np.abs(np.fft.rfft(samples[:length, channel] * window)) / np.sum(window)
+        dbfs = 20 * np.log10(np.maximum(peak_amplitude, 1e-15))
+        fundamental = _peak_bin(frequencies, dbfs, nominal_hz)
+        fundamental_hz = float(frequencies[fundamental])
+        mask = (frequencies >= 20) & (frequencies <= upper_noise_hz)
+        for order in range(1, 8):
+            target = fundamental_hz * order
+            if target > upper_noise_hz:
+                break
+            mask &= np.abs(frequencies - target) > 5
+        noise_floor_dbfs = float(np.median(dbfs[mask]))
+        noise_rms = float(np.sqrt(np.sum((peak_amplitude[mask] / np.sqrt(2)) ** 2)))
+        fundamental_rms = float(peak_amplitude[fundamental] / np.sqrt(2))
+        harmonics = []
+        for order in (2, 3):
+            target = fundamental_hz * order
+            if target >= rate / 2:
+                continue
+            index = _peak_bin(frequencies, dbfs, target, search_hz=10)
+            harmonics.append({"order": order, "frequencyHz": float(frequencies[index]), "levelDbfs": float(dbfs[index]), "levelDbc": float(dbfs[index] - dbfs[fundamental])})
+        diagnostics.append({
+            "fundamentalHz": fundamental_hz,
+            "fundamentalPeakDbfs": float(dbfs[fundamental]),
+            "noiseFloorDbfsPerBin": noise_floor_dbfs,
+            "peakToNoiseFloorDb": float(dbfs[fundamental] - noise_floor_dbfs),
+            "broadbandSnrDb": float(20 * np.log10(max(fundamental_rms, 1e-15) / max(noise_rms, 1e-15))),
+            "harmonics": harmonics,
+        })
+        spectra.append(dbfs)
+    return diagnostics, frequencies, spectra
+
+
+def write_spectrum_svg(path: Path, frequencies: np.ndarray, spectra: list[np.ndarray]) -> None:
+    """Write a compact 20 Hz–20 kHz FFT review plot without plotting dependencies."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    left, right, top, bottom, width, height = 72, 24, 28, 44, 1080, 480
+    limit = min(20_000.0, float(frequencies[-1]))
+    selected = (frequencies >= 20) & (frequencies <= limit)
+    indices = np.flatnonzero(selected)[::max(1, int(np.count_nonzero(selected) / 2_000))]
+    def points(values: np.ndarray) -> str:
+        return " ".join(f"{left + (frequencies[index] - 20) / (limit - 20) * width:.1f},{top + (-20 - max(-160.0, min(-20.0, values[index]))) / 140 * height:.1f}" for index in indices)
+    lines = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{left + width + right}" height="{top + height + bottom}" viewBox="0 0 {left + width + right} {top + height + bottom}">', '<rect width="100%" height="100%" fill="white"/>', '<style>text{font:14px Arial;fill:#222}.axis{stroke:#555}.grid{stroke:#ddd}.left{fill:none;stroke:#b7791f;stroke-width:1}.right{fill:none;stroke:#1a5fb4;stroke-width:1}</style>', f'<text x="{left}" y="18">FFT magnitude (dBFS peak) · 20 Hz–20 kHz</text>']
+    for value in (-20, -60, -100, -140):
+        y = top + (-20 - value) / 140 * height
+        lines.extend([f'<line x1="{left}" y1="{y:.1f}" x2="{left + width}" y2="{y:.1f}" class="grid"/>', f'<text x="{left - 8}" y="{y + 5:.1f}" text-anchor="end">{value}</text>'])
+    for value in (20, 1_000, 5_000, 10_000, 20_000):
+        x = left + (value - 20) / (limit - 20) * width
+        lines.extend([f'<line x1="{x:.1f}" y1="{top}" x2="{x:.1f}" y2="{top + height}" class="grid"/>', f'<text x="{x:.1f}" y="{top + height + 22}" text-anchor="middle">{value:g} Hz</text>'])
+    lines.extend([f'<line x1="{left}" y1="{top + height}" x2="{left + width}" y2="{top + height}" class="axis"/>', f'<line x1="{left}" y1="{top}" x2="{left}" y2="{top + height}" class="axis"/>'])
+    if spectra: lines.append(f'<polyline points="{points(spectra[0])}" class="left"/>')
+    if len(spectra) > 1: lines.append(f'<polyline points="{points(spectra[1])}" class="right"/>')
+    lines.extend([f'<text x="{left + width - 120}" y="18" fill="#b7791f">Left</text>', f'<text x="{left + width - 60}" y="18" fill="#1a5fb4">Right</text>', '</svg>'])
+    path.write_text("\n".join(lines), encoding="utf-8")
+
+
 def trim_wav(source_path: Path, output_path: Path, start_frame: int, end_frame: int) -> None:
     with wave.open(str(source_path), "rb") as source:
         if not 0 <= start_frame < end_frame <= source.getnframes():
@@ -170,19 +243,25 @@ def trim_wav(source_path: Path, output_path: Path, start_frame: int, end_frame: 
                 remaining -= take
 
 
-def inspect(path: Path, nominal_hz: float, trim_output: Path | None = None) -> dict[str, Any]:
+def inspect(path: Path, nominal_hz: float, trim_output: Path | None = None, spectrum_output: Path | None = None) -> dict[str, Any]:
     samples, rate = _pcm_samples(path)
     start, end = active_tone_region(samples, rate)
+    program = samples[start:end]
+    spectrum, frequencies, spectra = spectral_diagnostics(program, rate, nominal_hz)
     result: dict[str, Any] = {
         "source": str(path),
         "metadata": wav_metadata(path),
         "programRegion": {"startSeconds": start / rate, "endSeconds": end / rate, "durationSeconds": (end - start) / rate},
-        "toneHz": estimate_tone_hz(samples[start:end], rate, nominal_hz),
+        "toneHz": estimate_tone_hz(program, rate, nominal_hz),
         "nominalToneHz": nominal_hz,
+        "fftDiagnostics": spectrum,
     }
     if trim_output:
         trim_wav(path, trim_output, start, end)
         result["trimmedOutput"] = str(trim_output)
+    if spectrum_output:
+        write_spectrum_svg(spectrum_output, frequencies, spectra)
+        result["spectrumOutput"] = str(spectrum_output)
     return result
 
 
@@ -197,11 +276,12 @@ def main() -> None:
     inspect_parser.add_argument("wav", type=Path)
     inspect_parser.add_argument("--nominal-hz", type=float, default=1_000.0)
     inspect_parser.add_argument("--trim-output", type=Path)
+    inspect_parser.add_argument("--spectrum-output", type=Path, help="Write a 20 Hz–20 kHz FFT SVG review plot.")
     args = parser.parse_args()
     if args.command == "capture":
         print(capture(args.base_url, args.seconds, args.output_dir))
     else:
-        print(json.dumps(inspect(args.wav, args.nominal_hz, args.trim_output), indent=2))
+        print(json.dumps(inspect(args.wav, args.nominal_hz, args.trim_output, args.spectrum_output), indent=2))
 
 
 if __name__ == "__main__":

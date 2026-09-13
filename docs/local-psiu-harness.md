@@ -23,9 +23,10 @@ The capture command uses only the documented fixed endpoints:
 PYTHONPATH=src python -m wallyanalyzer.tools.psiu_local_harness inspect \
   data/local-psiu/psiu-YYYYMMDDTHHMMSSZ.wav \
   --nominal-hz 1000 \
-  --trim-output data/local-psiu/tone-only.wav
+  --trim-output data/local-psiu/tone-only.wav \
+  --spectrum-output data/local-psiu/tone-spectrum.svg
 ```
 
-The inspection JSON reports WAV metadata, a loud contiguous program region, and left/right FFT tone estimates near the selected nominal frequency. The trim copies original PCM frames without re-encoding. It is intended to remove quiet lead-in/runout regions before local algorithm experimentation.
+The inspection JSON reports WAV metadata, a loud contiguous program region, and left/right FFT tone estimates near the selected nominal frequency. It also reports per-channel fundamental peak level, median FFT-bin noise floor, peak-to-noise-floor difference, broadband SNR, and second/third harmonic levels in dBFS and dBc. The optional SVG shows the 20 Hz–20 kHz FFT for visual review. The trim copies original PCM frames without re-encoding. It is intended to remove quiet lead-in/runout regions before local algorithm experimentation.
 
 The energy-based trim is a candidate cleanup step, not a production track boundary detector. Review the generated region and WAV manually before using it as a fixture.
