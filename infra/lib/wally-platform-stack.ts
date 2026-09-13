@@ -333,7 +333,7 @@ export class WallyPlatformStack extends cdk.Stack {
     // Report artifacts remain immutable and receive no delete permission.
     database.secret!.grantRead(taskDefinition.taskRole);
     taskDefinition.taskRole.addToPrincipalPolicy(new iam.PolicyStatement({ actions: ['s3:PutObject', 's3:PutObjectTagging', 's3:GetObject', 's3:DeleteObject'], resources: [sampleBucket.arnForObjects('raw/*')] }));
-    taskDefinition.taskRole.addToPrincipalPolicy(new iam.PolicyStatement({ actions: ['s3:GetObject'], resources: [reportBucket.arnForObjects('reports/*')] }));
+    taskDefinition.taskRole.addToPrincipalPolicy(new iam.PolicyStatement({ actions: ['s3:GetObject', 's3:GetObjectVersion'], resources: [reportBucket.arnForObjects('reports/*')] }));
     taskDefinition.taskRole.addToPrincipalPolicy(new iam.PolicyStatement({
       actions: [
         'cognito-idp:AdminCreateUser',
