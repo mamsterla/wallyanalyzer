@@ -1,13 +1,14 @@
 # Local PSIU algorithm harness
 
-`wally-psiu-local` is a local-only developer tool. It starts/stops the PSIU, retrieves `/audio.wav`, and saves it under the git-ignored `data/local-psiu/` directory. It does not call Wally production APIs or upload audio to S3.
+`wally-psiu-local` is a local-only developer tool. It starts/stops the PSIU, prints the PSIU `/status` JSON every five seconds during capture, retrieves `/audio.wav`, and saves it under the git-ignored `data/local-psiu/` directory. It does not call Wally production APIs or upload audio to S3.
 
 ## Capture a development recording
 
 ```sh
 PYTHONPATH=src python -m wallyanalyzer.tools.psiu_local_harness capture \
   --seconds 360 \
-  --base-url http://psiu.local
+  --base-url http://psiu.local \
+  --audio-wait-seconds 30
 ```
 
 The capture command uses only the documented fixed endpoints:
@@ -15,7 +16,7 @@ The capture command uses only the documented fixed endpoints:
 - `POST /api/sampling` with `{"running": true}`
 - `POST /api/sampling` with `{"running": false}`
 - `GET /status`
-- `GET /audio.wav`
+- `GET /audio.wav` (polled for up to 30 seconds after Stop, because PSIU may finalize the file asynchronously)
 
 ## Inspect and trim the result
 
