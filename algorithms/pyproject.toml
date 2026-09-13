@@ -18,6 +18,7 @@ dependencies = [
 wally-measure = "wallyanalyzer.tools.run_measurement_validation:main"
 wally-compile = "wallyanalyzer.tools.run_compile_validation:main"
 wally-render-png = "wallyanalyzer.tools.render_svg_pngs:main"
+wally-psiu-local = "wallyanalyzer.tools.psiu_local_harness:main"
 wally-build-tonearms = "wallyanalyzer.tools.build_tonearm_database:main"
 wally-enrich-tonearms = "wallyanalyzer.tools.enrich_tonearm_database:main"
 wally-sync-tonearm-research = "wallyanalyzer.tools.sync_tonearm_research_queue:main"
