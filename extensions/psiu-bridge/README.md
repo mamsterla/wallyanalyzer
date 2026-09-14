@@ -6,6 +6,7 @@ Chrome/Edge Manifest V3 extension that transports fixed PSIU commands from Wally
 
 - `GET /uid`
 - `GET /status`
+- `POST /api/inputsel` with `{ "xlr": boolean }`
 - `POST /api/sampling` with `{ "running": boolean }`
 - `GET /audio.wav`
 

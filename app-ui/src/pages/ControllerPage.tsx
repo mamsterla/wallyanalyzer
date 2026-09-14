@@ -1,4 +1,4 @@
-import { Alert, Box, Button, Card, CardContent, CircularProgress, Dialog, DialogContent, DialogTitle, Grid, Stack, Typography } from '@mui/material';
+import { Alert, Box, Button, Card, CardContent, CircularProgress, Dialog, DialogContent, DialogTitle, Grid, Stack, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material';
 import type { CreateReportRequest, CreateSampleUploadBatchResponse, CustomerUnit, PsiuStatus, ReportDefinition, UserSystem } from '@wally/contracts';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -46,6 +46,7 @@ export function ControllerPage({ units, systems }: { units: CustomerUnit[]; syst
   const [definitions, setDefinitions] = useState<ReportDefinition[]>([]);
   const [error, setError] = useState('');
   const [processingMessage, setProcessingMessage] = useState('');
+  const [inputChanging, setInputChanging] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
@@ -63,6 +64,15 @@ export function ControllerPage({ units, systems }: { units: CustomerUnit[]; syst
   }, [client, units, systems]);
   useEffect(() => { void refresh(); }, [refresh]);
 
+  const selectInput = async (xlr: boolean) => {
+    if (!status || status.recording || status.xlr === xlr) return;
+    setInputChanging(true); setError('');
+    try {
+      const next = await client.setInput(xlr);
+      setStatus(next); setNotice(`PSIU input set to ${next.xlr ? 'XLR' : 'RCA'}.`);
+    } catch { setNotice('PSIU input could not be changed through Wally PSIU Bridge.'); }
+    finally { setInputChanging(false); }
+  };
   const start = async () => {
     setPhase('starting'); setError('');
     try {
@@ -127,6 +137,6 @@ export function ControllerPage({ units, systems }: { units: CustomerUnit[]; syst
   };
   const eligibility = status ? captureEligibility(status, units, systems) : { ok: false as const, message: 'Checking PSIU connection.' };
   const busy = ['checking', 'starting', 'stopping', 'processing'].includes(phase);
-  return <Stack spacing={3}><Box><Typography variant="h3">Sample Capture</Typography><Typography color="text.secondary">Wally PSIU Bridge connects this browser to your local PSIU. WAV files can only be processed from this PSIU.</Typography></Box><Alert severity={phase === 'unavailable' || !eligibility.ok ? 'info' : 'success'} action={phase === 'unavailable' ? <Button color="inherit" onClick={() => void refresh()}>Retry PSIU</Button> : undefined}>{notice}</Alert><Grid container spacing={3}><Grid size={{ xs: 12, md: 5 }}><Card><CardContent><Typography variant="h6">PSIU connection</Typography>{status ? <Stack mt={2} spacing={1}><Detail label="Unit ID" value={status.uid}/><Detail label="Recorder" value={status.recorderState}/><Detail label="Sample rate" value={`${status.sampleRateHz} Hz`}/></Stack> : <Typography mt={2}>No PSIU connection.</Typography>}</CardContent></Card></Grid><Grid size={{ xs: 12, md: 7 }}><Card><CardContent><Stack spacing={2} alignItems="center"><Typography variant="h6" alignSelf="start">Capture control</Typography><RecordArtwork state={['starting', 'capturing', 'stopping'].includes(phase) ? 'spinning' : 'stopped'}/>{phase === 'capturing' ? <Button variant="contained" color="secondary" size="large" onClick={() => void stop()}>Stop capture</Button> : <Button variant="contained" size="large" disabled={busy || phase === 'unavailable' || !eligibility.ok} onClick={() => void start()}>Start capture</Button>}{phase === 'capturing' && status && <Typography>Pages written: {status.pagesWritten} · Dropped halves: {status.droppedHalves}</Typography>}</Stack></CardContent></Card></Grid></Grid><ReportPicker open={dialog} definitions={definitions} error={error} onClose={discard} onSubmit={process} cancelLabel="Discard"/><Dialog open={phase === 'processing'} aria-labelledby="capture-processing-title"><DialogTitle id="capture-processing-title">Processing capture</DialogTitle><DialogContent><Stack spacing={2} alignItems="center" sx={{py:2,minWidth:280}}><CircularProgress size={56}/><Typography>{processingMessage}</Typography><Typography variant="body2" color="text.secondary" align="center">Keep this page open while Wally transfers and verifies the capture.</Typography></Stack></DialogContent></Dialog></Stack>;
+  return <Stack spacing={3}><Box><Typography variant="h3">Sample Capture</Typography><Typography color="text.secondary">Wally PSIU Bridge connects this browser to your local PSIU. WAV files can only be processed from this PSIU.</Typography></Box><Alert severity={phase === 'unavailable' || !eligibility.ok ? 'info' : 'success'} action={phase === 'unavailable' ? <Button color="inherit" onClick={() => void refresh()}>Retry PSIU</Button> : undefined}>{notice}</Alert><Grid container spacing={3}><Grid size={{ xs: 12, md: 5 }}><Card><CardContent><Typography variant="h6">PSIU connection</Typography>{status ? <Stack mt={2} spacing={1}><Detail label="Unit ID" value={status.uid}/><Detail label="Recorder" value={status.recorderState}/><Detail label="Sample rate" value={`${status.sampleRateHz} Hz`}/><Box><Typography variant="caption" color="text.secondary">Input</Typography><ToggleButtonGroup exclusive value={status.xlr ? 'xlr' : 'rca'} size="small" aria-label="PSIU input selection" disabled={busy || inputChanging || status.recording} onChange={(_, value: string | null) => { if (value) void selectInput(value === 'xlr'); }} sx={{ display: 'flex', mt: 0.5 }}><ToggleButton value="rca" aria-label="Select RCA input" sx={{ flex: 1 }}>RCA</ToggleButton><ToggleButton value="xlr" aria-label="Select XLR input" sx={{ flex: 1 }}>XLR</ToggleButton></ToggleButtonGroup><Typography variant="caption" color="text.secondary">Current input: {status.xlr ? 'XLR' : 'RCA'}</Typography></Box></Stack> : <Typography mt={2}>No PSIU connection.</Typography>}</CardContent></Card></Grid><Grid size={{ xs: 12, md: 7 }}><Card><CardContent><Stack spacing={2} alignItems="center"><Typography variant="h6" alignSelf="start">Capture control</Typography><RecordArtwork state={['starting', 'capturing', 'stopping'].includes(phase) ? 'spinning' : 'stopped'}/>{phase === 'capturing' ? <Button variant="contained" color="secondary" size="large" onClick={() => void stop()}>Stop capture</Button> : <Button variant="contained" size="large" disabled={busy || phase === 'unavailable' || !eligibility.ok} onClick={() => void start()}>Start capture</Button>}{phase === 'capturing' && status && <Typography>Pages written: {status.pagesWritten} · Dropped halves: {status.droppedHalves}</Typography>}</Stack></CardContent></Card></Grid></Grid><ReportPicker open={dialog} definitions={definitions} error={error} onClose={discard} onSubmit={process} cancelLabel="Discard"/><Dialog open={phase === 'processing'} aria-labelledby="capture-processing-title"><DialogTitle id="capture-processing-title">Processing capture</DialogTitle><DialogContent><Stack spacing={2} alignItems="center" sx={{py:2,minWidth:280}}><CircularProgress size={56}/><Typography>{processingMessage}</Typography><Typography variant="body2" color="text.secondary" align="center">Keep this page open while Wally transfers and verifies the capture.</Typography></Stack></DialogContent></Dialog></Stack>;
 }
 function Detail({ label, value }: { label: string; value: string }) { return <Box><Typography variant="caption" color="text.secondary">{label}</Typography><Typography>{value}</Typography></Box>; }

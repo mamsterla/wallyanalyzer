@@ -56,6 +56,13 @@ describe('PSIU client', () => {
     expect(fetchMock).toHaveBeenCalledWith('/api/psiu/status');
   });
 
+  it('sends input selection only to the same-origin local proxy', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ ...status, xlr: true }));
+    const client = createPsuClient(fetchMock);
+    await expect(client.setInput(true)).resolves.toMatchObject({ xlr: true });
+    expect(fetchMock).toHaveBeenCalledWith('/api/psiu/input', expect.objectContaining({ method: 'POST', body: '{"xlr":true}' }));
+  });
+
   it('sends capture actions only to the same-origin local proxy', async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(jsonResponse({ accepted: true }))

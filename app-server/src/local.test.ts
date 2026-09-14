@@ -41,6 +41,31 @@ test('forwards authenticated audio.wav bytes and content headers through local W
   }
 });
 
+test('forwards local PSIU input selection and returns the current status', async () => {
+  const requests: Array<{ url: string; init?: RequestInit }> = [];
+  const server = await createLocalServer({
+    environment: { PSIU_BASE_URL: 'http://psiu.local' },
+    fetchImplementation: (async (input, init) => {
+      requests.push({ url: String(input), init });
+      if (String(input).endsWith('/api/inputsel')) return new Response(JSON.stringify({ xlr: true }), { status: 200, headers: { 'content-type': 'application/json' } });
+      return new Response(JSON.stringify({ uid: 'psiu-1', xlr: true }), { status: 200, headers: { 'content-type': 'application/json' } });
+    }) as typeof fetch,
+  });
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const address = server.address();
+  assert.ok(address && typeof address === 'object');
+  try {
+    const response = await fetch(`http://127.0.0.1:${address.port}/psiu/input`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ xlr: true }) });
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), { uid: 'psiu-1', xlr: true });
+    assert.equal(requests[0]?.url, 'http://psiu.local/api/inputsel');
+    assert.equal(requests[0]?.init?.body, '{"xlr":true}');
+    assert.equal(requests[1]?.url, 'http://psiu.local/status');
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  }
+});
+
 test('proxies only a valid unauthenticated PSIU UID without telemetry or cache persistence', async () => {
   const server = await createLocalServer({
     environment: { PSIU_BASE_URL: 'http://psiu.local' },
