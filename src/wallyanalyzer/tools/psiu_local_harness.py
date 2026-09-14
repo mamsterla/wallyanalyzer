@@ -7,6 +7,8 @@ paths for rapid local analysis iteration.
 from __future__ import annotations
 
 import argparse
+import base64
+import getpass
 import json
 import sys
 import time
@@ -26,7 +28,7 @@ class PsiuCaptureNotReady(RuntimeError):
     pass
 
 
-def psiu_request(base_url: str, path: str, *, method: str = "GET", body: dict[str, Any] | None = None) -> bytes:
+def psiu_request(base_url: str, path: str, *, method: str = "GET", body: dict[str, Any] | None = None, username: str | None = None, password: str | None = None) -> bytes:
     data = json.dumps(body).encode("utf-8") if body is not None else None
     headers = {
         "accept": "application/json, text/plain, */*",
@@ -36,6 +38,9 @@ def psiu_request(base_url: str, path: str, *, method: str = "GET", body: dict[st
     }
     if data:
         headers["content-type"] = "application/json"
+    if username is not None and password is not None:
+        token = base64.b64encode(f"{username}:{password}".encode("utf-8")).decode("ascii")
+        headers["authorization"] = f"Basic {token}"
     request = urllib.request.Request(
         f"{base_url.rstrip('/')}{path}",
         data=data,
@@ -56,11 +61,18 @@ def psiu_request(base_url: str, path: str, *, method: str = "GET", body: dict[st
         raise RuntimeError(f"PSIU is unavailable at {base_url}: {reason}") from error
 
 
-def psiu_json(base_url: str, path: str, *, method: str = "GET", body: dict[str, Any] | None = None) -> dict[str, Any]:
-    value = json.loads(psiu_request(base_url, path, method=method, body=body))
+def psiu_json(base_url: str, path: str, *, method: str = "GET", body: dict[str, Any] | None = None, username: str | None = None, password: str | None = None) -> dict[str, Any]:
+    value = json.loads(psiu_request(base_url, path, method=method, body=body, username=username, password=password))
     if not isinstance(value, dict):
         raise RuntimeError(f"PSIU returned an invalid JSON object for {path}.")
     return value
+
+
+def select_input(base_url: str, xlr: bool, username: str, password: str) -> dict[str, Any]:
+    result = psiu_json(base_url, "/api/inputsel", method="POST", body={"xlr": xlr}, username=username, password=password)
+    if result.get("xlr") is not xlr:
+        raise RuntimeError("PSIU did not confirm the requested input selection.")
+    return result
 
 
 def start_capture(base_url: str) -> dict[str, Any]:
@@ -311,6 +323,12 @@ def inspect(path: Path, nominal_hz: float, trim_output: Path | None = None, spec
 def main() -> None:
     parser = argparse.ArgumentParser(description="Capture and inspect local PSIU WAVs without cloud upload.")
     subcommands = parser.add_subparsers(dest="command", required=True)
+    input_parser = subcommands.add_parser("input-select", help="Select PSIU XLR or RCA input; password is prompted securely.")
+    input_group = input_parser.add_mutually_exclusive_group(required=True)
+    input_group.add_argument("--xlr", action="store_true", help="Select XLR input.")
+    input_group.add_argument("--rca", action="store_true", help="Select RCA input.")
+    input_parser.add_argument("--base-url", default=DEFAULT_BASE_URL)
+    input_parser.add_argument("--username", default="admin")
     capture_parser = subcommands.add_parser("capture", help="Start PSIU, wait, stop, and save /audio.wav locally.")
     capture_parser.add_argument("--seconds", type=float, required=True)
     capture_parser.add_argument("--base-url", default=DEFAULT_BASE_URL)
@@ -323,7 +341,11 @@ def main() -> None:
     inspect_parser.add_argument("--trim-output", type=Path)
     inspect_parser.add_argument("--spectrum-output", type=Path, help="Write a 20 Hz–20 kHz FFT SVG review plot.")
     args = parser.parse_args()
-    if args.command == "capture":
+    if args.command == "input-select":
+        password = getpass.getpass("PSIU password: ")
+        selected = select_input(args.base_url, args.xlr, args.username, password)
+        print(json.dumps({"xlr": selected["xlr"]}))
+    elif args.command == "capture":
         print(capture(args.base_url, args.seconds, args.output_dir, args.audio_wait_seconds, args.status_interval_seconds))
     else:
         print(json.dumps(inspect(args.wav, args.nominal_hz, args.trim_output, args.spectrum_output), indent=2))

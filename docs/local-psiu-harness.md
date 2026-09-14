@@ -2,6 +2,16 @@
 
 `wally-psiu-local` is a local-only developer tool. It starts/stops the PSIU, prints the PSIU `/status` JSON every five seconds during capture, retrieves `/audio.wav`, and saves it under the git-ignored `data/local-psiu/` directory. It does not call Wally production APIs or upload audio to S3.
 
+## Select the input relay
+
+For XLR input, select it before capture. The command prompts for the PSIU password; it does not accept, store, or print a password.
+
+```sh
+PYTHONPATH=src python -m wallyanalyzer.tools.psiu_local_harness input-select --xlr
+```
+
+It uses the documented authenticated endpoint `POST /api/inputsel` with `{"xlr": true}`. Confirm the output is `{"xlr": true}` before capture.
+
 ## Capture a development recording
 
 ```sh
