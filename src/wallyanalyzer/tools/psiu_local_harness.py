@@ -10,6 +10,7 @@ import argparse
 import http.client
 import json
 import sys
+import threading
 import time
 import urllib.parse
 import wave
@@ -29,13 +30,13 @@ class PsiuCaptureNotReady(RuntimeError):
 class PsiuSession:
     """One keep-alive HTTP connection, matching the browser bridge lifecycle."""
 
-    def __init__(self, base_url: str):
+    def __init__(self, base_url: str, timeout_seconds: float = 10):
         parsed = urllib.parse.urlsplit(base_url)
         if parsed.scheme != "http" or not parsed.hostname:
             raise ValueError("PSIU base URL must be an http URL with a hostname.")
         self.base_url = base_url.rstrip("/")
         self.path_prefix = parsed.path.rstrip("/")
-        self.connection = http.client.HTTPConnection(parsed.hostname, parsed.port or 80, timeout=10)
+        self.connection = http.client.HTTPConnection(parsed.hostname, parsed.port or 80, timeout=timeout_seconds)
 
     def close(self) -> None:
         self.connection.close()
@@ -115,6 +116,25 @@ def stop_capture(base_url: str, session: PsiuSession) -> dict[str, Any]:
     return set_recording(base_url, session, False)
 
 
+def emit_status(base_url: str, elapsed: float, seconds: float) -> None:
+    session = PsiuSession(base_url, timeout_seconds=2)
+    try:
+        status = psiu_json(base_url, "/status", session=session)
+        event: dict[str, Any] = {"event": "capture_progress", "elapsedSeconds": round(elapsed, 1), "remainingSeconds": round(max(0, seconds - elapsed), 1), "status": status}
+    except RuntimeError as error:
+        event = {"event": "capture_status_error", "elapsedSeconds": round(elapsed, 1), "message": str(error)}
+    finally:
+        session.close()
+    print(json.dumps(event), file=sys.stderr, flush=True)
+
+
+def status_reporter(base_url: str, seconds: float, interval_seconds: float, started: float, stop: threading.Event) -> None:
+    next_report = started + interval_seconds
+    while not stop.wait(max(0, next_report - time.monotonic())):
+        emit_status(base_url, time.monotonic() - started, seconds)
+        next_report += interval_seconds
+
+
 def completed_wav(base_url: str, wait_seconds: float, session: PsiuSession) -> bytes:
     deadline = time.monotonic() + wait_seconds
     while True:
@@ -131,29 +151,30 @@ def capture(base_url: str, seconds: float, output_dir: Path, audio_wait_seconds:
         raise ValueError("Capture duration must be greater than zero and no more than one hour.")
     if audio_wait_seconds < 0 or audio_wait_seconds > 300:
         raise ValueError("Completed-WAV wait must be from zero to 300 seconds.")
-    if status_interval_seconds <= 0 or status_interval_seconds > 60:
-        raise ValueError("Status interval must be greater than zero and no more than 60 seconds.")
+    if status_interval_seconds < 0 or status_interval_seconds > 60:
+        raise ValueError("Status interval must be from zero to 60 seconds.")
     session = PsiuSession(base_url)
+    reporter_stop = threading.Event()
+    reporter: threading.Thread | None = None
     try:
         status = start_capture(base_url, session)
         if not status.get("recording"):
             raise RuntimeError("PSIU did not confirm recording after start.")
         started = time.monotonic()
+        print(json.dumps({"event": "capture_progress", "elapsedSeconds": 0, "remainingSeconds": seconds, "status": status}), file=sys.stderr, flush=True)
+        if status_interval_seconds:
+            reporter = threading.Thread(target=status_reporter, args=(base_url, seconds, status_interval_seconds, started, reporter_stop), daemon=True)
+            reporter.start()
         try:
-            while True:
-                elapsed = time.monotonic() - started
-                progress = status_with_retry(base_url, session)
-                print(json.dumps({"event": "capture_progress", "elapsedSeconds": round(elapsed, 1), "remainingSeconds": round(max(0, seconds - elapsed), 1), "status": progress}), file=sys.stderr, flush=True)
-                if not progress.get("recording"):
-                    raise RuntimeError("PSIU stopped recording before the requested capture duration.")
-                remaining = seconds - elapsed
-                if remaining <= 0:
-                    break
-                time.sleep(min(status_interval_seconds, remaining))
+            reporter_stop.wait(seconds)
         finally:
+            reporter_stop.set()
+            if reporter:
+                reporter.join(timeout=3)
             stop_capture(base_url, session)
         audio = completed_wav(base_url, audio_wait_seconds, session)
     finally:
+        reporter_stop.set()
         session.close()
     if len(audio) < 44 or audio[:4] != b"RIFF" or audio[8:12] != b"WAVE":
         raise RuntimeError("PSIU did not return a WAV capture.")
