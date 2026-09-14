@@ -28,14 +28,9 @@ class PsiuCaptureNotReady(RuntimeError):
 
 def psiu_request(base_url: str, path: str, *, method: str = "GET", body: dict[str, Any] | None = None) -> bytes:
     data = json.dumps(body).encode("utf-8") if body is not None else None
-    headers = {
-        "accept": "application/json, text/plain, */*",
-        "user-agent": "Mozilla/5.0 (Wally PSIU local harness)",
-        "origin": base_url.rstrip("/"),
-        "referer": f"{base_url.rstrip('/')}/",
-    }
-    if data:
-        headers["content-type"] = "application/json"
+    # Match the production browser bridge request contract. In particular, do
+    # not inject Origin or Referer headers that the extension fetch does not set.
+    headers = {"content-type": "application/json"} if data else {}
     request = urllib.request.Request(
         f"{base_url.rstrip('/')}{path}",
         data=data,
