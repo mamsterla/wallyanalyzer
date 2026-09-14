@@ -4,13 +4,13 @@
 
 ## Select the input relay
 
-For XLR input, select it before capture. The command prompts for the PSIU password; it does not accept, store, or print a password.
+For XLR input, select it before capture.
 
 ```sh
 PYTHONPATH=src python -m wallyanalyzer.tools.psiu_local_harness input-select --xlr
 ```
 
-It uses the documented authenticated endpoint `POST /api/inputsel` with `{"xlr": true}`. Confirm the output is `{"xlr": true}` before capture.
+It uses the v1.2.6 public endpoint `POST /api/inputsel` with `{"xlr": true}`. Confirm the output is `{"xlr": true}` before capture.
 
 ## Capture a development recording
 
