@@ -7,11 +7,11 @@ paths for rapid local analysis iteration.
 from __future__ import annotations
 
 import argparse
+import http.client
 import json
 import sys
 import time
-import urllib.error
-import urllib.request
+import urllib.parse
 import wave
 from datetime import datetime, timezone
 from pathlib import Path
@@ -26,36 +26,64 @@ class PsiuCaptureNotReady(RuntimeError):
     pass
 
 
-def psiu_request(base_url: str, path: str, *, method: str = "GET", body: dict[str, Any] | None = None) -> bytes:
-    data = json.dumps(body).encode("utf-8") if body is not None else None
-    # Match the production browser bridge request contract. In particular, do
-    # not inject Origin or Referer headers that the extension fetch does not set.
-    headers = {"content-type": "application/json"} if data else {}
-    request = urllib.request.Request(
-        f"{base_url.rstrip('/')}{path}",
-        data=data,
-        method=method,
-        headers=headers,
-    )
+class PsiuSession:
+    """One keep-alive HTTP connection, matching the browser bridge lifecycle."""
+
+    def __init__(self, base_url: str):
+        parsed = urllib.parse.urlsplit(base_url)
+        if parsed.scheme != "http" or not parsed.hostname:
+            raise ValueError("PSIU base URL must be an http URL with a hostname.")
+        self.base_url = base_url.rstrip("/")
+        self.path_prefix = parsed.path.rstrip("/")
+        self.connection = http.client.HTTPConnection(parsed.hostname, parsed.port or 80, timeout=10)
+
+    def close(self) -> None:
+        self.connection.close()
+
+    def request(self, path: str, *, method: str = "GET", body: dict[str, Any] | None = None) -> tuple[int, bytes]:
+        payload = json.dumps(body).encode("utf-8") if body is not None else None
+        headers = {"content-type": "application/json"} if payload else {}
+        try:
+            self.connection.request(method, f"{self.path_prefix}{path}", body=payload, headers=headers)
+            response = self.connection.getresponse()
+            return response.status, response.read()
+        except (OSError, http.client.HTTPException) as error:
+            self.close()
+            raise RuntimeError(f"PSIU is unavailable at {self.base_url}: {error}") from error
+
+
+def psiu_request(base_url: str, path: str, *, method: str = "GET", body: dict[str, Any] | None = None, session: PsiuSession | None = None) -> bytes:
+    temporary = session is None
+    active_session = session or PsiuSession(base_url)
     try:
-        with urllib.request.urlopen(request, timeout=10) as response:
-            if response.status < 200 or response.status >= 300:
-                raise RuntimeError(f"PSIU returned HTTP {response.status} for {path}.")
-            return response.read()
-    except urllib.error.HTTPError as error:
-        if error.code == 404 and path == "/audio.wav":
-            raise PsiuCaptureNotReady("PSIU has not finalized the completed WAV.") from error
-        raise RuntimeError(f"PSIU returned HTTP {error.code} for {path}.") from error
-    except (urllib.error.URLError, OSError) as error:
-        reason = getattr(error, "reason", str(error))
-        raise RuntimeError(f"PSIU is unavailable at {base_url}: {reason}") from error
+        status, content = active_session.request(path, method=method, body=body)
+    finally:
+        if temporary:
+            active_session.close()
+    if status == 404 and path == "/audio.wav":
+        raise PsiuCaptureNotReady("PSIU has not finalized the completed WAV.")
+    if status < 200 or status >= 300:
+        raise RuntimeError(f"PSIU returned HTTP {status} for {path}.")
+    return content
 
 
-def psiu_json(base_url: str, path: str, *, method: str = "GET", body: dict[str, Any] | None = None) -> dict[str, Any]:
-    value = json.loads(psiu_request(base_url, path, method=method, body=body))
+def psiu_json(base_url: str, path: str, *, method: str = "GET", body: dict[str, Any] | None = None, session: PsiuSession | None = None) -> dict[str, Any]:
+    value = json.loads(psiu_request(base_url, path, method=method, body=body, session=session))
     if not isinstance(value, dict):
         raise RuntimeError(f"PSIU returned an invalid JSON object for {path}.")
     return value
+
+
+def status_with_retry(base_url: str, session: PsiuSession, attempts: int = 3) -> dict[str, Any]:
+    error: RuntimeError | None = None
+    for attempt in range(attempts):
+        try:
+            return psiu_json(base_url, "/status", session=session)
+        except RuntimeError as caught:
+            error = caught
+            if attempt + 1 < attempts:
+                time.sleep(1)
+    raise error or RuntimeError("PSIU status is unavailable.")
 
 
 def select_input(base_url: str, xlr: bool) -> dict[str, Any]:
@@ -65,21 +93,33 @@ def select_input(base_url: str, xlr: bool) -> dict[str, Any]:
     return result
 
 
-def start_capture(base_url: str) -> dict[str, Any]:
-    psiu_json(base_url, "/api/sampling", method="POST", body={"running": True})
-    return psiu_json(base_url, "/status")
+def set_recording(base_url: str, session: PsiuSession, running: bool) -> dict[str, Any]:
+    request_error: RuntimeError | None = None
+    try:
+        psiu_json(base_url, "/api/sampling", method="POST", body={"running": running}, session=session)
+    except RuntimeError as error:
+        request_error = error
+    status = status_with_retry(base_url, session)
+    if status.get("recording") is running:
+        return status
+    if request_error:
+        raise request_error
+    raise RuntimeError(f"PSIU did not confirm recording={running}.")
 
 
-def stop_capture(base_url: str) -> dict[str, Any]:
-    psiu_json(base_url, "/api/sampling", method="POST", body={"running": False})
-    return psiu_json(base_url, "/status")
+def start_capture(base_url: str, session: PsiuSession) -> dict[str, Any]:
+    return set_recording(base_url, session, True)
 
 
-def completed_wav(base_url: str, wait_seconds: float) -> bytes:
+def stop_capture(base_url: str, session: PsiuSession) -> dict[str, Any]:
+    return set_recording(base_url, session, False)
+
+
+def completed_wav(base_url: str, wait_seconds: float, session: PsiuSession) -> bytes:
     deadline = time.monotonic() + wait_seconds
     while True:
         try:
-            return psiu_request(base_url, "/audio.wav")
+            return psiu_request(base_url, "/audio.wav", session=session)
         except PsiuCaptureNotReady:
             if time.monotonic() >= deadline:
                 raise RuntimeError(f"PSIU did not retain a completed WAV within {wait_seconds:.0f} seconds of Stop.")
@@ -93,24 +133,28 @@ def capture(base_url: str, seconds: float, output_dir: Path, audio_wait_seconds:
         raise ValueError("Completed-WAV wait must be from zero to 300 seconds.")
     if status_interval_seconds <= 0 or status_interval_seconds > 60:
         raise ValueError("Status interval must be greater than zero and no more than 60 seconds.")
-    status = start_capture(base_url)
-    if not status.get("recording"):
-        raise RuntimeError("PSIU did not confirm recording after start.")
-    started = time.monotonic()
+    session = PsiuSession(base_url)
     try:
-        while True:
-            elapsed = time.monotonic() - started
-            progress = psiu_json(base_url, "/status")
-            print(json.dumps({"event": "capture_progress", "elapsedSeconds": round(elapsed, 1), "remainingSeconds": round(max(0, seconds - elapsed), 1), "status": progress}), file=sys.stderr, flush=True)
-            if not progress.get("recording"):
-                raise RuntimeError("PSIU stopped recording before the requested capture duration.")
-            remaining = seconds - elapsed
-            if remaining <= 0:
-                break
-            time.sleep(min(status_interval_seconds, remaining))
+        status = start_capture(base_url, session)
+        if not status.get("recording"):
+            raise RuntimeError("PSIU did not confirm recording after start.")
+        started = time.monotonic()
+        try:
+            while True:
+                elapsed = time.monotonic() - started
+                progress = status_with_retry(base_url, session)
+                print(json.dumps({"event": "capture_progress", "elapsedSeconds": round(elapsed, 1), "remainingSeconds": round(max(0, seconds - elapsed), 1), "status": progress}), file=sys.stderr, flush=True)
+                if not progress.get("recording"):
+                    raise RuntimeError("PSIU stopped recording before the requested capture duration.")
+                remaining = seconds - elapsed
+                if remaining <= 0:
+                    break
+                time.sleep(min(status_interval_seconds, remaining))
+        finally:
+            stop_capture(base_url, session)
+        audio = completed_wav(base_url, audio_wait_seconds, session)
     finally:
-        stop_capture(base_url)
-    audio = completed_wav(base_url, audio_wait_seconds)
+        session.close()
     if len(audio) < 44 or audio[:4] != b"RIFF" or audio[8:12] != b"WAVE":
         raise RuntimeError("PSIU did not return a WAV capture.")
     output_dir.mkdir(parents=True, exist_ok=True)
