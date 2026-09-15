@@ -9,6 +9,8 @@ from __future__ import annotations
 import argparse
 import http.client
 import json
+import shutil
+import subprocess
 import sys
 import threading
 import time
@@ -540,7 +542,16 @@ def cyclic_period_candidates(speed_rpm: np.ndarray, sample_rate_hz: float = 1_00
     indices = np.flatnonzero((frequencies >= 0.1) & (frequencies <= 30))[1:-1]
     peaks = indices[(amplitudes[indices] > amplitudes[indices - 1]) & (amplitudes[indices] >= amplitudes[indices + 1])]
     selected = peaks[np.argsort(amplitudes[peaks])[::-1]][:5]
-    return [{"frequencyHz": float(frequencies[index]), "periodSeconds": float(1 / frequencies[index]), "speedAmplitudeRpm": float(amplitudes[index])} for index in selected]
+    platter_hz = 33.333333 / 60
+    results = []
+    for index in selected:
+        cycles_per_revolution = float(frequencies[index] / platter_hz)
+        nearest = round(cycles_per_revolution)
+        interpretation = "cyclic speed candidate"
+        if nearest >= 1 and abs(cycles_per_revolution - nearest) <= 0.08:
+            interpretation = f"{nearest} cycle(s)-per-platter-revolution candidate"
+        results.append({"frequencyHz": float(frequencies[index]), "periodSeconds": float(1 / frequencies[index]), "speedAmplitudeRpm": float(amplitudes[index]), "cyclesPerPlatterRevolution": cycles_per_revolution, "interpretationCandidate": interpretation})
+    return results
 
 
 def write_speed_svg(path: Path, traces: list[tuple[np.ndarray, np.ndarray]]) -> None:
@@ -578,6 +589,20 @@ def write_local_report_html(path: Path, report: dict[str, Any], spectrum_filenam
     path.write_text(f"<!doctype html><html><head><meta charset=\"utf-8\"><title>Wally local turntable diagnostic</title><style>body{{font:16px system-ui;margin:2rem;max-width:1000px}}pre{{background:#f5f5f5;padding:1rem;overflow:auto}}img{{max-width:100%;border:1px solid #ccc}}</style></head><body><h1>Wally local turntable diagnostic</h1><p><strong>Diagnostic only:</strong> 1 kHz carrier estimates are unweighted and are not formal IEC/DIN/AES wow/flutter compliance results.</p><img src=\"{spectrum_filename}\" alt=\"FFT spectrum\"><h2>Speed over time</h2><img src=\"{speed_filename}\" alt=\"Instantaneous speed graph\"><h2>Metrics</h2><pre>{rows}</pre></body></html>", encoding="utf-8")
 
 
+def write_local_report_pdf(html_path: Path, pdf_path: Path) -> None:
+    """Render local HTML to PDF through installed Chrome; production uses its packaged renderer."""
+    chrome = shutil.which("google-chrome") or shutil.which("chromium")
+    macos_chrome = Path("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome")
+    if not chrome and macos_chrome.exists():
+        chrome = str(macos_chrome)
+    if not chrome:
+        raise RuntimeError("PDF rendering needs Google Chrome or Chromium installed locally.")
+    pdf_path.parent.mkdir(parents=True, exist_ok=True)
+    subprocess.run([chrome, "--headless", "--disable-gpu", "--no-pdf-header-footer", f"--print-to-pdf={pdf_path.resolve()}", html_path.resolve().as_uri()], check=True, timeout=60, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+    if not pdf_path.exists() or pdf_path.read_bytes()[:5] != b"%PDF-":
+        raise RuntimeError("Local HTML-to-PDF rendering did not produce a valid PDF.")
+
+
 def local_turntable_report(path: Path, nominal_hz: float, output_dir: Path) -> dict[str, Any]:
     samples, rate = _pcm_samples(path)
     start, end = active_tone_region(samples, rate)
@@ -592,6 +617,7 @@ def local_turntable_report(path: Path, nominal_hz: float, output_dir: Path) -> d
     speed_path = output_dir / f"{stem}-turntable-speed.svg"
     json_path = output_dir / f"{stem}-turntable-report.json"
     html_path = output_dir / f"{stem}-turntable-report.html"
+    pdf_path = output_dir / f"{stem}-turntable-report.pdf"
     write_spectrum_svg(spectrum_path, frequencies, spectra)
     speed_traces: list[tuple[np.ndarray, np.ndarray]] = []
     for entry in modulation:
@@ -602,9 +628,10 @@ def local_turntable_report(path: Path, nominal_hz: float, output_dir: Path) -> d
         entry["cyclicPeriodCandidates"] = cyclic_period_candidates(speeds)
         speed_traces.append((times, speeds))
     write_speed_svg(speed_path, speed_traces)
-    report = {"reportType": "local-1khz-turntable-diagnostic", "algorithmVersion": "local-1.0", "generatedAt": datetime.now(timezone.utc).isoformat(), "source": str(path), "sourceFileModifiedAt": datetime.fromtimestamp(path.stat().st_mtime, timezone.utc).isoformat(), "disclaimer": "Diagnostic-only 1 kHz carrier analysis. Speed and wow/flutter values are unweighted estimates and are not formal compliance results.", "capture": {**wav_metadata(path), "programStartSeconds": start / rate, "programEndSeconds": end / rate, "programDurationSeconds": (end - start) / rate}, "speedAccuracy": {"referenceRpm": 33.333333, "measuredRpm": 33.333333 * average_hz / nominal_hz, "errorPercent": 100 * (average_hz - nominal_hz) / nominal_hz, "measuredCarrierHz": average_hz, "nominalCarrierHz": nominal_hz, "method": "full-program analytic-carrier mean; assumes the test record carrier is exactly nominal"}, "channels": [{"name": name, "measuredCarrierHz": modulation[index]["meanFrequencyHz"], "shortWindowVerificationHz": tone_hz[index], "peakDbfs": diagnostics[index]["fundamentalPeakDbfs"], "harmonics": diagnostics[index]["harmonics"], "modulationEstimate": modulation[index], "nonHarmonicPeaks": non_harmonic_peaks(frequencies, spectra, diagnostics)[index]} for index, name in enumerate(("left", "right"))], "channelBalance": {"peakLevelDifferenceDb": diagnostics[0]["fundamentalPeakDbfs"] - diagnostics[1]["fundamentalPeakDbfs"], "carrierFrequencyDifferenceHz": modulation[0]["meanFrequencyHz"] - modulation[1]["meanFrequencyHz"]}, "artifacts": {"spectrumSvg": str(spectrum_path), "speedSvg": str(speed_path), "reportHtml": str(html_path)}}
+    report = {"reportType": "local-1khz-turntable-diagnostic", "algorithmVersion": "local-1.0", "generatedAt": datetime.now(timezone.utc).isoformat(), "source": str(path), "sourceFileModifiedAt": datetime.fromtimestamp(path.stat().st_mtime, timezone.utc).isoformat(), "disclaimer": "Diagnostic-only 1 kHz carrier analysis. Speed and wow/flutter values are unweighted estimates and are not formal compliance results.", "capture": {**wav_metadata(path), "programStartSeconds": start / rate, "programEndSeconds": end / rate, "programDurationSeconds": (end - start) / rate}, "speedAccuracy": {"referenceRpm": 33.333333, "measuredRpm": 33.333333 * average_hz / nominal_hz, "errorPercent": 100 * (average_hz - nominal_hz) / nominal_hz, "measuredCarrierHz": average_hz, "nominalCarrierHz": nominal_hz, "method": "full-program analytic-carrier mean; assumes the test record carrier is exactly nominal"}, "channels": [{"name": name, "measuredCarrierHz": modulation[index]["meanFrequencyHz"], "shortWindowVerificationHz": tone_hz[index], "peakDbfs": diagnostics[index]["fundamentalPeakDbfs"], "harmonics": diagnostics[index]["harmonics"], "modulationEstimate": modulation[index], "nonHarmonicPeaks": non_harmonic_peaks(frequencies, spectra, diagnostics)[index]} for index, name in enumerate(("left", "right"))], "channelBalance": {"peakLevelDifferenceDb": diagnostics[0]["fundamentalPeakDbfs"] - diagnostics[1]["fundamentalPeakDbfs"], "carrierFrequencyDifferenceHz": modulation[0]["meanFrequencyHz"] - modulation[1]["meanFrequencyHz"]}, "artifacts": {"spectrumSvg": str(spectrum_path), "speedSvg": str(speed_path), "reportHtml": str(html_path), "reportPdf": str(pdf_path)}}
     json_path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     write_local_report_html(html_path, report, spectrum_path.name, speed_path.name)
+    write_local_report_pdf(html_path, pdf_path)
     report["artifacts"]["reportJson"] = str(json_path)
     return report
 
