@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import http.client
 import json
+from html import escape
 import shutil
 import subprocess
 import sys
@@ -426,7 +427,7 @@ def spectral_diagnostics(samples: np.ndarray, rate: int, nominal_hz: float) -> t
     return diagnostics, frequencies, spectra
 
 
-def write_spectrum_svg(path: Path, frequencies: np.ndarray, spectra: list[np.ndarray]) -> None:
+def write_spectrum_svg(path: Path, frequencies: np.ndarray, spectra: list[np.ndarray], diagnostics: list[dict[str, Any]] | None = None) -> None:
     """Write a compact 20 Hz–20 kHz FFT review plot without plotting dependencies."""
     path.parent.mkdir(parents=True, exist_ok=True)
     left, right, top, bottom, width, height = 72, 24, 28, 44, 1080, 480
@@ -445,6 +446,18 @@ def write_spectrum_svg(path: Path, frequencies: np.ndarray, spectra: list[np.nda
     lines.extend([f'<line x1="{left}" y1="{top + height}" x2="{left + width}" y2="{top + height}" class="axis"/>', f'<line x1="{left}" y1="{top}" x2="{left}" y2="{top + height}" class="axis"/>'])
     if spectra: lines.append(f'<polyline points="{points(spectra[0])}" class="left"/>')
     if len(spectra) > 1: lines.append(f'<polyline points="{points(spectra[1])}" class="right"/>')
+    if diagnostics and len(diagnostics) >= 2:
+        for order, label_y in ((2, top + 20), (3, top + 40)):
+            harmonic = []
+            for channel in diagnostics:
+                found = next((item for item in channel["harmonics"] if item["order"] == order), None)
+                if found:
+                    harmonic.append(found)
+            if len(harmonic) == 2:
+                frequency = float(np.mean([item["frequencyHz"] for item in harmonic]))
+                xx = left + (frequency - 20) / (limit - 20) * width
+                lines.append(f'<line x1="{xx:.1f}" y1="{top}" x2="{xx:.1f}" y2="{top + height}" stroke="#9a6700" stroke-dasharray="3 3"/>')
+                lines.append(f'<text x="{min(xx + 8, left + width - 250):.1f}" y="{label_y:.1f}">{order}nd harmonic: L {harmonic[0]["levelDbc"]:.1f} dBc · R {harmonic[1]["levelDbc"]:.1f} dBc</text>' if order == 2 else f'<text x="{min(xx + 8, left + width - 250):.1f}" y="{label_y:.1f}">3rd harmonic: L {harmonic[0]["levelDbc"]:.1f} dBc · R {harmonic[1]["levelDbc"]:.1f} dBc</text>')
     lines.extend([f'<text x="{left + width - 120}" y="18" fill="#b7791f">Left</text>', f'<text x="{left + width - 60}" y="18" fill="#1a5fb4">Right</text>', '</svg>'])
     path.write_text("\n".join(lines), encoding="utf-8")
 
@@ -554,21 +567,27 @@ def cyclic_period_candidates(speed_rpm: np.ndarray, sample_rate_hz: float = 1_00
     return results
 
 
-def write_speed_svg(path: Path, traces: list[tuple[np.ndarray, np.ndarray]]) -> None:
+def write_speed_svg(path: Path, traces: list[tuple[np.ndarray, np.ndarray]], reference_rpm: float = 33.333333) -> None:
     """Write a local time-domain speed review graph with per-channel extrema."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    left, right, top, bottom, width, height = 72, 28, 30, 50, 1080, 480
+    left, right, top, bottom, width, height = 112, 28, 30, 50, 1080, 480
     all_speed = np.concatenate([speed for _, speed in traces])
-    minimum, maximum = float(np.min(all_speed)), float(np.max(all_speed))
-    padding = max((maximum - minimum) * 0.12, 0.002)
-    minimum, maximum = minimum - padding, maximum + padding
+    # Dynamic, rounded scale: keeps subtle variation visible and expands for bad speed calibration.
+    observed_minimum, observed_maximum = float(np.min(all_speed)), float(np.max(all_speed))
+    padding = max((observed_maximum - observed_minimum) * 0.15, 0.25)
+    raw_minimum, raw_maximum = observed_minimum - padding, observed_maximum + padding
+    step = 0.1
+    minimum = float(np.floor(raw_minimum / step) * step)
+    maximum = float(np.ceil(raw_maximum / step) * step)
     duration = max(float(times[-1]) for times, _ in traces)
     def x(time_value: float) -> float: return left + time_value / duration * width
     def y(speed: float) -> float: return top + (maximum - speed) / (maximum - minimum) * height
     lines = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{left + width + right}" height="{top + height + bottom}" viewBox="0 0 {left + width + right} {top + height + bottom}">', '<rect width="100%" height="100%" fill="white"/>', '<style>text{font:13px Arial;fill:#222}.axis{stroke:#555}.grid{stroke:#ddd}.left{fill:none;stroke:#b7791f;stroke-width:1}.right{fill:none;stroke:#1a5fb4;stroke-width:1}.mark{fill:#c01c28}</style>', f'<text x="{left}" y="18">Instantaneous speed estimate · diagnostic only</text>']
-    for fraction in (0, .5, 1):
-        value = minimum + fraction * (maximum - minimum); yy = y(value)
-        lines.extend([f'<line x1="{left}" y1="{yy:.1f}" x2="{left + width}" y2="{yy:.1f}" class="grid"/>', f'<text x="{left - 8}" y="{yy + 5:.1f}" text-anchor="end">{value:.4f} RPM</text>'])
+    for value in np.arange(minimum, maximum + step / 2, step):
+        yy = y(float(value))
+        lines.extend([f'<line x1="{left}" y1="{yy:.1f}" x2="{left + width}" y2="{yy:.1f}" class="grid"/>', f'<text x="{left - 8}" y="{yy + 5:.1f}" text-anchor="end">{value:.2f} RPM</text>'])
+    reference_y = y(reference_rpm)
+    lines.append(f'<line x1="{left}" y1="{reference_y:.1f}" x2="{left + width}" y2="{reference_y:.1f}" stroke="#555" stroke-dasharray="5 4"/>')
     for second in range(0, int(duration) + 1, max(1, round(duration / 5))):
         xx = x(second); lines.extend([f'<line x1="{xx:.1f}" y1="{top}" x2="{xx:.1f}" y2="{top + height}" class="grid"/>', f'<text x="{xx:.1f}" y="{top + height + 22}" text-anchor="middle">{second}s</text>'])
     lines.extend([f'<line x1="{left}" y1="{top + height}" x2="{left + width}" y2="{top + height}" class="axis"/>', f'<line x1="{left}" y1="{top}" x2="{left}" y2="{top + height}" class="axis"/>'])
@@ -585,8 +604,24 @@ def write_speed_svg(path: Path, traces: list[tuple[np.ndarray, np.ndarray]]) -> 
 
 def write_local_report_html(path: Path, report: dict[str, Any], spectrum_filename: str, speed_filename: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    rows = json.dumps(report, indent=2).replace("&", "&amp;").replace("<", "&lt;")
-    path.write_text(f"<!doctype html><html><head><meta charset=\"utf-8\"><title>Wally local turntable diagnostic</title><style>body{{font:16px system-ui;margin:2rem;max-width:1000px}}pre{{background:#f5f5f5;padding:1rem;overflow:auto}}img{{max-width:100%;border:1px solid #ccc}}</style></head><body><h1>Wally local turntable diagnostic</h1><p><strong>Diagnostic only:</strong> 1 kHz carrier estimates are unweighted and are not formal IEC/DIN/AES wow/flutter compliance results.</p><img src=\"{spectrum_filename}\" alt=\"FFT spectrum\"><h2>Speed over time</h2><img src=\"{speed_filename}\" alt=\"Instantaneous speed graph\"><h2>Metrics</h2><pre>{rows}</pre></body></html>", encoding="utf-8")
+    def table(title: str, headers: list[str], rows: list[list[str]]) -> str:
+        head = "".join(f"<th>{escape(header)}</th>" for header in headers)
+        body = "".join("<tr>" + "".join(f"<td>{escape(value)}</td>" for value in row) + "</tr>" for row in rows)
+        return f"<section><h2>{escape(title)}</h2><table><thead><tr>{head}</tr></thead><tbody>{body}</tbody></table></section>"
+    capture = report["capture"]
+    speed = report["speedAccuracy"]
+    channels = report["channels"]
+    sections = [
+        table("Capture Information", ["Field", "Value"], [["Capture timestamp", report["sourceFileModifiedAt"]], ["Duration", f'{capture["durationSeconds"]:.3f} s'], ["Program region", f'{capture["programDurationSeconds"]:.3f} s'], ["Channels", str(capture["channels"])], ["Sample rate", f'{capture["sampleRateHz"] / 1000:.0f} kHz'], ["Bit depth", f'{capture["bitsPerSample"]}-bit']]),
+        table("Speed Accuracy", ["Field", "Value"], [["Reference speed", f'{speed["referenceRpm"]:.5f} RPM'], ["Measured speed", f'{speed["measuredRpm"]:.5f} RPM'], ["Speed error", f'{speed["errorPercent"]:+.4f}%'], ["Measured carrier", f'{speed["measuredCarrierHz"]:.5f} Hz'], ["Reference carrier", f'{speed["nominalCarrierHz"]:.3f} Hz']]),
+        table("Channel Measurements", ["Channel", "Carrier", "Peak", "2nd harmonic", "3rd harmonic"], [[channel["name"].title(), f'{channel["measuredCarrierHz"]:.5f} Hz', f'{channel["peakDbfs"]:.2f} dBFS', f'{channel["harmonics"][0]["levelDbc"]:.2f} dBc', f'{channel["harmonics"][1]["levelDbc"]:.2f} dBc'] for channel in channels]),
+        table("Channel Balance", ["Field", "Value"], [["Left relative to right", f'{report["channelBalance"]["peakLevelDifferenceDb"]:+.3f} dB'], ["Carrier difference", f'{report["channelBalance"]["carrierFrequencyDifferenceHz"]:+.5f} Hz']]),
+        table("Unweighted Wow / Flutter Diagnostic", ["Channel", "Wow RMS / σ / peak", "Flutter RMS / σ / peak"], [[channel["name"].title(), " / ".join(f'{channel["modulationEstimate"]["bands"]["wow"][key]:.4f}%' for key in ("rmsPercent", "sigmaPercent", "peakPercent")), " / ".join(f'{channel["modulationEstimate"]["bands"]["flutter"][key]:.4f}%' for key in ("rmsPercent", "sigmaPercent", "peakPercent"))] for channel in channels]),
+    ]
+    cyclic_rows = [[channel["name"].title(), f'{item["frequencyHz"]:.3f} Hz', f'{item["periodSeconds"]:.3f} s', f'{item["cyclesPerPlatterRevolution"]:.3f}', item["interpretationCandidate"]] for channel in channels for item in channel["modulationEstimate"]["cyclicPeriodCandidates"][:3]]
+    peak_rows = [[channel["name"].title(), f'{item["frequencyHz"]:.1f} Hz', f'{item["levelDbc"]:.1f} dBc', item["interpretationCandidate"]] for channel in channels for item in channel["nonHarmonicPeaks"][:5]]
+    sections.extend([table("Cyclic Speed Candidates", ["Channel", "Frequency", "Period", "Cycles / revolution", "Interpretation"], cyclic_rows), table("Top Non-Harmonic Peaks", ["Channel", "Frequency", "Relative level", "Interpretation"], peak_rows)])
+    path.write_text(f"<!doctype html><html><head><meta charset=\"utf-8\"><title>Wally local turntable diagnostic</title><style>body{{font:15px system-ui;margin:2rem;max-width:1100px;color:#17212b}}h1{{margin-bottom:.2rem}}h2{{margin-top:1.8rem}}table{{border-collapse:collapse;width:100%;margin:.5rem 0}}th,td{{border:1px solid #cbd5df;padding:.45rem;text-align:left;vertical-align:top}}th{{background:#eaf0f5}}tr:nth-child(even){{background:#f8fafc}}img{{max-width:100%;border:1px solid #ccc}}.note{{background:#fff8db;padding:.8rem}}</style></head><body><h1>Wally local turntable diagnostic</h1><p class=\"note\"><strong>Diagnostic only:</strong> 1 kHz carrier estimates are unweighted and are not formal IEC/DIN/AES wow/flutter compliance results. Candidate labels identify correlations for investigation, not physical source attribution.</p>{''.join(sections)}<h2>Harmonic Spectrum</h2><img src=\"{escape(spectrum_filename)}\" alt=\"FFT spectrum\"><h2>Speed over Time</h2><img src=\"{escape(speed_filename)}\" alt=\"Instantaneous speed graph\"></body></html>", encoding="utf-8")
 
 
 def write_local_report_pdf(html_path: Path, pdf_path: Path) -> None:
@@ -618,7 +653,7 @@ def local_turntable_report(path: Path, nominal_hz: float, output_dir: Path) -> d
     json_path = output_dir / f"{stem}-turntable-report.json"
     html_path = output_dir / f"{stem}-turntable-report.html"
     pdf_path = output_dir / f"{stem}-turntable-report.pdf"
-    write_spectrum_svg(spectrum_path, frequencies, spectra)
+    write_spectrum_svg(spectrum_path, frequencies, spectra, diagnostics)
     speed_traces: list[tuple[np.ndarray, np.ndarray]] = []
     for entry in modulation:
         times = entry.pop("_timeSeconds")
