@@ -165,6 +165,17 @@ def set_recording(base_url: str, session: PsiuSession, running: bool, attempts: 
             error = caught
         if attempt + 1 < attempts:
             time.sleep(0.5)
+    action_path = "/api/samplestart" if running else "/api/samplestop"
+    try:
+        # v1.2.7 documented action form: any non-empty body invokes the same
+        # recorder operation when the sampling toggle cannot be confirmed.
+        psiu_json(base_url, action_path, method="POST", body={"action": True}, session=session)
+        status = status_with_retry(base_url, session)
+        if status.get("recording") is running:
+            return status
+        error = RuntimeError(f"PSIU action endpoint did not confirm recording={running}.")
+    except RuntimeError as caught:
+        error = caught
     raise error or RuntimeError(f"PSIU did not confirm recording={running}.")
 
 
@@ -199,15 +210,37 @@ def status_reporter(base_url: str, seconds: float, interval_seconds: float, star
         next_report += interval_seconds
 
 
-def completed_wav(base_url: str, wait_seconds: float, session: PsiuSession) -> bytes:
+def download_completed_wav(base_url: str, output: Path, wait_seconds: float = 300) -> None:
+    """Stream /audio.wav to a resumable local file; never hold a capture in RAM."""
+    parsed = urllib.parse.urlsplit(base_url)
+    part = output.with_suffix(f"{output.suffix}.part")
     deadline = time.monotonic() + wait_seconds
+    output.parent.mkdir(parents=True, exist_ok=True)
     while True:
+        offset = part.stat().st_size if part.exists() else 0
+        connection = http.client.HTTPConnection(parsed.hostname, parsed.port or 80, timeout=10)
         try:
-            return psiu_request(base_url, "/audio.wav", session=session)
-        except (PsiuCaptureNotReady, RuntimeError):
+            connection.request("GET", f"{parsed.path.rstrip('/')}/audio.wav", headers={"range": f"bytes={offset}-", "connection": "keep-alive"})
+            response = connection.getresponse()
+            if response.status == 404:
+                raise PsiuCaptureNotReady("PSIU has not finalized the completed WAV.")
+            if response.status not in {200, 206}:
+                raise RuntimeError(f"PSIU returned HTTP {response.status} for /audio.wav.")
+            # A server ignoring Range must restart the local partial file.
+            mode = "ab" if response.status == 206 and offset else "wb"
+            with part.open(mode) as destination:
+                while chunk := response.read(64 * 1024):
+                    destination.write(chunk)
+            if part.stat().st_size < 44:
+                raise RuntimeError("PSIU returned an incomplete WAV.")
+            part.replace(output)
+            return
+        except (PsiuCaptureNotReady, OSError, http.client.HTTPException, RuntimeError):
             if time.monotonic() >= deadline:
-                raise RuntimeError(f"PSIU did not provide a completed WAV within {wait_seconds:.0f} seconds of Stop.")
+                raise RuntimeError(f"PSIU did not provide a completed WAV within {wait_seconds:.0f} seconds of Stop; partial data remains at {part}.")
             time.sleep(1)
+        finally:
+            connection.close()
 
 
 def capture(base_url: str, seconds: float, output_dir: Path, audio_wait_seconds: float = 30, status_interval_seconds: float = 5) -> Path:
@@ -239,15 +272,16 @@ def capture(base_url: str, seconds: float, output_dir: Path, audio_wait_seconds:
             if reporter:
                 reporter.join(timeout=3)
             stop_capture(base_url, session)
-        audio = completed_wav(base_url, audio_wait_seconds, session)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        output = output_dir / f"psiu-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}.wav"
+        download_completed_wav(base_url, output, audio_wait_seconds)
     finally:
         reporter_stop.set()
         session.close()
-    if len(audio) < 44 or audio[:4] != b"RIFF" or audio[8:12] != b"WAVE":
+    with output.open("rb") as completed:
+        header = completed.read(12)
+    if len(header) < 12 or header[:4] != b"RIFF" or header[8:12] != b"WAVE":
         raise RuntimeError("PSIU did not return a WAV capture.")
-    output_dir.mkdir(parents=True, exist_ok=True)
-    output = output_dir / f"psiu-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}.wav"
-    output.write_bytes(audio)
     return output
 
 

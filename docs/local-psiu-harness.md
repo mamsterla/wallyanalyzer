@@ -34,7 +34,7 @@ The capture command uses only the documented fixed endpoints:
 - `POST /api/sampling` with `{"running": true}`
 - `POST /api/sampling` with `{"running": false}`
 - `GET /status`
-- `GET /audio.wav` (polled for up to 30 seconds after Stop, because PSIU may finalize the file asynchronously)
+- `GET /audio.wav` (polled after Stop, streamed to a resumable `.wav.part` file with Range requests, because PSIU may finalize the file asynchronously or reset a transfer)
 
 ## Inspect and trim the result
 
