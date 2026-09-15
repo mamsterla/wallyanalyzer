@@ -87,11 +87,21 @@ def status_with_retry(base_url: str, session: PsiuSession, attempts: int = 3) ->
     raise error or RuntimeError("PSIU status is unavailable.")
 
 
-def read_signal(base_url: str, session: PsiuSession) -> dict[str, Any]:
-    signal = psiu_json(base_url, "/api/signal", session=session)
-    if not isinstance(signal.get("L"), (int, float)) or not isinstance(signal.get("R"), (int, float)):
-        raise RuntimeError("PSIU returned an invalid /api/signal response.")
-    return {"left": signal["L"], "right": signal["R"]}
+def read_signal(base_url: str, attempts: int = 3) -> dict[str, Any]:
+    error: RuntimeError | None = None
+    for attempt in range(attempts):
+        try:
+            # PSIU may close a keep-alive connection after /status. Use a fresh
+            # connection for this v1.2.7 diagnostic endpoint.
+            signal = psiu_json(base_url, "/api/signal")
+            if not isinstance(signal.get("L"), (int, float)) or not isinstance(signal.get("R"), (int, float)):
+                raise RuntimeError("PSIU returned an invalid /api/signal response.")
+            return {"left": signal["L"], "right": signal["R"]}
+        except RuntimeError as caught:
+            error = caught
+            if attempt + 1 < attempts:
+                time.sleep(0.25)
+    raise error or RuntimeError("PSIU signal is unavailable.")
 
 
 def capture_health_error(status: dict[str, Any]) -> str | None:
@@ -108,7 +118,7 @@ def health(base_url: str) -> dict[str, Any]:
         status = status_with_retry(base_url, session)
         result: dict[str, Any] = {"status": status}
         try:
-            result["signal"] = read_signal(base_url, session)
+            result["signal"] = read_signal(base_url)
         except RuntimeError as error:
             result["signalError"] = str(error)
         return result
@@ -151,7 +161,7 @@ def emit_status(base_url: str, elapsed: float, seconds: float) -> None:
         status = psiu_json(base_url, "/status", session=session)
         event: dict[str, Any] = {"event": "capture_progress", "elapsedSeconds": round(elapsed, 1), "remainingSeconds": round(max(0, seconds - elapsed), 1), "status": status}
         try:
-            event["signal"] = read_signal(base_url, session)
+            event["signal"] = read_signal(base_url)
         except RuntimeError as error:
             event["signalError"] = str(error)
     except RuntimeError as error:
