@@ -8,7 +8,7 @@
 PYTHONPATH=src python -m wallyanalyzer.tools.psiu_local_harness health
 ```
 
-The command reports `/status` codec fields (`codec_ok`, `codec_attempts`, `codec_recoveries`, `audio_alive`, and `level_db`) plus `/api/signal` levels for left and right channels. Capture aborts before Start if the firmware reports an unhealthy codec or inactive audio clock.
+The command reports `/status` codec fields (`codec_ok`, `codec_attempts`, `codec_recoveries`, `audio_alive`, and `level_db`) plus `/api/signal` levels for left and right channels. Capture aborts before Start if the firmware reports an unhealthy codec or inactive audio clock. With firmware v1.2.8, `/status` and `/audio.wav` use a fresh connection per request because they explicitly reply with `Connection: close`; `/api/*` control endpoints retain HTTP keep-alive.
 
 ## Select the input relay
 

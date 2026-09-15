@@ -75,11 +75,12 @@ def psiu_json(base_url: str, path: str, *, method: str = "GET", body: dict[str, 
     return value
 
 
-def status_with_retry(base_url: str, session: PsiuSession, attempts: int = 3) -> dict[str, Any]:
+def status_with_retry(base_url: str, attempts: int = 3) -> dict[str, Any]:
+    """/status is a v1.2.8 hand-written one-request connection endpoint."""
     error: RuntimeError | None = None
     for attempt in range(attempts):
         try:
-            return psiu_json(base_url, "/status", session=session)
+            return psiu_json(base_url, "/status")
         except RuntimeError as caught:
             error = caught
             if attempt + 1 < attempts:
@@ -115,7 +116,7 @@ def capture_health_error(status: dict[str, Any]) -> str | None:
 def health(base_url: str) -> dict[str, Any]:
     session = PsiuSession(base_url)
     try:
-        status = status_with_retry(base_url, session)
+        status = status_with_retry(base_url)
         result: dict[str, Any] = {"status": status}
         try:
             result["signal"] = read_signal(base_url)
@@ -157,7 +158,7 @@ def set_recording(base_url: str, session: PsiuSession, running: bool, attempts: 
         except RuntimeError as caught:
             error = caught
         try:
-            status = status_with_retry(base_url, session)
+            status = status_with_retry(base_url)
             if status.get("recording") is running:
                 return status
             error = RuntimeError(f"PSIU did not confirm recording={running}.")
@@ -170,7 +171,7 @@ def set_recording(base_url: str, session: PsiuSession, running: bool, attempts: 
         # v1.2.7 documented action form: any non-empty body invokes the same
         # recorder operation when the sampling toggle cannot be confirmed.
         psiu_json(base_url, action_path, method="POST", body={"action": True}, session=session)
-        status = status_with_retry(base_url, session)
+        status = status_with_retry(base_url)
         if status.get("recording") is running:
             return status
         error = RuntimeError(f"PSIU action endpoint did not confirm recording={running}.")
@@ -220,7 +221,7 @@ def download_completed_wav(base_url: str, output: Path, wait_seconds: float = 30
         offset = part.stat().st_size if part.exists() else 0
         connection = http.client.HTTPConnection(parsed.hostname, parsed.port or 80, timeout=10)
         try:
-            connection.request("GET", f"{parsed.path.rstrip('/')}/audio.wav", headers={"range": f"bytes={offset}-", "connection": "keep-alive"})
+            connection.request("GET", f"{parsed.path.rstrip('/')}/audio.wav", headers={"range": f"bytes={offset}-", "connection": "close"})
             response = connection.getresponse()
             if response.status == 404:
                 raise PsiuCaptureNotReady("PSIU has not finalized the completed WAV.")
@@ -254,7 +255,7 @@ def capture(base_url: str, seconds: float, output_dir: Path, audio_wait_seconds:
     reporter_stop = threading.Event()
     reporter: threading.Thread | None = None
     try:
-        preflight = status_with_retry(base_url, session)
+        preflight = status_with_retry(base_url)
         if health_error := capture_health_error(preflight):
             raise RuntimeError(health_error)
         status = start_capture(base_url, session)
