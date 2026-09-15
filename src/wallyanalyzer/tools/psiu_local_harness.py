@@ -486,6 +486,10 @@ def main() -> None:
     input_group.add_argument("--xlr", action="store_true", help="Select XLR input.")
     input_group.add_argument("--rca", action="store_true", help="Select RCA input.")
     input_parser.add_argument("--base-url", default=DEFAULT_BASE_URL)
+    download_parser = subcommands.add_parser("download", help="Resume or retrieve the last completed PSIU WAV locally.")
+    download_parser.add_argument("--base-url", default=DEFAULT_BASE_URL)
+    download_parser.add_argument("--output", type=Path, default=Path("data/local-psiu/recovered-psiu-capture.wav"))
+    download_parser.add_argument("--wait-seconds", type=float, default=300)
     capture_parser = subcommands.add_parser("capture", help="Start PSIU, wait, stop, and save /audio.wav locally.")
     capture_parser.add_argument("--seconds", type=float, required=True)
     capture_parser.add_argument("--base-url", default=DEFAULT_BASE_URL)
@@ -503,6 +507,9 @@ def main() -> None:
     elif args.command == "input-select":
         selected = select_input(args.base_url, args.xlr)
         print(json.dumps({"xlr": selected["xlr"]}))
+    elif args.command == "download":
+        download_completed_wav(args.base_url, args.output, args.wait_seconds)
+        print(args.output)
     elif args.command == "capture":
         print(capture(args.base_url, args.seconds, args.output_dir, args.audio_wait_seconds, args.status_interval_seconds))
     else:

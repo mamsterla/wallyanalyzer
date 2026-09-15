@@ -36,6 +36,15 @@ The capture command uses only the documented fixed endpoints:
 - `GET /status`
 - `GET /audio.wav` (polled after Stop, streamed to a resumable `.wav.part` file with Range requests, because PSIU may finalize the file asynchronously or reset a transfer)
 
+## Resume a completed WAV download
+
+```sh
+PYTHONPATH=src python -m wallyanalyzer.tools.psiu_local_harness download \
+  --output data/local-psiu/recovered-psiu-capture.wav
+```
+
+A reset leaves `recovered-psiu-capture.wav.part`; rerun the command to resume it with an HTTP Range request.
+
 ## Inspect and trim the result
 
 ```sh
