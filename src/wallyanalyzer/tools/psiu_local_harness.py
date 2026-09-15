@@ -87,6 +87,35 @@ def status_with_retry(base_url: str, session: PsiuSession, attempts: int = 3) ->
     raise error or RuntimeError("PSIU status is unavailable.")
 
 
+def read_signal(base_url: str, session: PsiuSession) -> dict[str, Any]:
+    signal = psiu_json(base_url, "/api/signal", session=session)
+    if not isinstance(signal.get("L"), (int, float)) or not isinstance(signal.get("R"), (int, float)):
+        raise RuntimeError("PSIU returned an invalid /api/signal response.")
+    return {"left": signal["L"], "right": signal["R"]}
+
+
+def capture_health_error(status: dict[str, Any]) -> str | None:
+    if status.get("codec_ok") is False:
+        return "PSIU codec initialization failed; check firmware and codec hardware."
+    if status.get("audio_alive") is False:
+        return "PSIU audio clock is not active; check the input path before capture."
+    return None
+
+
+def health(base_url: str) -> dict[str, Any]:
+    session = PsiuSession(base_url)
+    try:
+        status = status_with_retry(base_url, session)
+        result: dict[str, Any] = {"status": status}
+        try:
+            result["signal"] = read_signal(base_url, session)
+        except RuntimeError as error:
+            result["signalError"] = str(error)
+        return result
+    finally:
+        session.close()
+
+
 def select_input(base_url: str, xlr: bool) -> dict[str, Any]:
     result = psiu_json(base_url, "/api/inputsel", method="POST", body={"xlr": xlr})
     if result.get("xlr") is not xlr:
@@ -121,6 +150,10 @@ def emit_status(base_url: str, elapsed: float, seconds: float) -> None:
     try:
         status = psiu_json(base_url, "/status", session=session)
         event: dict[str, Any] = {"event": "capture_progress", "elapsedSeconds": round(elapsed, 1), "remainingSeconds": round(max(0, seconds - elapsed), 1), "status": status}
+        try:
+            event["signal"] = read_signal(base_url, session)
+        except RuntimeError as error:
+            event["signalError"] = str(error)
     except RuntimeError as error:
         event = {"event": "capture_status_error", "elapsedSeconds": round(elapsed, 1), "message": str(error)}
     finally:
@@ -157,9 +190,12 @@ def capture(base_url: str, seconds: float, output_dir: Path, audio_wait_seconds:
     reporter_stop = threading.Event()
     reporter: threading.Thread | None = None
     try:
+        preflight = status_with_retry(base_url, session)
+        if health_error := capture_health_error(preflight):
+            raise RuntimeError(health_error)
         status = start_capture(base_url, session)
         if not status.get("recording"):
-            raise RuntimeError("PSIU did not confirm recording after start.")
+            raise RuntimeError(capture_health_error(status) or "PSIU did not confirm recording after start.")
         started = time.monotonic()
         print(json.dumps({"event": "capture_progress", "elapsedSeconds": 0, "remainingSeconds": seconds, "status": status}), file=sys.stderr, flush=True)
         if status_interval_seconds:
@@ -378,6 +414,8 @@ def inspect(path: Path, nominal_hz: float, trim_output: Path | None = None, spec
 def main() -> None:
     parser = argparse.ArgumentParser(description="Capture and inspect local PSIU WAVs without cloud upload.")
     subcommands = parser.add_subparsers(dest="command", required=True)
+    health_parser = subcommands.add_parser("health", help="Show v1.2.7 codec, audio-clock, and signal diagnostics.")
+    health_parser.add_argument("--base-url", default=DEFAULT_BASE_URL)
     input_parser = subcommands.add_parser("input-select", help="Select PSIU XLR or RCA input.")
     input_group = input_parser.add_mutually_exclusive_group(required=True)
     input_group.add_argument("--xlr", action="store_true", help="Select XLR input.")
@@ -395,7 +433,9 @@ def main() -> None:
     inspect_parser.add_argument("--trim-output", type=Path)
     inspect_parser.add_argument("--spectrum-output", type=Path, help="Write a 20 Hz–20 kHz FFT SVG review plot.")
     args = parser.parse_args()
-    if args.command == "input-select":
+    if args.command == "health":
+        print(json.dumps(health(args.base_url), indent=2))
+    elif args.command == "input-select":
         selected = select_input(args.base_url, args.xlr)
         print(json.dumps({"xlr": selected["xlr"]}))
     elif args.command == "capture":

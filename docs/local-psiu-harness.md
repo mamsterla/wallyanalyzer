@@ -2,6 +2,14 @@
 
 `wally-psiu-local` is a local-only developer tool. It starts/stops the PSIU, prints the PSIU `/status` JSON every five seconds during capture, retrieves `/audio.wav`, and saves it under the git-ignored `data/local-psiu/` directory. It does not call Wally production APIs or upload audio to S3.
 
+## Check v1.2.7 audio health
+
+```sh
+PYTHONPATH=src python -m wallyanalyzer.tools.psiu_local_harness health
+```
+
+The command reports `/status` codec fields (`codec_ok`, `codec_attempts`, `codec_recoveries`, `audio_alive`, and `level_db`) plus `/api/signal` levels for left and right channels. Capture aborts before Start if the firmware reports an unhealthy codec or inactive audio clock.
+
 ## Select the input relay
 
 For XLR input, select it before capture.
