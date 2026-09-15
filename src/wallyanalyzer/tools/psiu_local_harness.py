@@ -43,7 +43,7 @@ class PsiuSession:
 
     def request(self, path: str, *, method: str = "GET", body: dict[str, Any] | None = None) -> tuple[int, bytes]:
         payload = json.dumps(body).encode("utf-8") if body is not None else None
-        headers = {"content-type": "application/json"} if payload else {}
+        headers = {"connection": "keep-alive", **({"content-type": "application/json"} if payload else {})}
         try:
             self.connection.request(method, f"{self.path_prefix}{path}", body=payload, headers=headers)
             response = self.connection.getresponse()
@@ -149,18 +149,23 @@ def select_input(base_url: str, xlr: bool, attempts: int = 3) -> dict[str, Any]:
     raise error or RuntimeError("PSIU did not confirm the requested input selection.")
 
 
-def set_recording(base_url: str, session: PsiuSession, running: bool) -> dict[str, Any]:
-    request_error: RuntimeError | None = None
-    try:
-        psiu_json(base_url, "/api/sampling", method="POST", body={"running": running}, session=session)
-    except RuntimeError as error:
-        request_error = error
-    status = status_with_retry(base_url, session)
-    if status.get("recording") is running:
-        return status
-    if request_error:
-        raise request_error
-    raise RuntimeError(f"PSIU did not confirm recording={running}.")
+def set_recording(base_url: str, session: PsiuSession, running: bool, attempts: int = 3) -> dict[str, Any]:
+    error: RuntimeError | None = None
+    for attempt in range(attempts):
+        try:
+            psiu_json(base_url, "/api/sampling", method="POST", body={"running": running}, session=session)
+        except RuntimeError as caught:
+            error = caught
+        try:
+            status = status_with_retry(base_url, session)
+            if status.get("recording") is running:
+                return status
+            error = RuntimeError(f"PSIU did not confirm recording={running}.")
+        except RuntimeError as caught:
+            error = caught
+        if attempt + 1 < attempts:
+            time.sleep(0.5)
+    raise error or RuntimeError(f"PSIU did not confirm recording={running}.")
 
 
 def start_capture(base_url: str, session: PsiuSession) -> dict[str, Any]:
@@ -199,9 +204,9 @@ def completed_wav(base_url: str, wait_seconds: float, session: PsiuSession) -> b
     while True:
         try:
             return psiu_request(base_url, "/audio.wav", session=session)
-        except PsiuCaptureNotReady:
+        except (PsiuCaptureNotReady, RuntimeError):
             if time.monotonic() >= deadline:
-                raise RuntimeError(f"PSIU did not retain a completed WAV within {wait_seconds:.0f} seconds of Stop.")
+                raise RuntimeError(f"PSIU did not provide a completed WAV within {wait_seconds:.0f} seconds of Stop.")
             time.sleep(1)
 
 
