@@ -4,7 +4,7 @@ from pathlib import Path
 
 import numpy as np
 
-from wallyanalyzer.tools.psiu_local_harness import active_tone_region, estimate_tone_hz, inspect, local_turntable_report, spectral_diagnostics
+from wallyanalyzer.tools.psiu_local_harness import active_tone_region, estimate_tone_hz, inspect, local_turntable_report, spectral_diagnostics, trim_one_khz_edges
 
 
 def tone(seconds: float, rate: int = 48_000, frequency: float = 1_000.0) -> np.ndarray:
@@ -56,6 +56,18 @@ def test_inspect_trims_leadin_and_runout_without_reencoding(tmp_path: Path) -> N
     assert "fftDiagnostics" in result
     assert 1.5 < result["programRegion"]["durationSeconds"] < 2.5
     assert all(abs(value - 1_000) < 0.1 for value in result["toneHz"])
+
+
+def test_trim_one_khz_edges_scans_only_capture_boundaries(tmp_path: Path) -> None:
+    source = tmp_path / "side.wav"
+    output = tmp_path / "side-trimmed.wav"
+    samples = np.vstack([np.zeros((2 * 48_000, 2)), tone(1), np.zeros((8 * 48_000, 2)), tone(1), np.zeros((2 * 48_000, 2))])
+    write_pcm(source, samples)
+    result = trim_one_khz_edges(source, output, edge_scan_seconds=3, expected_duration_seconds=12)
+    assert output.exists()
+    assert 1.9 < result["startSeconds"] < 2.1
+    assert 11.9 < result["endSeconds"] < 12.1
+    assert 9.9 < result["durationSeconds"] < 10.1
 
 
 def test_local_turntable_report_includes_speed_balance_and_artifacts(tmp_path: Path) -> None:

@@ -59,6 +59,17 @@ The inspection JSON reports WAV metadata, a loud contiguous program region, and 
 
 The energy-based trim is a candidate cleanup step, not a production track boundary detector. Review the generated region and WAV manually before using it as a fixture.
 
+## Trim a full side to clean 1 kHz edge markers
+
+```sh
+PYTHONPATH=src python -m wallyanalyzer.tools.psiu_local_harness trim-1khz \
+  data/local-psiu/full-side.wav \
+  --output data/local-psiu/full-side-1khz-trim.wav \
+  --expected-duration-seconds 405
+```
+
+The command scans only the first and last 20 seconds for clean 1 kHz blocks, then streams the selected PCM frame range to the output. It expands beyond edge-only scanning only when the source duration materially exceeds the expected duration. This is a marker-based cleanup step, not a full-side analysis.
+
 ## Generate a local 1 kHz turntable diagnostic report
 
 ```sh

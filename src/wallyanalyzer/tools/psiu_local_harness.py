@@ -311,12 +311,7 @@ def wav_metadata(path: Path) -> dict[str, int | float]:
         }
 
 
-def _pcm_samples(path: Path) -> tuple[np.ndarray, int]:
-    with wave.open(str(path), "rb") as source:
-        if source.getcomptype() != "NONE" or source.getsampwidth() not in {2, 3, 4}:
-            raise ValueError("Expected uncompressed 16-, 24-, or 32-bit PCM WAV.")
-        channels, rate, width, frames = source.getnchannels(), source.getframerate(), source.getsampwidth(), source.getnframes()
-        raw = source.readframes(frames)
+def _pcm_values(raw: bytes, width: int, channels: int) -> np.ndarray:
     if width == 2:
         values = np.frombuffer(raw, dtype="<i2").astype(np.float64) / 2**15
     elif width == 4:
@@ -325,7 +320,22 @@ def _pcm_samples(path: Path) -> tuple[np.ndarray, int]:
         packed = np.frombuffer(raw, dtype=np.uint8).reshape(-1, 3)
         signed = packed[:, 0].astype(np.int32) | (packed[:, 1].astype(np.int32) << 8) | (packed[:, 2].astype(np.int32) << 16)
         values = np.where(signed & 0x800000, signed - 0x1000000, signed).astype(np.float64) / 2**23
-    return values.reshape(-1, channels), rate
+    return values.reshape(-1, channels)
+
+
+def _pcm_samples_range(path: Path, start_frame: int = 0, frame_count: int | None = None) -> tuple[np.ndarray, int]:
+    with wave.open(str(path), "rb") as source:
+        if source.getcomptype() != "NONE" or source.getsampwidth() not in {2, 3, 4}:
+            raise ValueError("Expected uncompressed 16-, 24-, or 32-bit PCM WAV.")
+        if not 0 <= start_frame <= source.getnframes():
+            raise ValueError("PCM range starts outside the WAV capture.")
+        source.setpos(start_frame)
+        raw = source.readframes(source.getnframes() - start_frame if frame_count is None else frame_count)
+        return _pcm_values(raw, source.getsampwidth(), source.getnchannels()), source.getframerate()
+
+
+def _pcm_samples(path: Path) -> tuple[np.ndarray, int]:
+    return _pcm_samples_range(path)
 
 
 def active_tone_region(samples: np.ndarray, rate: int, block_seconds: float = 0.25) -> tuple[int, int]:
@@ -460,6 +470,46 @@ def write_spectrum_svg(path: Path, frequencies: np.ndarray, spectra: list[np.nda
                 lines.append(f'<text x="{min(xx + 8, left + width - 250):.1f}" y="{label_y:.1f}">{order}nd harmonic: L {harmonic[0]["levelDbc"]:.1f} dBc · R {harmonic[1]["levelDbc"]:.1f} dBc</text>' if order == 2 else f'<text x="{min(xx + 8, left + width - 250):.1f}" y="{label_y:.1f}">3rd harmonic: L {harmonic[0]["levelDbc"]:.1f} dBc · R {harmonic[1]["levelDbc"]:.1f} dBc</text>')
     lines.extend([f'<text x="{left + width - 120}" y="18" fill="#b7791f">Left</text>', f'<text x="{left + width - 60}" y="18" fill="#1a5fb4">Right</text>', '</svg>'])
     path.write_text("\n".join(lines), encoding="utf-8")
+
+
+def _is_clean_tone_block(samples: np.ndarray, rate: int, nominal_hz: float) -> bool:
+    if len(samples) < rate // 2:
+        return False
+    window = np.hanning(len(samples))
+    frequencies = np.fft.rfftfreq(len(samples), 1 / rate)
+    candidates = (frequencies >= nominal_hz - 5) & (frequencies <= nominal_hz + 5)
+    noise = (frequencies >= 20) & (frequencies <= min(20_000, rate / 2 - 1)) & (np.abs(frequencies - nominal_hz) > 10)
+    for channel in range(samples.shape[1]):
+        amplitude = 2 * np.abs(np.fft.rfft(samples[:, channel] * window)) / np.sum(window)
+        dbfs = 20 * np.log10(np.maximum(amplitude, 1e-15))
+        if float(np.max(dbfs[candidates])) < -55 or float(np.max(dbfs[candidates]) - np.median(dbfs[noise])) < 30:
+            return False
+    return True
+
+
+def one_khz_cleanup_region(path: Path, nominal_hz: float = 1_000.0, edge_scan_seconds: float = 20, expected_duration_seconds: float = 405) -> tuple[int, int, dict[str, float]]:
+    """Find clean 1 kHz markers near each edge without loading a complete side."""
+    metadata = wav_metadata(path)
+    rate, frames, duration = int(metadata["sampleRateHz"]), int(metadata["frames"]), float(metadata["durationSeconds"])
+    block = rate
+    scan_seconds = duration if duration > expected_duration_seconds + edge_scan_seconds else min(edge_scan_seconds, duration / 2)
+    scan_frames = max(block, min(frames, round(scan_seconds * rate)))
+    leading, _ = _pcm_samples_range(path, 0, scan_frames)
+    trailing_start = max(0, frames - scan_frames)
+    trailing, _ = _pcm_samples_range(path, trailing_start, scan_frames)
+    first: int | None = None
+    for offset in range(0, len(leading) - block + 1, block):
+        if _is_clean_tone_block(leading[offset : offset + block], rate, nominal_hz):
+            first = offset
+            break
+    last: int | None = None
+    for offset in range(len(trailing) - block, -1, -block):
+        if _is_clean_tone_block(trailing[offset : offset + block], rate, nominal_hz):
+            last = trailing_start + offset + block
+            break
+    if first is None or last is None or first >= last:
+        raise ValueError(f"Could not find clean {nominal_hz:g} Hz markers in the scanned capture edges.")
+    return first, min(last, frames), {"edgeScanSeconds": scan_seconds, "sourceDurationSeconds": duration}
 
 
 def trim_wav(source_path: Path, output_path: Path, start_frame: int, end_frame: int) -> None:
@@ -717,6 +767,13 @@ def local_turntable_report(path: Path, nominal_hz: float, output_dir: Path) -> d
     return report
 
 
+def trim_one_khz_edges(source_path: Path, output_path: Path, nominal_hz: float = 1_000.0, edge_scan_seconds: float = 20, expected_duration_seconds: float = 405) -> dict[str, Any]:
+    start, end, scan = one_khz_cleanup_region(source_path, nominal_hz, edge_scan_seconds, expected_duration_seconds)
+    rate = int(wav_metadata(source_path)["sampleRateHz"])
+    trim_wav(source_path, output_path, start, end)
+    return {"source": str(source_path), "trimmedOutput": str(output_path), "nominalToneHz": nominal_hz, "startSeconds": start / rate, "endSeconds": end / rate, "durationSeconds": (end - start) / rate, **scan}
+
+
 def inspect(path: Path, nominal_hz: float, trim_output: Path | None = None, spectrum_output: Path | None = None) -> dict[str, Any]:
     samples, rate = _pcm_samples(path)
     start, end = active_tone_region(samples, rate)
@@ -763,6 +820,12 @@ def main() -> None:
     report_parser.add_argument("wav", type=Path)
     report_parser.add_argument("--nominal-hz", type=float, default=1_000.0)
     report_parser.add_argument("--output-dir", type=Path, default=Path("data/local-psiu"))
+    cleanup_parser = subcommands.add_parser("trim-1khz", help="Trim capture edges to clean 1 kHz markers without loading a full side.")
+    cleanup_parser.add_argument("wav", type=Path)
+    cleanup_parser.add_argument("--output", type=Path, required=True)
+    cleanup_parser.add_argument("--nominal-hz", type=float, default=1_000.0)
+    cleanup_parser.add_argument("--edge-scan-seconds", type=float, default=20)
+    cleanup_parser.add_argument("--expected-duration-seconds", type=float, default=405)
     inspect_parser = subcommands.add_parser("inspect", help="Inspect a PSIU WAV and optionally trim lead-in/runout.")
     inspect_parser.add_argument("wav", type=Path)
     inspect_parser.add_argument("--nominal-hz", type=float, default=1_000.0)
@@ -781,6 +844,8 @@ def main() -> None:
         print(capture(args.base_url, args.seconds, args.output_dir, args.audio_wait_seconds, args.status_interval_seconds))
     elif args.command == "report":
         print(json.dumps(local_turntable_report(args.wav, args.nominal_hz, args.output_dir), indent=2))
+    elif args.command == "trim-1khz":
+        print(json.dumps(trim_one_khz_edges(args.wav, args.output, args.nominal_hz, args.edge_scan_seconds, args.expected_duration_seconds), indent=2))
     else:
         print(json.dumps(inspect(args.wav, args.nominal_hz, args.trim_output, args.spectrum_output), indent=2))
 
