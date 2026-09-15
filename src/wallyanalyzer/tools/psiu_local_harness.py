@@ -126,11 +126,27 @@ def health(base_url: str) -> dict[str, Any]:
         session.close()
 
 
-def select_input(base_url: str, xlr: bool) -> dict[str, Any]:
-    result = psiu_json(base_url, "/api/inputsel", method="POST", body={"xlr": xlr})
-    if result.get("xlr") is not xlr:
-        raise RuntimeError("PSIU did not confirm the requested input selection.")
-    return result
+def select_input(base_url: str, xlr: bool, attempts: int = 3) -> dict[str, Any]:
+    error: RuntimeError | None = None
+    for attempt in range(attempts):
+        try:
+            result = psiu_json(base_url, "/api/inputsel", method="POST", body={"xlr": xlr})
+            if result.get("xlr") is xlr:
+                return result
+            error = RuntimeError("PSIU did not confirm the requested input selection.")
+        except RuntimeError as caught:
+            error = caught
+        # A reset can occur after PSIU applies the relay command. Confirm its
+        # durable state before repeating this idempotent selection.
+        try:
+            status = psiu_json(base_url, "/status")
+            if status.get("xlr") is xlr:
+                return status
+        except RuntimeError as caught:
+            error = caught
+        if attempt + 1 < attempts:
+            time.sleep(0.5)
+    raise error or RuntimeError("PSIU did not confirm the requested input selection.")
 
 
 def set_recording(base_url: str, session: PsiuSession, running: bool) -> dict[str, Any]:
