@@ -43,7 +43,7 @@ PYTHONPATH=src python -m wallyanalyzer.tools.psiu_local_harness download \
   --output data/local-psiu/recovered-psiu-capture.wav
 ```
 
-A reset leaves `recovered-psiu-capture.wav.part`; rerun the command to resume it with an HTTP Range request.
+A reset or host timeout leaves `recovered-psiu-capture.wav.part`; rerun the command to resume it. The harness fetches 1 MiB HTTP ranges so each completed range is persisted.
 
 ## Inspect and trim the result
 

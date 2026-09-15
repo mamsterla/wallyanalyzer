@@ -212,31 +212,38 @@ def status_reporter(base_url: str, seconds: float, interval_seconds: float, star
 
 
 def download_completed_wav(base_url: str, output: Path, wait_seconds: float = 300) -> None:
-    """Stream /audio.wav to a resumable local file; never hold a capture in RAM."""
+    """Retrieve /audio.wav in bounded, resumable HTTP Range requests."""
     parsed = urllib.parse.urlsplit(base_url)
     part = output.with_suffix(f"{output.suffix}.part")
     deadline = time.monotonic() + wait_seconds
+    chunk_bytes = 1 * 1024 * 1024
     output.parent.mkdir(parents=True, exist_ok=True)
     while True:
         offset = part.stat().st_size if part.exists() else 0
+        end = offset + chunk_bytes - 1
         connection = http.client.HTTPConnection(parsed.hostname, parsed.port or 80, timeout=10)
         try:
-            connection.request("GET", f"{parsed.path.rstrip('/')}/audio.wav", headers={"range": f"bytes={offset}-", "connection": "close"})
+            connection.request("GET", f"{parsed.path.rstrip('/')}/audio.wav", headers={"range": f"bytes={offset}-{end}", "connection": "close"})
             response = connection.getresponse()
             if response.status == 404:
                 raise PsiuCaptureNotReady("PSIU has not finalized the completed WAV.")
-            if response.status not in {200, 206}:
-                raise RuntimeError(f"PSIU returned HTTP {response.status} for /audio.wav.")
-            # A server ignoring Range must restart the local partial file.
-            mode = "ab" if response.status == 206 and offset else "wb"
-            with part.open(mode) as destination:
-                while chunk := response.read(64 * 1024):
-                    destination.write(chunk)
-            if part.stat().st_size < 44:
-                raise RuntimeError("PSIU returned an incomplete WAV.")
-            part.replace(output)
-            return
-        except (PsiuCaptureNotReady, OSError, http.client.HTTPException, RuntimeError):
+            if response.status != 206:
+                raise RuntimeError(f"PSIU returned HTTP {response.status}; expected 206 for a bounded /audio.wav range.")
+            content_range = response.getheader("content-range")
+            if not content_range or not content_range.startswith(f"bytes {offset}-") or "/" not in content_range:
+                raise RuntimeError("PSIU returned an invalid Content-Range for /audio.wav.")
+            total_bytes = int(content_range.rsplit("/", 1)[1])
+            chunk = response.read()
+            if not chunk:
+                raise RuntimeError("PSIU returned an empty WAV range.")
+            with part.open("ab") as destination:
+                destination.write(chunk)
+            if part.stat().st_size >= total_bytes:
+                if part.stat().st_size != total_bytes or total_bytes < 44:
+                    raise RuntimeError("PSIU returned an incomplete WAV.")
+                part.replace(output)
+                return
+        except (PsiuCaptureNotReady, OSError, ValueError, http.client.HTTPException, RuntimeError):
             if time.monotonic() >= deadline:
                 raise RuntimeError(f"PSIU did not provide a completed WAV within {wait_seconds:.0f} seconds of Stop; partial data remains at {part}.")
             time.sleep(1)
