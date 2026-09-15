@@ -69,6 +69,8 @@ def test_local_turntable_report_includes_speed_balance_and_artifacts(tmp_path: P
     assert "wow" in report["channels"][0]["modulationEstimate"]["bands"]
     assert "speedExtrema" in report["channels"][0]["modulationEstimate"]
     assert "cyclicPeriodCandidates" in report["channels"][0]["modulationEstimate"]
+    assert report["speedAccuracy"]["maximumDeviationPercent"] >= 0
     assert Path(report["artifacts"]["speedSvg"]).exists()
+    assert Path(report["artifacts"]["revolutionSpeedSvg"]).exists()
     assert Path(report["artifacts"]["reportHtml"]).exists()
     assert Path(report["artifacts"]["reportJson"]).exists()
