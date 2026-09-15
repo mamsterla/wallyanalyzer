@@ -84,5 +84,6 @@ export interface ReportHistoryPage { items: ReportHistoryItem[]; limit: number; 
 export type UserAlertSeverity = 'info' | 'warning' | 'success';
 export interface UserAlert { id: string; eventKey: string; severity: UserAlertSeverity; title: string; message: string; actionLabel?: string; actionRoute?: string; dismissible: boolean; createdAt: string; }
 export interface PsiuConnectionSettings { baseUrl: string; allowInsecureHttp: boolean; }
-export interface PsiuStatus { uid: string; uptimeMs: number; sampleRateHz: number; recording: boolean; xlr: boolean; bufferCount: number; recorderState: string; pagesWritten: number; droppedHalves: number; badBlockCount: number; dmaErrors: number; i2sErrors: number; recordingCount: number; }
+export interface PsiuStatus { uid: string; uptimeMs: number; sampleRateHz: number; recording: boolean; xlr: boolean; bufferCount: number; recorderState: string; pagesWritten: number; droppedHalves: number; badBlockCount: number; dmaErrors: number; i2sErrors: number; codecOk: boolean; codecAttempts: number; codecRecoveries: number; audioAlive: boolean; levelDb: [number, number]; recordingCount: number; }
+export interface PsiuSignal { left: number; right: number; }
 export interface PsiuCaptureInfo { sampleRateHz: number; channels: number; bits: number; dataBytes: number; durationMs: number; droppedHalves: number; recordingCount: number; completedAt: string; }

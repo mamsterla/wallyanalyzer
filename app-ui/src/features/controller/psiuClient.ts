@@ -1,9 +1,9 @@
-import type { PsiuStatus } from '@wally/contracts';
+import type { PsiuSignal, PsiuStatus } from '@wally/contracts';
 
 export class PsiuUnavailableError extends Error { constructor(message = 'PSIU is unavailable. Wally PSIU Bridge cannot reach the device.') { super(message); } }
-export interface PsiuClient { scanUid(): Promise<string>; getStatus(): Promise<PsiuStatus>; setInput(xlr: boolean): Promise<PsiuStatus>; startCapture(): Promise<PsiuStatus>; stopCapture(): Promise<PsiuStatus>; getCompletedCapture(): Promise<Blob | null>; }
+export interface PsiuClient { scanUid(): Promise<string>; getStatus(): Promise<PsiuStatus>; getSignal(): Promise<PsiuSignal>; setInput(xlr: boolean): Promise<PsiuStatus>; startCapture(): Promise<PsiuStatus>; stopCapture(): Promise<PsiuStatus>; getCompletedCapture(): Promise<Blob | null>; }
 export type FetchLike = typeof fetch;
-type BridgeCommand = 'probe' | 'uid' | 'status' | 'inputsel' | 'sampling' | 'audio';
+type BridgeCommand = 'probe' | 'uid' | 'status' | 'signal' | 'inputsel' | 'sampling' | 'audio';
 type BridgeResponse = { channel: 'wally-psiu-bridge'; type: 'result' | 'error' | 'audio-chunk' | 'audio-complete'; requestId: string; value?: unknown; data?: string };
 const bridgeChannel = 'wally-psiu-bridge';
 
@@ -17,6 +17,7 @@ function createDirectClient(fetchImplementation: FetchLike, base: string): PsiuC
   return {
     async scanUid() { const value = await requestJson(fetchImplementation, `${base}/uid`); return uid(value); },
     async getStatus() { return requestStatus(fetchImplementation, `${base}/status`); },
+    async getSignal() { return parseSignal(await requestJson(fetchImplementation, `${base}/signal`)); },
     async setInput(xlr: boolean) { return requestStatus(fetchImplementation, `${base}/input`, inputInit(xlr)); },
     async startCapture() { await requestJson(fetchImplementation, `${base}/capture`, captureInit(true)); return requestStatus(fetchImplementation, `${base}/status`); },
     async stopCapture() { await requestJson(fetchImplementation, `${base}/capture`, captureInit(false)); return requestStatus(fetchImplementation, `${base}/status`); },
@@ -33,6 +34,7 @@ export function createExtensionClient(): PsiuClient {
   return {
     async scanUid() { return uid(await bridgeRequest('uid')); },
     async getStatus() { return parseStatus(await bridgeRequest('status')); },
+    async getSignal() { return parseSignal(await bridgeRequest('signal')); },
     async setInput(xlr: boolean) { return parseStatus(await bridgeRequest('inputsel', undefined, 10_000, xlr)); },
     async startCapture() { return parseStatus(await bridgeRequest('sampling', true)); },
     async stopCapture() { return parseStatus(await bridgeRequest('sampling', false)); },
@@ -83,8 +85,10 @@ async function response(fetchImplementation: FetchLike, input: RequestInfo | URL
 async function requestJson(fetchImplementation: FetchLike, input: RequestInfo | URL, init?: RequestInit): Promise<unknown> { const result = await response(fetchImplementation, input, init); if (!result.ok) throw new PsiuUnavailableError(); try { return await result.json(); } catch { throw new PsiuUnavailableError(); } }
 async function requestStatus(fetchImplementation: FetchLike, input: RequestInfo | URL, init?: RequestInit): Promise<PsiuStatus> { return parseStatus(await requestJson(fetchImplementation, input, init)); }
 async function wavResponse(result: Response): Promise<Blob | null> { if (result.status === 404) return null; if (!result.ok || !result.headers.get('content-type')?.toLowerCase().startsWith('audio/wav')) throw new PsiuUnavailableError(); return result.blob(); }
+function parseSignal(value: unknown): PsiuSignal { const signal = asRecord(value); const left = asNumber(signal.L); const right = asNumber(signal.R); if (left < 0 || left > 100 || right < 0 || right > 100) throw new PsiuUnavailableError(); return { left, right }; }
 function uid(value: unknown) { const parsed = asRecord(value).uid; if (typeof parsed !== 'string' || !parsed.trim() || parsed.trim().length > 256) throw new PsiuUnavailableError(); return parsed.trim(); }
-function parseStatus(value: unknown): PsiuStatus { const status = asRecord(value); return { uid: asString(status.uid, 'Unknown'), uptimeMs: asNumber(status.uptime_ms), sampleRateHz: asNumber(status.sample_rate_hz), recording: Boolean(status.recording), xlr: Boolean(status.xlr), bufferCount: asNumber(status.buffer_count), recorderState: asString(status.recorder_state, 'unknown'), pagesWritten: asNumber(status.pages_written), droppedHalves: asNumber(status.dropped_halves), badBlockCount: asNumber(status.bad_block_count), dmaErrors: asNumber(status.dma_errors), i2sErrors: asNumber(status.i2s_errors), recordingCount: asNumber(status.recording_count) }; }
+function parseStatus(value: unknown): PsiuStatus { const status = asRecord(value); return { uid: asString(status.uid, 'Unknown'), uptimeMs: asNumber(status.uptime_ms), sampleRateHz: asNumber(status.sample_rate_hz), recording: Boolean(status.recording), xlr: Boolean(status.xlr), bufferCount: asNumber(status.buffer_count), recorderState: asString(status.recorder_state, 'unknown'), pagesWritten: asNumber(status.pages_written), droppedHalves: asNumber(status.dropped_halves), badBlockCount: asNumber(status.bad_block_count), dmaErrors: asNumber(status.dma_errors), i2sErrors: asNumber(status.i2s_errors), codecOk: status.codec_ok === true, codecAttempts: asNumber(status.codec_attempts), codecRecoveries: asNumber(status.codec_recoveries), audioAlive: status.audio_alive === true, levelDb: levelDb(status.level_db), recordingCount: asNumber(status.recording_count) }; }
+function levelDb(value: unknown): [number, number] { if (!Array.isArray(value) || value.length !== 2 || !value.every(item => typeof item === 'number' && Number.isFinite(item))) return [-60, -60]; return [value[0] as number, value[1] as number]; }
 function asRecord(value: unknown): Record<string, unknown> { if (!value || typeof value !== 'object' || Array.isArray(value)) throw new PsiuUnavailableError(); return value as Record<string, unknown>; }
 function asString(value: unknown, fallback: string): string { return typeof value === 'string' && value.length > 0 ? value : fallback; }
 function asNumber(value: unknown): number { return typeof value === 'number' && Number.isFinite(value) ? value : 0; }

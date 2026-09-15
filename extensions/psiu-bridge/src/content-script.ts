@@ -1,9 +1,9 @@
 (() => {
   const chromeApi: any = (globalThis as any).chrome;
-  type Command = 'probe' | 'uid' | 'status' | 'inputsel' | 'sampling' | 'audio';
+  type Command = 'probe' | 'uid' | 'status' | 'signal' | 'inputsel' | 'sampling' | 'audio';
   type PageRequest = { channel: 'wally-psiu-bridge'; type: 'request'; requestId: string; command: Command; running?: boolean; xlr?: boolean };
   const channel = 'wally-psiu-bridge';
-  const commands = new Set<Command>(['probe', 'uid', 'status', 'inputsel', 'sampling', 'audio']);
+  const commands = new Set<Command>(['probe', 'uid', 'status', 'signal', 'inputsel', 'sampling', 'audio']);
   const port = chromeApi.runtime.connect({ name: channel });
 
   port.onMessage.addListener((message: unknown) => {

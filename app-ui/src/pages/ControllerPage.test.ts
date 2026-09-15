@@ -7,7 +7,7 @@ if (!globalThis.crypto) Object.defineProperty(globalThis, 'crypto', { value: web
 import { captureEligibility, queueCapturedPsiuWav, sha256Base64 } from './ControllerPage.js';
 
 describe('PSIU capture eligibility', () => {
-  const status={uid:'uid-1',uptimeMs:0,sampleRateHz:0,recording:false,xlr:false,bufferCount:0,recorderState:'idle',pagesWritten:0,droppedHalves:0,badBlockCount:0,dmaErrors:0,i2sErrors:0,recordingCount:0};
+  const status={uid:'uid-1',uptimeMs:0,sampleRateHz:0,recording:false,xlr:false,bufferCount:0,recorderState:'idle',pagesWritten:0,droppedHalves:0,badBlockCount:0,dmaErrors:0,i2sErrors:0,codecOk:true,codecAttempts:1,codecRecoveries:0,audioAlive:true,levelDb:[-60,-60] as [number,number],recordingCount:0};
   const system={id:'system-1',name:'System',notes:'',components:{turntable:'TT',tonearm:'Arm',cartridge:'Cart'},active:true,createdAt:'2026-01-01T00:00:00.000Z'};
   it('requires active system and matching enabled assignment before capture', () => { expect(captureEligibility(status,[{id:'unit-1',serialNumber:'serial',uid:'uid-1',status:'enabled'}],[])).toMatchObject({ok:false});expect(captureEligibility(status,[{id:'unit-1',serialNumber:'serial',uid:'different',status:'enabled'}],[system])).toMatchObject({ok:false});expect(captureEligibility(status,[{id:'unit-1',serialNumber:'serial',uid:'uid-1',status:'disabled'}],[system])).toMatchObject({ok:false});expect(captureEligibility(status,[{id:'unit-1',serialNumber:'serial',uid:'uid-1',status:'enabled'}],[system])).toMatchObject({ok:true,unit:{id:'unit-1'}}); });
 });

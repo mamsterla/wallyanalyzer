@@ -1,7 +1,7 @@
 export {};
 declare const chrome: any;
 
-type Command = 'probe' | 'uid' | 'status' | 'inputsel' | 'sampling' | 'audio';
+type Command = 'probe' | 'uid' | 'status' | 'signal' | 'inputsel' | 'sampling' | 'audio';
 type Request = { type: 'request'; requestId: string; command: Command; running?: boolean; xlr?: boolean };
 const base = 'http://psiu.local';
 const chunkBytes = 48 * 1024;
@@ -18,6 +18,7 @@ async function handle(port: any, message: Request) {
       case 'probe': return reply(port, message.requestId, { available: true });
       case 'uid': return reply(port, message.requestId, await json('/uid'));
       case 'status': return reply(port, message.requestId, await json('/status'));
+      case 'signal': return reply(port, message.requestId, await json('/api/signal'));
       case 'inputsel':
         if (typeof message.xlr !== 'boolean') throw new Error('Invalid input selection request.');
         await json('/api/inputsel', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ xlr: message.xlr }) });

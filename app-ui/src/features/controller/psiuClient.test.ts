@@ -14,6 +14,11 @@ const status = {
   bad_block_count: 0,
   dma_errors: 0,
   i2s_errors: 0,
+  codec_ok: true,
+  codec_attempts: 1,
+  codec_recoveries: 0,
+  audio_alive: true,
+  level_db: [-24, -23],
   recording_count: 2,
 };
 
