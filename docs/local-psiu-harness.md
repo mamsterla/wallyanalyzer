@@ -68,6 +68,6 @@ PYTHONPATH=src python -m wallyanalyzer.tools.psiu_local_harness report \
   --output-dir data/local-psiu
 ```
 
-The local report writes JSON, HTML, and an FFT SVG. It includes capture timestamp/duration, carrier frequency, speed estimate relative to 33⅓ RPM, peak/channel balance, second and third harmonics, non-harmonic peaks, and unweighted slow (`wow`, 0.1–6 Hz) and fast (`flutter`, 6–200 Hz) frequency-modulation estimates with RMS, sigma, and peak percentage.
+The local report writes JSON, HTML, an FFT SVG, and a speed-over-time SVG. The speed graph marks each channel's highest and lowest instantaneous-speed estimates. The report includes timestamp/duration, carrier frequency, speed estimate relative to 33⅓ RPM, peak/channel balance, second and third harmonics, non-harmonic peaks, and unweighted slow (`wow`, 0.1–6 Hz) and fast (`flutter`, 6–200 Hz) frequency-modulation estimates with RMS, sigma, and peak percentage. It also lists the five strongest 0.1–30 Hz periodic speed components as drivetrain-investigation candidates.
 
 These are diagnostic estimates from a 1 kHz carrier, not formal IEC/DIN/AES compliance measurements. Low-frequency labels such as `motor-region candidate` and `low-frequency rumble or power-region candidate` identify regions for investigation; they do not establish physical source attribution.

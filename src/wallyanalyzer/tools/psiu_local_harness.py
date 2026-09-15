@@ -527,14 +527,55 @@ def frequency_modulation_diagnostics(samples: np.ndarray, rate: int, nominal_hz:
             selected = (modulation_frequencies >= lower) & (modulation_frequencies < upper)
             filtered = np.fft.irfft(np.where(selected, modulation, 0), n=len(deviation_percent))
             bands[name] = {"rmsPercent": float(np.sqrt(np.mean(filtered**2))), "sigmaPercent": float(np.std(filtered)), "peakPercent": float(np.max(np.abs(filtered)))}
-        output.append({"meanFrequencyHz": mean_hz, "overallSigmaPercent": float(np.std(deviation_percent)), "overallPeakPercent": float(np.max(np.abs(deviation_percent))), "bands": bands})
+        output.append({"meanFrequencyHz": mean_hz, "overallSigmaPercent": float(np.std(deviation_percent)), "overallPeakPercent": float(np.max(np.abs(deviation_percent))), "bands": bands, "_timeSeconds": (np.arange(len(trace_hz)) + 250) / (rate / decimation), "_speedRpm": 33.333333 * trace_hz / nominal_hz})
     return output
 
 
-def write_local_report_html(path: Path, report: dict[str, Any], spectrum_filename: str) -> None:
+def cyclic_period_candidates(speed_rpm: np.ndarray, sample_rate_hz: float = 1_000.0) -> list[dict[str, float]]:
+    """Dominant periodic speed components for investigation, without causal attribution."""
+    window = np.hanning(len(speed_rpm))
+    deviations = speed_rpm - np.mean(speed_rpm)
+    frequencies = np.fft.rfftfreq(len(deviations), 1 / sample_rate_hz)
+    amplitudes = 2 * np.abs(np.fft.rfft(deviations * window)) / np.sum(window)
+    indices = np.flatnonzero((frequencies >= 0.1) & (frequencies <= 30))[1:-1]
+    peaks = indices[(amplitudes[indices] > amplitudes[indices - 1]) & (amplitudes[indices] >= amplitudes[indices + 1])]
+    selected = peaks[np.argsort(amplitudes[peaks])[::-1]][:5]
+    return [{"frequencyHz": float(frequencies[index]), "periodSeconds": float(1 / frequencies[index]), "speedAmplitudeRpm": float(amplitudes[index])} for index in selected]
+
+
+def write_speed_svg(path: Path, traces: list[tuple[np.ndarray, np.ndarray]]) -> None:
+    """Write a local time-domain speed review graph with per-channel extrema."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    left, right, top, bottom, width, height = 72, 28, 30, 50, 1080, 480
+    all_speed = np.concatenate([speed for _, speed in traces])
+    minimum, maximum = float(np.min(all_speed)), float(np.max(all_speed))
+    padding = max((maximum - minimum) * 0.12, 0.002)
+    minimum, maximum = minimum - padding, maximum + padding
+    duration = max(float(times[-1]) for times, _ in traces)
+    def x(time_value: float) -> float: return left + time_value / duration * width
+    def y(speed: float) -> float: return top + (maximum - speed) / (maximum - minimum) * height
+    lines = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{left + width + right}" height="{top + height + bottom}" viewBox="0 0 {left + width + right} {top + height + bottom}">', '<rect width="100%" height="100%" fill="white"/>', '<style>text{font:13px Arial;fill:#222}.axis{stroke:#555}.grid{stroke:#ddd}.left{fill:none;stroke:#b7791f;stroke-width:1}.right{fill:none;stroke:#1a5fb4;stroke-width:1}.mark{fill:#c01c28}</style>', f'<text x="{left}" y="18">Instantaneous speed estimate · diagnostic only</text>']
+    for fraction in (0, .5, 1):
+        value = minimum + fraction * (maximum - minimum); yy = y(value)
+        lines.extend([f'<line x1="{left}" y1="{yy:.1f}" x2="{left + width}" y2="{yy:.1f}" class="grid"/>', f'<text x="{left - 8}" y="{yy + 5:.1f}" text-anchor="end">{value:.4f} RPM</text>'])
+    for second in range(0, int(duration) + 1, max(1, round(duration / 5))):
+        xx = x(second); lines.extend([f'<line x1="{xx:.1f}" y1="{top}" x2="{xx:.1f}" y2="{top + height}" class="grid"/>', f'<text x="{xx:.1f}" y="{top + height + 22}" text-anchor="middle">{second}s</text>'])
+    lines.extend([f'<line x1="{left}" y1="{top + height}" x2="{left + width}" y2="{top + height}" class="axis"/>', f'<line x1="{left}" y1="{top}" x2="{left}" y2="{top + height}" class="axis"/>'])
+    for index, (times, speeds) in enumerate(traces):
+        stride = max(1, len(times) // 2_500)
+        points = " ".join(f"{x(float(times[item])):.1f},{y(float(speeds[item])):.1f}" for item in range(0, len(times), stride))
+        class_name = "left" if index == 0 else "right"
+        lines.append(f'<polyline points="{points}" class="{class_name}"/>')
+        for point in (int(np.argmin(speeds)), int(np.argmax(speeds))):
+            lines.append(f'<circle cx="{x(float(times[point])):.1f}" cy="{y(float(speeds[point])):.1f}" r="4" class="mark"/>')
+    lines.extend([f'<text x="{left + width - 120}" y="18" fill="#b7791f">Left</text>', f'<text x="{left + width - 60}" y="18" fill="#1a5fb4">Right</text>', '</svg>'])
+    path.write_text("\n".join(lines), encoding="utf-8")
+
+
+def write_local_report_html(path: Path, report: dict[str, Any], spectrum_filename: str, speed_filename: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     rows = json.dumps(report, indent=2).replace("&", "&amp;").replace("<", "&lt;")
-    path.write_text(f"<!doctype html><html><head><meta charset=\"utf-8\"><title>Wally local turntable diagnostic</title><style>body{{font:16px system-ui;margin:2rem;max-width:1000px}}pre{{background:#f5f5f5;padding:1rem;overflow:auto}}img{{max-width:100%;border:1px solid #ccc}}</style></head><body><h1>Wally local turntable diagnostic</h1><p><strong>Diagnostic only:</strong> 1 kHz carrier estimates are unweighted and are not formal IEC/DIN/AES wow/flutter compliance results.</p><img src=\"{spectrum_filename}\" alt=\"FFT spectrum\"><h2>Metrics</h2><pre>{rows}</pre></body></html>", encoding="utf-8")
+    path.write_text(f"<!doctype html><html><head><meta charset=\"utf-8\"><title>Wally local turntable diagnostic</title><style>body{{font:16px system-ui;margin:2rem;max-width:1000px}}pre{{background:#f5f5f5;padding:1rem;overflow:auto}}img{{max-width:100%;border:1px solid #ccc}}</style></head><body><h1>Wally local turntable diagnostic</h1><p><strong>Diagnostic only:</strong> 1 kHz carrier estimates are unweighted and are not formal IEC/DIN/AES wow/flutter compliance results.</p><img src=\"{spectrum_filename}\" alt=\"FFT spectrum\"><h2>Speed over time</h2><img src=\"{speed_filename}\" alt=\"Instantaneous speed graph\"><h2>Metrics</h2><pre>{rows}</pre></body></html>", encoding="utf-8")
 
 
 def local_turntable_report(path: Path, nominal_hz: float, output_dir: Path) -> dict[str, Any]:
@@ -548,12 +589,22 @@ def local_turntable_report(path: Path, nominal_hz: float, output_dir: Path) -> d
     output_dir.mkdir(parents=True, exist_ok=True)
     stem = path.stem
     spectrum_path = output_dir / f"{stem}-turntable-spectrum.svg"
+    speed_path = output_dir / f"{stem}-turntable-speed.svg"
     json_path = output_dir / f"{stem}-turntable-report.json"
     html_path = output_dir / f"{stem}-turntable-report.html"
     write_spectrum_svg(spectrum_path, frequencies, spectra)
-    report = {"reportType": "local-1khz-turntable-diagnostic", "algorithmVersion": "local-1.0", "generatedAt": datetime.now(timezone.utc).isoformat(), "source": str(path), "sourceFileModifiedAt": datetime.fromtimestamp(path.stat().st_mtime, timezone.utc).isoformat(), "disclaimer": "Diagnostic-only 1 kHz carrier analysis. Speed and wow/flutter values are unweighted estimates and are not formal compliance results.", "capture": {**wav_metadata(path), "programStartSeconds": start / rate, "programEndSeconds": end / rate, "programDurationSeconds": (end - start) / rate}, "speedAccuracy": {"referenceRpm": 33.333333, "measuredRpm": 33.333333 * average_hz / nominal_hz, "errorPercent": 100 * (average_hz - nominal_hz) / nominal_hz, "measuredCarrierHz": average_hz, "nominalCarrierHz": nominal_hz, "method": "full-program analytic-carrier mean; assumes the test record carrier is exactly nominal"}, "channels": [{"name": name, "measuredCarrierHz": modulation[index]["meanFrequencyHz"], "shortWindowVerificationHz": tone_hz[index], "peakDbfs": diagnostics[index]["fundamentalPeakDbfs"], "harmonics": diagnostics[index]["harmonics"], "modulationEstimate": modulation[index], "nonHarmonicPeaks": non_harmonic_peaks(frequencies, spectra, diagnostics)[index]} for index, name in enumerate(("left", "right"))], "channelBalance": {"peakLevelDifferenceDb": diagnostics[0]["fundamentalPeakDbfs"] - diagnostics[1]["fundamentalPeakDbfs"], "carrierFrequencyDifferenceHz": modulation[0]["meanFrequencyHz"] - modulation[1]["meanFrequencyHz"]}, "artifacts": {"spectrumSvg": str(spectrum_path), "reportHtml": str(html_path)}}
+    speed_traces: list[tuple[np.ndarray, np.ndarray]] = []
+    for entry in modulation:
+        times = entry.pop("_timeSeconds")
+        speeds = entry.pop("_speedRpm")
+        minimum = int(np.argmin(speeds)); maximum = int(np.argmax(speeds))
+        entry["speedExtrema"] = {"minimumRpm": float(speeds[minimum]), "minimumAtSeconds": float(times[minimum]), "maximumRpm": float(speeds[maximum]), "maximumAtSeconds": float(times[maximum])}
+        entry["cyclicPeriodCandidates"] = cyclic_period_candidates(speeds)
+        speed_traces.append((times, speeds))
+    write_speed_svg(speed_path, speed_traces)
+    report = {"reportType": "local-1khz-turntable-diagnostic", "algorithmVersion": "local-1.0", "generatedAt": datetime.now(timezone.utc).isoformat(), "source": str(path), "sourceFileModifiedAt": datetime.fromtimestamp(path.stat().st_mtime, timezone.utc).isoformat(), "disclaimer": "Diagnostic-only 1 kHz carrier analysis. Speed and wow/flutter values are unweighted estimates and are not formal compliance results.", "capture": {**wav_metadata(path), "programStartSeconds": start / rate, "programEndSeconds": end / rate, "programDurationSeconds": (end - start) / rate}, "speedAccuracy": {"referenceRpm": 33.333333, "measuredRpm": 33.333333 * average_hz / nominal_hz, "errorPercent": 100 * (average_hz - nominal_hz) / nominal_hz, "measuredCarrierHz": average_hz, "nominalCarrierHz": nominal_hz, "method": "full-program analytic-carrier mean; assumes the test record carrier is exactly nominal"}, "channels": [{"name": name, "measuredCarrierHz": modulation[index]["meanFrequencyHz"], "shortWindowVerificationHz": tone_hz[index], "peakDbfs": diagnostics[index]["fundamentalPeakDbfs"], "harmonics": diagnostics[index]["harmonics"], "modulationEstimate": modulation[index], "nonHarmonicPeaks": non_harmonic_peaks(frequencies, spectra, diagnostics)[index]} for index, name in enumerate(("left", "right"))], "channelBalance": {"peakLevelDifferenceDb": diagnostics[0]["fundamentalPeakDbfs"] - diagnostics[1]["fundamentalPeakDbfs"], "carrierFrequencyDifferenceHz": modulation[0]["meanFrequencyHz"] - modulation[1]["meanFrequencyHz"]}, "artifacts": {"spectrumSvg": str(spectrum_path), "speedSvg": str(speed_path), "reportHtml": str(html_path)}}
     json_path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
-    write_local_report_html(html_path, report, spectrum_path.name)
+    write_local_report_html(html_path, report, spectrum_path.name, speed_path.name)
     report["artifacts"]["reportJson"] = str(json_path)
     return report
 
