@@ -58,3 +58,16 @@ PYTHONPATH=src python -m wallyanalyzer.tools.psiu_local_harness inspect \
 The inspection JSON reports WAV metadata, a loud contiguous program region, and left/right FFT tone estimates near the selected nominal frequency. It also reports per-channel fundamental peak level, median FFT-bin noise floor, peak-to-noise-floor difference, broadband SNR, and second/third harmonic levels in dBFS and dBc. The optional SVG shows the 20 Hz–20 kHz FFT for visual review. The trim copies original PCM frames without re-encoding. It is intended to remove quiet lead-in/runout regions before local algorithm experimentation.
 
 The energy-based trim is a candidate cleanup step, not a production track boundary detector. Review the generated region and WAV manually before using it as a fixture.
+
+## Generate a local 1 kHz turntable diagnostic report
+
+```sh
+PYTHONPATH=src python -m wallyanalyzer.tools.psiu_local_harness report \
+  data/local-psiu/psiu-v128-fresh.wav \
+  --nominal-hz 1000 \
+  --output-dir data/local-psiu
+```
+
+The local report writes JSON, HTML, and an FFT SVG. It includes capture timestamp/duration, carrier frequency, speed estimate relative to 33⅓ RPM, peak/channel balance, second and third harmonics, non-harmonic peaks, and unweighted slow (`wow`, 0.1–6 Hz) and fast (`flutter`, 6–200 Hz) frequency-modulation estimates with RMS, sigma, and peak percentage.
+
+These are diagnostic estimates from a 1 kHz carrier, not formal IEC/DIN/AES compliance measurements. Low-frequency labels such as `motor-region candidate` and `low-frequency rumble or power-region candidate` identify regions for investigation; they do not establish physical source attribution.

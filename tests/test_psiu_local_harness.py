@@ -4,7 +4,7 @@ from pathlib import Path
 
 import numpy as np
 
-from wallyanalyzer.tools.psiu_local_harness import active_tone_region, estimate_tone_hz, inspect, spectral_diagnostics
+from wallyanalyzer.tools.psiu_local_harness import active_tone_region, estimate_tone_hz, inspect, local_turntable_report, spectral_diagnostics
 
 
 def tone(seconds: float, rate: int = 48_000, frequency: float = 1_000.0) -> np.ndarray:
@@ -56,3 +56,16 @@ def test_inspect_trims_leadin_and_runout_without_reencoding(tmp_path: Path) -> N
     assert "fftDiagnostics" in result
     assert 1.5 < result["programRegion"]["durationSeconds"] < 2.5
     assert all(abs(value - 1_000) < 0.1 for value in result["toneHz"])
+
+
+def test_local_turntable_report_includes_speed_balance_and_artifacts(tmp_path: Path) -> None:
+    source = tmp_path / "capture.wav"
+    write_pcm(source, tone(3, frequency=1_001))
+    report = local_turntable_report(source, 1_000, tmp_path)
+    assert report["reportType"] == "local-1khz-turntable-diagnostic"
+    assert 33.35 < report["speedAccuracy"]["measuredRpm"] < 33.38
+    assert report["speedAccuracy"]["errorPercent"] > 0
+    assert abs(report["channels"][0]["modulationEstimate"]["meanFrequencyHz"] - 1_001) < 0.1
+    assert "wow" in report["channels"][0]["modulationEstimate"]["bands"]
+    assert Path(report["artifacts"]["reportHtml"]).exists()
+    assert Path(report["artifacts"]["reportJson"]).exists()

@@ -462,6 +462,102 @@ def trim_wav(source_path: Path, output_path: Path, start_frame: int, end_frame: 
                 remaining -= take
 
 
+def _interpolated_peak_hz(frequencies: np.ndarray, values: np.ndarray, target_hz: float, search_hz: float = 5) -> tuple[float, float]:
+    index = _peak_bin(frequencies, values, target_hz, search_hz)
+    if index == 0 or index == len(values) - 1:
+        return float(frequencies[index]), float(values[index])
+    left, center, right = values[index - 1 : index + 2]
+    offset = 0.5 * (left - right) / max(left - 2 * center + right, 1e-15)
+    return float((index + offset) * (frequencies[1] - frequencies[0])), float(values[index])
+
+
+def non_harmonic_peaks(frequencies: np.ndarray, spectra: list[np.ndarray], diagnostics: list[dict[str, Any]], upper_hz: float = 500) -> list[list[dict[str, Any]]]:
+    """Return spaced non-harmonic peaks for diagnostic review, not source attribution."""
+    result: list[list[dict[str, Any]]] = []
+    for channel, dbfs in enumerate(spectra):
+        valid = (frequencies >= 20) & (frequencies <= upper_hz)
+        for harmonic in [diagnostics[channel]["fundamentalHz"] * order for order in range(1, 8)]:
+            valid &= np.abs(frequencies - harmonic) > 5
+        indices = np.flatnonzero(valid)[1:-1]
+        candidates = indices[(dbfs[indices] > dbfs[indices - 1]) & (dbfs[indices] >= dbfs[indices + 1])]
+        candidates = candidates[np.argsort(dbfs[candidates])[::-1]]
+        selected: list[int] = []
+        for index in candidates:
+            if all(abs(frequencies[index] - frequencies[other]) >= 0.5 for other in selected):
+                selected.append(int(index))
+            if len(selected) == 12:
+                break
+        peak_level = diagnostics[channel]["fundamentalPeakDbfs"]
+        entries = []
+        for index in selected:
+            frequency = float(frequencies[index])
+            if abs(frequency - 100) <= 5:
+                candidate = "motor-region candidate"
+            elif frequency < 100:
+                candidate = "low-frequency rumble or power-region candidate"
+            else:
+                candidate = "non-harmonic peak"
+            entries.append({"frequencyHz": frequency, "levelDbfs": float(dbfs[index]), "levelDbc": float(dbfs[index] - peak_level), "interpretationCandidate": candidate})
+        result.append(entries)
+    return result
+
+
+def frequency_modulation_diagnostics(samples: np.ndarray, rate: int, nominal_hz: float) -> list[dict[str, Any]]:
+    """Unweighted modulation estimates from a narrow analytic carrier; not IEC/DIN/AES compliant."""
+    limit = min(len(samples), round(rate * 20))
+    if limit < round(rate * 2):
+        raise ValueError("Need at least two seconds for modulation diagnostics.")
+    frequencies = np.fft.fftfreq(limit, 1 / rate)
+    keep = (frequencies >= nominal_hz - 250) & (frequencies <= nominal_hz + 250)
+    decimation = max(1, round(rate / 1_000))
+    output: list[dict[str, Any]] = []
+    for channel in range(samples.shape[1]):
+        transformed = np.fft.fft(samples[:limit, channel] - np.mean(samples[:limit, channel]))
+        analytic = np.fft.ifft(np.where(keep, 2 * transformed, 0))
+        instantaneous_hz = np.diff(np.unwrap(np.angle(analytic))) * rate / (2 * np.pi)
+        usable = instantaneous_hz[: len(instantaneous_hz) // decimation * decimation]
+        trace_hz = usable.reshape(-1, decimation).mean(axis=1)
+        trace_hz = trace_hz[250:-250] if len(trace_hz) > 500 else trace_hz
+        mean_hz = float(np.mean(trace_hz))
+        deviation_percent = 100 * (trace_hz - mean_hz) / mean_hz
+        modulation_frequencies = np.fft.rfftfreq(len(deviation_percent), 1 / (rate / decimation))
+        modulation = np.fft.rfft(deviation_percent)
+        bands: dict[str, dict[str, float]] = {}
+        for name, lower, upper in (("wow", 0.1, 6.0), ("flutter", 6.0, 200.0)):
+            selected = (modulation_frequencies >= lower) & (modulation_frequencies < upper)
+            filtered = np.fft.irfft(np.where(selected, modulation, 0), n=len(deviation_percent))
+            bands[name] = {"rmsPercent": float(np.sqrt(np.mean(filtered**2))), "sigmaPercent": float(np.std(filtered)), "peakPercent": float(np.max(np.abs(filtered)))}
+        output.append({"meanFrequencyHz": mean_hz, "overallSigmaPercent": float(np.std(deviation_percent)), "overallPeakPercent": float(np.max(np.abs(deviation_percent))), "bands": bands})
+    return output
+
+
+def write_local_report_html(path: Path, report: dict[str, Any], spectrum_filename: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    rows = json.dumps(report, indent=2).replace("&", "&amp;").replace("<", "&lt;")
+    path.write_text(f"<!doctype html><html><head><meta charset=\"utf-8\"><title>Wally local turntable diagnostic</title><style>body{{font:16px system-ui;margin:2rem;max-width:1000px}}pre{{background:#f5f5f5;padding:1rem;overflow:auto}}img{{max-width:100%;border:1px solid #ccc}}</style></head><body><h1>Wally local turntable diagnostic</h1><p><strong>Diagnostic only:</strong> 1 kHz carrier estimates are unweighted and are not formal IEC/DIN/AES wow/flutter compliance results.</p><img src=\"{spectrum_filename}\" alt=\"FFT spectrum\"><h2>Metrics</h2><pre>{rows}</pre></body></html>", encoding="utf-8")
+
+
+def local_turntable_report(path: Path, nominal_hz: float, output_dir: Path) -> dict[str, Any]:
+    samples, rate = _pcm_samples(path)
+    start, end = active_tone_region(samples, rate)
+    program = samples[start:end]
+    diagnostics, frequencies, spectra = spectral_diagnostics(program, rate, nominal_hz)
+    tone_hz = estimate_tone_hz(program, rate, nominal_hz)
+    modulation = frequency_modulation_diagnostics(program, rate, nominal_hz)
+    average_hz = float(np.mean([entry["meanFrequencyHz"] for entry in modulation]))
+    output_dir.mkdir(parents=True, exist_ok=True)
+    stem = path.stem
+    spectrum_path = output_dir / f"{stem}-turntable-spectrum.svg"
+    json_path = output_dir / f"{stem}-turntable-report.json"
+    html_path = output_dir / f"{stem}-turntable-report.html"
+    write_spectrum_svg(spectrum_path, frequencies, spectra)
+    report = {"reportType": "local-1khz-turntable-diagnostic", "algorithmVersion": "local-1.0", "generatedAt": datetime.now(timezone.utc).isoformat(), "source": str(path), "sourceFileModifiedAt": datetime.fromtimestamp(path.stat().st_mtime, timezone.utc).isoformat(), "disclaimer": "Diagnostic-only 1 kHz carrier analysis. Speed and wow/flutter values are unweighted estimates and are not formal compliance results.", "capture": {**wav_metadata(path), "programStartSeconds": start / rate, "programEndSeconds": end / rate, "programDurationSeconds": (end - start) / rate}, "speedAccuracy": {"referenceRpm": 33.333333, "measuredRpm": 33.333333 * average_hz / nominal_hz, "errorPercent": 100 * (average_hz - nominal_hz) / nominal_hz, "measuredCarrierHz": average_hz, "nominalCarrierHz": nominal_hz, "method": "full-program analytic-carrier mean; assumes the test record carrier is exactly nominal"}, "channels": [{"name": name, "measuredCarrierHz": modulation[index]["meanFrequencyHz"], "shortWindowVerificationHz": tone_hz[index], "peakDbfs": diagnostics[index]["fundamentalPeakDbfs"], "harmonics": diagnostics[index]["harmonics"], "modulationEstimate": modulation[index], "nonHarmonicPeaks": non_harmonic_peaks(frequencies, spectra, diagnostics)[index]} for index, name in enumerate(("left", "right"))], "channelBalance": {"peakLevelDifferenceDb": diagnostics[0]["fundamentalPeakDbfs"] - diagnostics[1]["fundamentalPeakDbfs"], "carrierFrequencyDifferenceHz": modulation[0]["meanFrequencyHz"] - modulation[1]["meanFrequencyHz"]}, "artifacts": {"spectrumSvg": str(spectrum_path), "reportHtml": str(html_path)}}
+    json_path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+    write_local_report_html(html_path, report, spectrum_path.name)
+    report["artifacts"]["reportJson"] = str(json_path)
+    return report
+
+
 def inspect(path: Path, nominal_hz: float, trim_output: Path | None = None, spectrum_output: Path | None = None) -> dict[str, Any]:
     samples, rate = _pcm_samples(path)
     start, end = active_tone_region(samples, rate)
@@ -504,6 +600,10 @@ def main() -> None:
     capture_parser.add_argument("--output-dir", type=Path, default=Path("data/local-psiu"))
     capture_parser.add_argument("--audio-wait-seconds", type=float, default=30, help="Wait for PSIU to finalize /audio.wav after Stop.")
     capture_parser.add_argument("--status-interval-seconds", type=float, default=5, help="Poll and print PSIU status during capture.")
+    report_parser = subcommands.add_parser("report", help="Generate a local diagnostic report from a 1 kHz turntable capture.")
+    report_parser.add_argument("wav", type=Path)
+    report_parser.add_argument("--nominal-hz", type=float, default=1_000.0)
+    report_parser.add_argument("--output-dir", type=Path, default=Path("data/local-psiu"))
     inspect_parser = subcommands.add_parser("inspect", help="Inspect a PSIU WAV and optionally trim lead-in/runout.")
     inspect_parser.add_argument("wav", type=Path)
     inspect_parser.add_argument("--nominal-hz", type=float, default=1_000.0)
@@ -520,6 +620,8 @@ def main() -> None:
         print(args.output)
     elif args.command == "capture":
         print(capture(args.base_url, args.seconds, args.output_dir, args.audio_wait_seconds, args.status_interval_seconds))
+    elif args.command == "report":
+        print(json.dumps(local_turntable_report(args.wav, args.nominal_hz, args.output_dir), indent=2))
     else:
         print(json.dumps(inspect(args.wav, args.nominal_hz, args.trim_output, args.spectrum_output), indent=2))
 
