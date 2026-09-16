@@ -63,7 +63,7 @@ def test_trim_one_khz_edges_scans_only_capture_boundaries(tmp_path: Path) -> Non
     output = tmp_path / "side-trimmed.wav"
     samples = np.vstack([np.zeros((2 * 48_000, 2)), tone(1), np.zeros((8 * 48_000, 2)), tone(1), np.zeros((2 * 48_000, 2))])
     write_pcm(source, samples)
-    result = trim_one_khz_edges(source, output, edge_scan_seconds=3, expected_duration_seconds=12)
+    result = trim_one_khz_edges(source, output, edge_scan_seconds=3, expected_duration_seconds=12, start_qualification_seconds=1)
     assert output.exists()
     assert 1.9 < result["startSeconds"] < 2.1
     assert 11.9 < result["endSeconds"] < 12.1
@@ -76,7 +76,7 @@ def test_inner_outer_comparison_reports_balance_delta(tmp_path: Path) -> None:
     outer = np.column_stack([.4 * np.sin(2 * math.pi * 1_000 * x), .4 * np.sin(2 * math.pi * 1_000 * x)])
     inner = np.column_stack([.3 * np.sin(2 * math.pi * 1_000 * x), .4 * np.sin(2 * math.pi * 1_000 * x)])
     write_pcm(source, np.vstack([np.zeros((48_000, 2)), outer, np.zeros((8 * 48_000, 2)), inner, np.zeros((48_000, 2))]))
-    result = inner_outer_one_khz_comparison(source, edge_scan_seconds=3, expected_duration_seconds=12, analysis_seconds=1)
+    result = inner_outer_one_khz_comparison(source, edge_scan_seconds=3, expected_duration_seconds=12, analysis_seconds=1, start_qualification_seconds=1)
     assert result["outerMarker"]["balanceDbLeftRelativeToRight"] > -0.1
     assert result["innerMarker"]["balanceDbLeftRelativeToRight"] < -2
     assert result["deltas"]["innerMinusOuterBalanceDb"] < -2
@@ -86,7 +86,7 @@ def test_full_side_report_includes_inner_outer_comparison(tmp_path: Path) -> Non
     source = tmp_path / "side.wav"
     samples = np.vstack([np.zeros((48_000, 2)), tone(1), np.zeros((8 * 48_000, 2)), tone(1), np.zeros((48_000, 2))])
     write_pcm(source, samples)
-    report = local_full_side_report(source, 1_000, tmp_path, edge_scan_seconds=3, expected_duration_seconds=12, analysis_seconds=1)
+    report = local_full_side_report(source, 1_000, tmp_path, edge_scan_seconds=3, expected_duration_seconds=12, analysis_seconds=1, start_qualification_seconds=1)
     assert report["reportType"] == "local-full-side-1khz-diagnostic"
     assert "innerOuterComparison" in report
     assert Path(report["artifacts"]["reportPdf"]).exists()

@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import http.client
 import json
+import math
 from html import escape
 import shutil
 import subprocess
@@ -487,8 +488,8 @@ def _is_clean_tone_block(samples: np.ndarray, rate: int, nominal_hz: float) -> b
     return True
 
 
-def one_khz_cleanup_region(path: Path, nominal_hz: float = 1_000.0, edge_scan_seconds: float = 20, expected_duration_seconds: float = 405) -> tuple[int, int, dict[str, float]]:
-    """Find clean 1 kHz markers near each edge without loading a complete side."""
+def one_khz_cleanup_region(path: Path, nominal_hz: float = 1_000.0, edge_scan_seconds: float = 20, expected_duration_seconds: float = 405, start_qualification_seconds: float = 5) -> tuple[int, int, dict[str, float]]:
+    """Find clean 1 kHz edges, requiring sustained tone before accepting the start."""
     metadata = wav_metadata(path)
     rate, frames, duration = int(metadata["sampleRateHz"]), int(metadata["frames"]), float(metadata["durationSeconds"])
     block = rate
@@ -497,9 +498,10 @@ def one_khz_cleanup_region(path: Path, nominal_hz: float = 1_000.0, edge_scan_se
     leading, _ = _pcm_samples_range(path, 0, scan_frames)
     trailing_start = max(0, frames - scan_frames)
     trailing, _ = _pcm_samples_range(path, trailing_start, scan_frames)
+    qualification_blocks = max(1, math.ceil(start_qualification_seconds))
     first: int | None = None
-    for offset in range(0, len(leading) - block + 1, block):
-        if _is_clean_tone_block(leading[offset : offset + block], rate, nominal_hz):
+    for offset in range(0, len(leading) - qualification_blocks * block + 1, block):
+        if all(_is_clean_tone_block(leading[position : position + block], rate, nominal_hz) for position in range(offset, offset + qualification_blocks * block, block)):
             first = offset
             break
     last: int | None = None
@@ -508,8 +510,8 @@ def one_khz_cleanup_region(path: Path, nominal_hz: float = 1_000.0, edge_scan_se
             last = trailing_start + offset + block
             break
     if first is None or last is None or first >= last:
-        raise ValueError(f"Could not find clean {nominal_hz:g} Hz markers in the scanned capture edges.")
-    return first, min(last, frames), {"edgeScanSeconds": scan_seconds, "sourceDurationSeconds": duration}
+        raise ValueError(f"Could not find a {start_qualification_seconds:g}-second clean {nominal_hz:g} Hz start or clean end marker in the scanned capture edges.")
+    return first, min(last, frames), {"edgeScanSeconds": scan_seconds, "startQualificationSeconds": start_qualification_seconds, "sourceDurationSeconds": duration}
 
 
 def trim_wav(source_path: Path, output_path: Path, start_frame: int, end_frame: int) -> None:
@@ -775,16 +777,16 @@ def local_turntable_report(path: Path, nominal_hz: float, output_dir: Path) -> d
     return report
 
 
-def trim_one_khz_edges(source_path: Path, output_path: Path, nominal_hz: float = 1_000.0, edge_scan_seconds: float = 20, expected_duration_seconds: float = 405) -> dict[str, Any]:
-    start, end, scan = one_khz_cleanup_region(source_path, nominal_hz, edge_scan_seconds, expected_duration_seconds)
+def trim_one_khz_edges(source_path: Path, output_path: Path, nominal_hz: float = 1_000.0, edge_scan_seconds: float = 20, expected_duration_seconds: float = 405, start_qualification_seconds: float = 5) -> dict[str, Any]:
+    start, end, scan = one_khz_cleanup_region(source_path, nominal_hz, edge_scan_seconds, expected_duration_seconds, start_qualification_seconds)
     rate = int(wav_metadata(source_path)["sampleRateHz"])
     trim_wav(source_path, output_path, start, end)
     return {"source": str(source_path), "trimmedOutput": str(output_path), "nominalToneHz": nominal_hz, "startSeconds": start / rate, "endSeconds": end / rate, "durationSeconds": (end - start) / rate, **scan}
 
 
-def inner_outer_one_khz_comparison(path: Path, nominal_hz: float = 1_000.0, edge_scan_seconds: float = 20, expected_duration_seconds: float = 405, analysis_seconds: float = 10) -> dict[str, Any]:
+def inner_outer_one_khz_comparison(path: Path, nominal_hz: float = 1_000.0, edge_scan_seconds: float = 20, expected_duration_seconds: float = 405, analysis_seconds: float = 10, start_qualification_seconds: float = 5) -> dict[str, Any]:
     """Compare representative clean outer/inner 1 kHz windows without loading the full side."""
-    start, end, scan = one_khz_cleanup_region(path, nominal_hz, edge_scan_seconds, expected_duration_seconds)
+    start, end, scan = one_khz_cleanup_region(path, nominal_hz, edge_scan_seconds, expected_duration_seconds, start_qualification_seconds)
     metadata = wav_metadata(path); rate = int(metadata["sampleRateHz"]); block = round(analysis_seconds * rate)
     if block < rate or end - start < 2 * block:
         raise ValueError("Full-side comparison needs two clean analysis windows of at least one second.")
@@ -863,9 +865,9 @@ def write_full_side_report_html(path: Path, report: dict[str, Any], outer_spectr
     path.write_text(f"<!doctype html><html><head><meta charset=\"utf-8\"><title>Wally local full-side diagnostic</title><style>body{{font:15px system-ui;margin:2rem;max-width:1100px;color:#17212b}}h2{{margin-top:1.8rem}}table{{border-collapse:collapse;width:100%;margin:.5rem 0}}th,td{{border:1px solid #cbd5df;padding:.45rem;text-align:left}}th{{background:#eaf0f5}}tr:nth-child(even){{background:#f8fafc}}.note{{background:#fff8db;padding:.8rem}}</style></head><body><h1>Wally local full-side diagnostic</h1><p class=\"note\">{disclaimer}</p>{''.join(sections)}<h2>Outer Marker Harmonic Spectrum</h2><img src=\"{escape(outer_spectrum_filename)}\" alt=\"Outer marker harmonic spectrum\"><h2>Inner Marker Harmonic Spectrum</h2><img src=\"{escape(inner_spectrum_filename)}\" alt=\"Inner marker harmonic spectrum\"><h2>Whole-Side Speed over Time</h2><img src=\"{escape(speed_filename)}\" alt=\"Whole-side speed graph\"><h2>Whole-Side Speed by Revolution</h2><img src=\"{escape(revolution_filename)}\" alt=\"Whole-side folded speed graph\"></body></html>", encoding="utf-8")
 
 
-def local_full_side_report(path: Path, nominal_hz: float, output_dir: Path, edge_scan_seconds: float = 20, expected_duration_seconds: float = 405, analysis_seconds: float = 10) -> dict[str, Any]:
+def local_full_side_report(path: Path, nominal_hz: float, output_dir: Path, edge_scan_seconds: float = 20, expected_duration_seconds: float = 405, analysis_seconds: float = 10, start_qualification_seconds: float = 5) -> dict[str, Any]:
     output_dir.mkdir(parents=True, exist_ok=True)
-    comparison = inner_outer_one_khz_comparison(path, nominal_hz, edge_scan_seconds, expected_duration_seconds, analysis_seconds)
+    comparison = inner_outer_one_khz_comparison(path, nominal_hz, edge_scan_seconds, expected_duration_seconds, analysis_seconds, start_qualification_seconds)
     stem = path.stem
     json_path = output_dir / f"{stem}-full-side-report.json"
     html_path = output_dir / f"{stem}-full-side-report.html"
@@ -947,18 +949,21 @@ def main() -> None:
     report_parser.add_argument("--edge-scan-seconds", type=float, default=20)
     report_parser.add_argument("--expected-duration-seconds", type=float, default=405)
     report_parser.add_argument("--edge-analysis-seconds", type=float, default=10)
+    report_parser.add_argument("--start-qualification-seconds", type=float, default=5)
     cleanup_parser = subcommands.add_parser("trim-1khz", help="Trim capture edges to clean 1 kHz markers without loading a full side.")
     cleanup_parser.add_argument("wav", type=Path)
     cleanup_parser.add_argument("--output", type=Path, required=True)
     cleanup_parser.add_argument("--nominal-hz", type=float, default=1_000.0)
     cleanup_parser.add_argument("--edge-scan-seconds", type=float, default=20)
     cleanup_parser.add_argument("--expected-duration-seconds", type=float, default=405)
+    cleanup_parser.add_argument("--start-qualification-seconds", type=float, default=5)
     comparison_parser = subcommands.add_parser("compare-1khz-edges", help="Compare clean outer and inner 1 kHz markers from a full side.")
     comparison_parser.add_argument("wav", type=Path)
     comparison_parser.add_argument("--nominal-hz", type=float, default=1_000.0)
     comparison_parser.add_argument("--edge-scan-seconds", type=float, default=20)
     comparison_parser.add_argument("--expected-duration-seconds", type=float, default=405)
     comparison_parser.add_argument("--analysis-seconds", type=float, default=10)
+    comparison_parser.add_argument("--start-qualification-seconds", type=float, default=5)
     inspect_parser = subcommands.add_parser("inspect", help="Inspect a PSIU WAV and optionally trim lead-in/runout.")
     inspect_parser.add_argument("wav", type=Path)
     inspect_parser.add_argument("--nominal-hz", type=float, default=1_000.0)
@@ -976,12 +981,12 @@ def main() -> None:
     elif args.command == "capture":
         print(capture(args.base_url, args.seconds, args.output_dir, args.audio_wait_seconds, args.status_interval_seconds))
     elif args.command == "report":
-        report = local_full_side_report(args.wav, args.nominal_hz, args.output_dir, args.edge_scan_seconds, args.expected_duration_seconds, args.edge_analysis_seconds) if args.full_side else local_turntable_report(args.wav, args.nominal_hz, args.output_dir)
+        report = local_full_side_report(args.wav, args.nominal_hz, args.output_dir, args.edge_scan_seconds, args.expected_duration_seconds, args.edge_analysis_seconds, args.start_qualification_seconds) if args.full_side else local_turntable_report(args.wav, args.nominal_hz, args.output_dir)
         print(json.dumps(report, indent=2))
     elif args.command == "trim-1khz":
-        print(json.dumps(trim_one_khz_edges(args.wav, args.output, args.nominal_hz, args.edge_scan_seconds, args.expected_duration_seconds), indent=2))
+        print(json.dumps(trim_one_khz_edges(args.wav, args.output, args.nominal_hz, args.edge_scan_seconds, args.expected_duration_seconds, args.start_qualification_seconds), indent=2))
     elif args.command == "compare-1khz-edges":
-        print(json.dumps(inner_outer_one_khz_comparison(args.wav, args.nominal_hz, args.edge_scan_seconds, args.expected_duration_seconds, args.analysis_seconds), indent=2))
+        print(json.dumps(inner_outer_one_khz_comparison(args.wav, args.nominal_hz, args.edge_scan_seconds, args.expected_duration_seconds, args.analysis_seconds, args.start_qualification_seconds), indent=2))
     else:
         print(json.dumps(inspect(args.wav, args.nominal_hz, args.trim_output, args.spectrum_output), indent=2))
 
