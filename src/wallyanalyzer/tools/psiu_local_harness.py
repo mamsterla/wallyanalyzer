@@ -780,21 +780,23 @@ def inner_outer_one_khz_comparison(path: Path, nominal_hz: float = 1_000.0, edge
     metadata = wav_metadata(path); rate = int(metadata["sampleRateHz"]); block = rate
     outer, _ = _pcm_samples_range(path, start, block)
     inner, _ = _pcm_samples_range(path, end - block, block)
-    outer_diagnostics, _, _ = spectral_diagnostics(outer, rate, nominal_hz)
-    inner_diagnostics, _, _ = spectral_diagnostics(inner, rate, nominal_hz)
+    outer_diagnostics, outer_frequencies, outer_spectra = spectral_diagnostics(outer, rate, nominal_hz)
+    inner_diagnostics, inner_frequencies, inner_spectra = spectral_diagnostics(inner, rate, nominal_hz)
+    outer_peaks = non_harmonic_peaks(outer_frequencies, outer_spectra, outer_diagnostics)
+    inner_peaks = non_harmonic_peaks(inner_frequencies, inner_spectra, inner_diagnostics)
     def balance(values: list[dict[str, Any]]) -> float: return float(values[0]["fundamentalPeakDbfs"] - values[1]["fundamentalPeakDbfs"])
-    def channel_summary(values: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        return [{"channel": name, "peakDbfs": values[index]["fundamentalPeakDbfs"], "harmonics": values[index]["harmonics"]} for index, name in enumerate(("left", "right"))]
+    def channel_summary(values: list[dict[str, Any]], peaks: list[list[dict[str, Any]]]) -> list[dict[str, Any]]:
+        return [{"channel": name, "fundamentalHz": values[index]["fundamentalHz"], "peakDbfs": values[index]["fundamentalPeakDbfs"], "noiseFloorDbfsPerBin": values[index]["noiseFloorDbfsPerBin"], "peakToNoiseFloorDb": values[index]["peakToNoiseFloorDb"], "broadbandSnrDb": values[index]["broadbandSnrDb"], "harmonics": values[index]["harmonics"], "nonHarmonicPeaks": peaks[index]} for index, name in enumerate(("left", "right"))]
     harmonic_changes = []
     for channel, name in enumerate(("left", "right")):
         outer_harmonics = {item["order"]: item for item in outer_diagnostics[channel]["harmonics"]}
         inner_harmonics = {item["order"]: item for item in inner_diagnostics[channel]["harmonics"]}
         harmonic_changes.append({"channel": name, "harmonicDeltaDb": [{"order": order, "innerMinusOuterDbc": float(inner_harmonics[order]["levelDbc"] - outer_harmonics[order]["levelDbc"])} for order in sorted(set(outer_harmonics) & set(inner_harmonics))]})
     outer_balance, inner_balance = balance(outer_diagnostics), balance(inner_diagnostics)
-    return {"reportType": "local-inner-outer-1khz-comparison", "source": str(path), "nominalToneHz": nominal_hz, "outerMarker": {"startSeconds": start / rate, "endSeconds": (start + block) / rate, "channels": channel_summary(outer_diagnostics), "balanceDbLeftRelativeToRight": outer_balance}, "innerMarker": {"startSeconds": (end - block) / rate, "endSeconds": end / rate, "channels": channel_summary(inner_diagnostics), "balanceDbLeftRelativeToRight": inner_balance}, "deltas": {"innerMinusOuterBalanceDb": float(inner_balance - outer_balance), "harmonics": harmonic_changes}, "disclaimer": "Marker comparison is a diagnostic indicator. Inner-groove changes can involve anti-skate, alignment, stylus, groove, pressing, and playback factors; it does not identify a single cause.", **scan}
+    return {"reportType": "local-inner-outer-1khz-comparison", "source": str(path), "nominalToneHz": nominal_hz, "outerMarker": {"startSeconds": start / rate, "endSeconds": (start + block) / rate, "channels": channel_summary(outer_diagnostics, outer_peaks), "balanceDbLeftRelativeToRight": outer_balance}, "innerMarker": {"startSeconds": (end - block) / rate, "endSeconds": end / rate, "channels": channel_summary(inner_diagnostics, inner_peaks), "balanceDbLeftRelativeToRight": inner_balance}, "deltas": {"innerMinusOuterBalanceDb": float(inner_balance - outer_balance), "harmonics": harmonic_changes}, "disclaimer": "Marker comparison is a diagnostic indicator. Inner-groove changes can involve anti-skate, alignment, stylus, groove, pressing, and playback factors; it does not identify a single cause.", **scan}
 
 
-def write_full_side_report_html(path: Path, report: dict[str, Any]) -> None:
+def write_full_side_report_html(path: Path, report: dict[str, Any], outer_spectrum_filename: str, inner_spectrum_filename: str) -> None:
     comparison = report["innerOuterComparison"]
     def table(title: str, headers: list[str], rows: list[list[str]]) -> str:
         head = "".join(f"<th>{escape(header)}</th>" for header in headers)
@@ -807,8 +809,10 @@ def write_full_side_report_html(path: Path, report: dict[str, Any]) -> None:
     for index, name in enumerate(("Left", "Right")):
         channel_rows.append([name, f'{outer["channels"][index]["peakDbfs"]:.2f} dBFS', f'{inner["channels"][index]["peakDbfs"]:.2f} dBFS', f'{outer["channels"][index]["harmonics"][0]["levelDbc"]:.2f} / {outer["channels"][index]["harmonics"][1]["levelDbc"]:.2f} dBc', f'{inner["channels"][index]["harmonics"][0]["levelDbc"]:.2f} / {inner["channels"][index]["harmonics"][1]["levelDbc"]:.2f} dBc'])
     harmonic_rows = [[item["channel"].title()] + [f'H{change["order"]}: {change["innerMinusOuterDbc"]:+.2f} dB' for change in item["harmonicDeltaDb"]] for item in delta["harmonics"]]
-    sections = [table("Capture Information", ["Field", "Value"], [["Capture timestamp", report["sourceFileModifiedAt"]], ["Duration", f'{capture["durationSeconds"]:.3f} s'], ["Channels", str(capture["channels"])], ["Sample rate", f'{capture["sampleRateHz"] / 1000:.0f} kHz']]), table("Outer / Inner 1 kHz Markers", ["Field", "Outer", "Inner"], [["Marker time", f'{outer["startSeconds"]:.3f}–{outer["endSeconds"]:.3f} s', f'{inner["startSeconds"]:.3f}–{inner["endSeconds"]:.3f} s'], ["L relative to R", f'{outer["balanceDbLeftRelativeToRight"]:+.3f} dB', f'{inner["balanceDbLeftRelativeToRight"]:+.3f} dB']]), table("Channel Marker Measurements", ["Channel", "Outer peak", "Inner peak", "Outer H2 / H3", "Inner H2 / H3"], channel_rows), table("Inner Minus Outer Change", ["Channel", "Harmonic changes"], harmonic_rows), table("Balance Change", ["Metric", "Value"], [["Inner minus outer L/R balance", f'{delta["innerMinusOuterBalanceDb"]:+.3f} dB']])]
-    path.write_text(f"<!doctype html><html><head><meta charset=\"utf-8\"><title>Wally local full-side diagnostic</title><style>body{{font:15px system-ui;margin:2rem;max-width:1100px;color:#17212b}}h2{{margin-top:1.8rem}}table{{border-collapse:collapse;width:100%;margin:.5rem 0}}th,td{{border:1px solid #cbd5df;padding:.45rem;text-align:left}}th{{background:#eaf0f5}}tr:nth-child(even){{background:#f8fafc}}.note{{background:#fff8db;padding:.8rem}}</style></head><body><h1>Wally local full-side diagnostic</h1><p class=\"note\">{disclaimer}</p>{''.join(sections)}</body></html>", encoding="utf-8")
+    quality_rows = [[marker, channel["channel"].title(), f'{channel["fundamentalHz"]:.3f} Hz', f'{channel["peakDbfs"]:.2f} dBFS', f'{channel["noiseFloorDbfsPerBin"]:.2f} dBFS/bin', f'{channel["peakToNoiseFloorDb"]:.2f} dB', f'{channel["broadbandSnrDb"]:.2f} dB'] for marker, values in (("Outer", outer), ("Inner", inner)) for channel in values["channels"]]
+    peak_rows = [[marker, channel["channel"].title(), f'{peak["frequencyHz"]:.1f} Hz', f'{peak["levelDbc"]:.1f} dBc', peak["interpretationCandidate"]] for marker, values in (("Outer", outer), ("Inner", inner)) for channel in values["channels"] for peak in channel["nonHarmonicPeaks"][:3]]
+    sections = [table("Capture Information", ["Field", "Value"], [["Capture timestamp", report["sourceFileModifiedAt"]], ["Duration", f'{capture["durationSeconds"]:.3f} s'], ["Channels", str(capture["channels"])], ["Sample rate", f'{capture["sampleRateHz"] / 1000:.0f} kHz']]), table("Outer / Inner 1 kHz Markers", ["Field", "Outer", "Inner"], [["Marker time", f'{outer["startSeconds"]:.3f}–{outer["endSeconds"]:.3f} s', f'{inner["startSeconds"]:.3f}–{inner["endSeconds"]:.3f} s'], ["L relative to R", f'{outer["balanceDbLeftRelativeToRight"]:+.3f} dB', f'{inner["balanceDbLeftRelativeToRight"]:+.3f} dB']]), table("Channel Marker Measurements", ["Channel", "Outer peak", "Inner peak", "Outer H2 / H3", "Inner H2 / H3"], channel_rows), table("Marker Signal Quality", ["Marker", "Channel", "Carrier", "Peak", "Noise floor", "Peak/noise", "Broadband SNR"], quality_rows), table("Inner Minus Outer Change", ["Channel", "Harmonic changes"], harmonic_rows), table("Balance Change", ["Metric", "Value"], [["Inner minus outer L/R balance", f'{delta["innerMinusOuterBalanceDb"]:+.3f} dB']]), table("Wow / Flutter and Speed Trace", ["Status", "Reason"], [["Not calculated", "The current edge marker is one second; at least two seconds of continuous clean 1 kHz material is required."]]), table("Top Non-Harmonic Peaks", ["Marker", "Channel", "Frequency", "Relative level", "Interpretation"], peak_rows)]
+    path.write_text(f"<!doctype html><html><head><meta charset=\"utf-8\"><title>Wally local full-side diagnostic</title><style>body{{font:15px system-ui;margin:2rem;max-width:1100px;color:#17212b}}h2{{margin-top:1.8rem}}table{{border-collapse:collapse;width:100%;margin:.5rem 0}}th,td{{border:1px solid #cbd5df;padding:.45rem;text-align:left}}th{{background:#eaf0f5}}tr:nth-child(even){{background:#f8fafc}}.note{{background:#fff8db;padding:.8rem}}</style></head><body><h1>Wally local full-side diagnostic</h1><p class=\"note\">{disclaimer}</p>{''.join(sections)}<h2>Outer Marker Harmonic Spectrum</h2><img src=\"{escape(outer_spectrum_filename)}\" alt=\"Outer marker harmonic spectrum\"><h2>Inner Marker Harmonic Spectrum</h2><img src=\"{escape(inner_spectrum_filename)}\" alt=\"Inner marker harmonic spectrum\"></body></html>", encoding="utf-8")
 
 
 def local_full_side_report(path: Path, nominal_hz: float, output_dir: Path, edge_scan_seconds: float = 20, expected_duration_seconds: float = 405) -> dict[str, Any]:
@@ -818,9 +822,18 @@ def local_full_side_report(path: Path, nominal_hz: float, output_dir: Path, edge
     json_path = output_dir / f"{stem}-full-side-report.json"
     html_path = output_dir / f"{stem}-full-side-report.html"
     pdf_path = output_dir / f"{stem}-full-side-report.pdf"
-    report = {"reportType": "local-full-side-1khz-diagnostic", "algorithmVersion": "local-1.0", "generatedAt": datetime.now(timezone.utc).isoformat(), "source": str(path), "sourceFileModifiedAt": datetime.fromtimestamp(path.stat().st_mtime, timezone.utc).isoformat(), "capture": wav_metadata(path), "innerOuterComparison": comparison, "artifacts": {"reportJson": str(json_path), "reportHtml": str(html_path), "reportPdf": str(pdf_path)}}
+    outer_spectrum_path = output_dir / f"{stem}-outer-marker-spectrum.svg"
+    inner_spectrum_path = output_dir / f"{stem}-inner-marker-spectrum.svg"
+    rate = int(wav_metadata(path)["sampleRateHz"])
+    outer_samples, _ = _pcm_samples_range(path, round(comparison["outerMarker"]["startSeconds"] * rate), rate)
+    inner_samples, _ = _pcm_samples_range(path, round(comparison["innerMarker"]["startSeconds"] * rate), rate)
+    outer_diagnostics, outer_frequencies, outer_spectra = spectral_diagnostics(outer_samples, rate, nominal_hz)
+    inner_diagnostics, inner_frequencies, inner_spectra = spectral_diagnostics(inner_samples, rate, nominal_hz)
+    write_spectrum_svg(outer_spectrum_path, outer_frequencies, outer_spectra, outer_diagnostics)
+    write_spectrum_svg(inner_spectrum_path, inner_frequencies, inner_spectra, inner_diagnostics)
+    report = {"reportType": "local-full-side-1khz-diagnostic", "algorithmVersion": "local-1.0", "generatedAt": datetime.now(timezone.utc).isoformat(), "source": str(path), "sourceFileModifiedAt": datetime.fromtimestamp(path.stat().st_mtime, timezone.utc).isoformat(), "capture": wav_metadata(path), "innerOuterComparison": comparison, "artifacts": {"reportJson": str(json_path), "reportHtml": str(html_path), "reportPdf": str(pdf_path), "outerSpectrumSvg": str(outer_spectrum_path), "innerSpectrumSvg": str(inner_spectrum_path)}}
     json_path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
-    write_full_side_report_html(html_path, report)
+    write_full_side_report_html(html_path, report, outer_spectrum_path.name, inner_spectrum_path.name)
     write_local_report_pdf(html_path, pdf_path)
     return report
 
