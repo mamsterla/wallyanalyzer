@@ -941,13 +941,15 @@ def channel_section_metrics(path: Path, section: dict[str, Any], nominal_hz: flo
         window = np.hanning(rate); reference = np.exp(-2j * np.pi * nominal_hz * np.arange(rate) / rate) * window
         carriers = 2 * np.sum(samples * reference[:, None], axis=0) / np.sum(window)
         levels = 20 * np.log10(np.maximum(np.abs(carriers), 1e-15))
-        windows.append((levels[0], levels[1], np.angle(np.exp(1j * (np.angle(carriers[1]) - np.angle(carriers[0])))), *estimate_tone_hz(samples, rate, nominal_hz)))
+        vertical_to_lateral = 20 * np.log10(max(abs(carriers[0] - carriers[1]) / max(abs(carriers[0] + carriers[1]), 1e-15), 1e-15))
+        windows.append((levels[0], levels[1], np.angle(np.exp(1j * (np.angle(carriers[1]) - np.angle(carriers[0])))), *estimate_tone_hz(samples, rate, nominal_hz), vertical_to_lateral))
     if not windows:
         raise ValueError(f'No full analysis windows in section {section["name"]}.')
     values = np.asarray(windows); left, right = np.median(values[:, :2], axis=0)
     phase_vector = np.mean(np.exp(1j * values[:, 2])); phase = float(np.degrees(np.angle(phase_vector)))
     phase_stability = float(np.degrees(np.sqrt(-2 * np.log(max(abs(phase_vector), 1e-12)))))
-    result = {**section, "leftLevelDbfs": float(left), "rightLevelDbfs": float(right), "balanceDbLeftRelativeToRight": float(left - right), "leftCarrierHz": float(np.median(values[:, 3])), "rightCarrierHz": float(np.median(values[:, 4])), "phaseDifferenceDegrees": phase, "phaseStabilityDegrees": phase_stability}
+    polarity = "in-phase candidate" if abs(phase) <= 45 else "reverse-polarity candidate" if abs(abs(phase) - 180) <= 45 else "phase-offset candidate"
+    result = {**section, "leftLevelDbfs": float(left), "rightLevelDbfs": float(right), "balanceDbLeftRelativeToRight": float(left - right), "leftCarrierHz": float(np.median(values[:, 3])), "rightCarrierHz": float(np.median(values[:, 4])), "phaseDifferenceDegrees": phase, "phaseStabilityDegrees": phase_stability, "verticalToLateralDb": float(np.median(values[:, 5])), "polarityCandidate": polarity}
     if section["type"] == "left-only": result["stereoSeparationDb"] = float(left - right)
     elif section["type"] == "right-only": result["stereoSeparationDb"] = float(right - left)
     return result
@@ -959,17 +961,23 @@ def write_channel_report_html(path: Path, report: dict[str, Any]) -> None:
     sections = report["sections"]
     routing = [[item["name"], item["type"], f'{item["startSeconds"]:.0f}–{item["endSeconds"]:.0f} s', f'{item["leftCarrierHz"]:.3f} Hz', f'{item["rightCarrierHz"]:.3f} Hz', f'{item["leftLevelDbfs"]:.1f}', f'{item["rightLevelDbfs"]:.1f}', f'{item["balanceDbLeftRelativeToRight"]:+.1f} dB'] for item in sections]
     separation = [[item["name"], item["type"], f'{item["stereoSeparationDb"]:.1f} dB'] for item in sections if "stereoSeparationDb" in item]
-    azimuth = [[item["name"], f'{item["balanceDbLeftRelativeToRight"]:+.1f} dB', f'{item["phaseDifferenceDegrees"]:+.2f}°', f'{item["phaseStabilityDegrees"]:.2f}°'] for item in sections if item["type"] == "equal-level"]
+    azimuth = [[item["name"], f'{item["balanceDbLeftRelativeToRight"]:+.1f} dB', f'{item["phaseDifferenceDegrees"]:+.2f}°', f'{item["phaseStabilityDegrees"]:.2f}°', f'{item["verticalToLateralDb"]:.1f} dB', item["polarityCandidate"]] for item in sections if item["type"] == "equal-level"]
+    asymmetry = [[item["position"], f'{item["leftToRightSeparationDb"]:.1f} dB', f'{item["rightToLeftSeparationDb"]:.1f} dB', f'{item["asymmetryDb"]:+.1f} dB'] for item in report["directionalSeparation"]]
     capture = report["capture"]
-    html = f'<!doctype html><html><head><meta charset="utf-8"><title>Wally local channel diagnostic</title><style>body{{font:15px system-ui;margin:2rem;max-width:1100px;color:#17212b}}table{{border-collapse:collapse;width:100%;margin:.5rem 0}}th,td{{border:1px solid #cbd5df;padding:.45rem;text-align:left}}th{{background:#eaf0f5}}.note{{background:#fff8db;padding:.8rem}}</style></head><body><h1>Wally local channel diagnostic</h1><p class="note">Diagnostic only. Stereo separation is the driven-channel 1 kHz level minus opposite-channel leakage. Equal-level phase is an azimuth indicator; adjust only against confirmed test-record instructions.</p>' + table("Capture", ["Duration", "Sample rate", "Runout start"], [[f'{capture["durationSeconds"]:.3f} s', f'{capture["sampleRateHz"] / 1000:.0f} kHz', f'{report["runoutStartSeconds"]:.1f} s']]) + table("Section Catalog and Levels", ["Section", "Expected routing", "Offset", "L carrier", "R carrier", "L dBFS", "R dBFS", "L/R imbalance"], routing) + table("Stereo Separation", ["Section", "Driven channel", "Separation"], separation) + table("Equal-level Phase / Azimuth", ["Section", "L/R imbalance", "Phase difference", "Phase stability"], azimuth) + '</body></html>'
+    html = f'<!doctype html><html><head><meta charset="utf-8"><title>Wally local channel diagnostic</title><style>body{{font:15px system-ui;margin:2rem;max-width:1100px;color:#17212b}}table{{border-collapse:collapse;width:100%;margin:.5rem 0}}th,td{{border:1px solid #cbd5df;padding:.45rem;text-align:left}}th{{background:#eaf0f5}}.note{{background:#fff8db;padding:.8rem}}</style></head><body><h1>Wally local channel diagnostic</h1><p class="note">Diagnostic only. Stereo separation is the driven-channel 1 kHz level minus opposite-channel leakage. Equal-level phase is an azimuth indicator; adjust only against confirmed test-record instructions.</p>' + table("Capture", ["Duration", "Sample rate", "Runout start"], [[f'{capture["durationSeconds"]:.3f} s', f'{capture["sampleRateHz"] / 1000:.0f} kHz', f'{report["runoutStartSeconds"]:.1f} s']]) + table("Section Catalog and Levels", ["Section", "Expected routing", "Offset", "L carrier", "R carrier", "L dBFS", "R dBFS", "L/R imbalance"], routing) + table("Stereo Separation", ["Section", "Driven channel", "Separation"], separation) + table("Directional Separation Asymmetry", ["Position", "Left to right", "Right to left", "L-to-R minus R-to-L"], asymmetry) + table("Equal-level Phase / Azimuth", ["Section", "L/R imbalance", "Phase difference", "Phase stability", "L−R / L+R", "Polarity"], azimuth) + '</body></html>'
     path.write_text(html, encoding="utf-8")
 
 
 def local_channel_report(path: Path, output_dir: Path, sections: list[dict[str, Any]] | None = None) -> dict[str, Any]:
     output_dir.mkdir(parents=True, exist_ok=True); catalog = sections or SIDE_TWO_1KHZ_SECTION_CATALOG
     metrics = [channel_section_metrics(path, section) for section in catalog]; stem = path.stem
+    directional = []
+    for position in sorted({item["name"].rsplit(" ", 1)[-1] for item in metrics if item["type"] in ("left-only", "right-only")}):
+        left = next((item for item in metrics if item["name"] == f"Left-only {position}"), None); right = next((item for item in metrics if item["name"] == f"Right-only {position}"), None)
+        if left and right:
+            directional.append({"position": position, "leftToRightSeparationDb": left["stereoSeparationDb"], "rightToLeftSeparationDb": right["stereoSeparationDb"], "asymmetryDb": left["stereoSeparationDb"] - right["stereoSeparationDb"]})
     json_path, html_path, pdf_path = (output_dir / f'{stem}-channel-report.{suffix}' for suffix in ("json", "html", "pdf"))
-    report = {"reportType": "local-1khz-channel-diagnostic", "algorithmVersion": "local-1.0", "source": str(path), "capture": wav_metadata(path), "runoutStartSeconds": 348.5, "sectionCatalog": catalog, "sections": metrics, "artifacts": {"reportJson": str(json_path), "reportHtml": str(html_path), "reportPdf": str(pdf_path)}}
+    report = {"reportType": "local-1khz-channel-diagnostic", "algorithmVersion": "local-1.0", "source": str(path), "capture": wav_metadata(path), "runoutStartSeconds": 348.5, "sectionCatalog": catalog, "sections": metrics, "directionalSeparation": directional, "artifacts": {"reportJson": str(json_path), "reportHtml": str(html_path), "reportPdf": str(pdf_path)}}
     json_path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8"); write_channel_report_html(html_path, report); write_local_report_pdf(html_path, pdf_path)
     return report
 
