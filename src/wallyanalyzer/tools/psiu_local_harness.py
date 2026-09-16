@@ -774,6 +774,26 @@ def trim_one_khz_edges(source_path: Path, output_path: Path, nominal_hz: float =
     return {"source": str(source_path), "trimmedOutput": str(output_path), "nominalToneHz": nominal_hz, "startSeconds": start / rate, "endSeconds": end / rate, "durationSeconds": (end - start) / rate, **scan}
 
 
+def inner_outer_one_khz_comparison(path: Path, nominal_hz: float = 1_000.0, edge_scan_seconds: float = 20, expected_duration_seconds: float = 405) -> dict[str, Any]:
+    """Compare clean outer/inner 1 kHz markers without loading the full side."""
+    start, end, scan = one_khz_cleanup_region(path, nominal_hz, edge_scan_seconds, expected_duration_seconds)
+    metadata = wav_metadata(path); rate = int(metadata["sampleRateHz"]); block = rate
+    outer, _ = _pcm_samples_range(path, start, block)
+    inner, _ = _pcm_samples_range(path, end - block, block)
+    outer_diagnostics, _, _ = spectral_diagnostics(outer, rate, nominal_hz)
+    inner_diagnostics, _, _ = spectral_diagnostics(inner, rate, nominal_hz)
+    def balance(values: list[dict[str, Any]]) -> float: return float(values[0]["fundamentalPeakDbfs"] - values[1]["fundamentalPeakDbfs"])
+    def channel_summary(values: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        return [{"channel": name, "peakDbfs": values[index]["fundamentalPeakDbfs"], "harmonics": values[index]["harmonics"]} for index, name in enumerate(("left", "right"))]
+    harmonic_changes = []
+    for channel, name in enumerate(("left", "right")):
+        outer_harmonics = {item["order"]: item for item in outer_diagnostics[channel]["harmonics"]}
+        inner_harmonics = {item["order"]: item for item in inner_diagnostics[channel]["harmonics"]}
+        harmonic_changes.append({"channel": name, "harmonicDeltaDb": [{"order": order, "innerMinusOuterDbc": float(inner_harmonics[order]["levelDbc"] - outer_harmonics[order]["levelDbc"])} for order in sorted(set(outer_harmonics) & set(inner_harmonics))]})
+    outer_balance, inner_balance = balance(outer_diagnostics), balance(inner_diagnostics)
+    return {"reportType": "local-inner-outer-1khz-comparison", "source": str(path), "nominalToneHz": nominal_hz, "outerMarker": {"startSeconds": start / rate, "endSeconds": (start + block) / rate, "channels": channel_summary(outer_diagnostics), "balanceDbLeftRelativeToRight": outer_balance}, "innerMarker": {"startSeconds": (end - block) / rate, "endSeconds": end / rate, "channels": channel_summary(inner_diagnostics), "balanceDbLeftRelativeToRight": inner_balance}, "deltas": {"innerMinusOuterBalanceDb": float(inner_balance - outer_balance), "harmonics": harmonic_changes}, "disclaimer": "Marker comparison is a diagnostic indicator. Inner-groove changes can involve anti-skate, alignment, stylus, groove, pressing, and playback factors; it does not identify a single cause.", **scan}
+
+
 def inspect(path: Path, nominal_hz: float, trim_output: Path | None = None, spectrum_output: Path | None = None) -> dict[str, Any]:
     samples, rate = _pcm_samples(path)
     start, end = active_tone_region(samples, rate)
@@ -826,6 +846,11 @@ def main() -> None:
     cleanup_parser.add_argument("--nominal-hz", type=float, default=1_000.0)
     cleanup_parser.add_argument("--edge-scan-seconds", type=float, default=20)
     cleanup_parser.add_argument("--expected-duration-seconds", type=float, default=405)
+    comparison_parser = subcommands.add_parser("compare-1khz-edges", help="Compare clean outer and inner 1 kHz markers from a full side.")
+    comparison_parser.add_argument("wav", type=Path)
+    comparison_parser.add_argument("--nominal-hz", type=float, default=1_000.0)
+    comparison_parser.add_argument("--edge-scan-seconds", type=float, default=20)
+    comparison_parser.add_argument("--expected-duration-seconds", type=float, default=405)
     inspect_parser = subcommands.add_parser("inspect", help="Inspect a PSIU WAV and optionally trim lead-in/runout.")
     inspect_parser.add_argument("wav", type=Path)
     inspect_parser.add_argument("--nominal-hz", type=float, default=1_000.0)
@@ -846,6 +871,8 @@ def main() -> None:
         print(json.dumps(local_turntable_report(args.wav, args.nominal_hz, args.output_dir), indent=2))
     elif args.command == "trim-1khz":
         print(json.dumps(trim_one_khz_edges(args.wav, args.output, args.nominal_hz, args.edge_scan_seconds, args.expected_duration_seconds), indent=2))
+    elif args.command == "compare-1khz-edges":
+        print(json.dumps(inner_outer_one_khz_comparison(args.wav, args.nominal_hz, args.edge_scan_seconds, args.expected_duration_seconds), indent=2))
     else:
         print(json.dumps(inspect(args.wav, args.nominal_hz, args.trim_output, args.spectrum_output), indent=2))
 

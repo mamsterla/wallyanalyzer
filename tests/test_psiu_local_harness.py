@@ -4,7 +4,7 @@ from pathlib import Path
 
 import numpy as np
 
-from wallyanalyzer.tools.psiu_local_harness import active_tone_region, estimate_tone_hz, inspect, local_turntable_report, spectral_diagnostics, trim_one_khz_edges
+from wallyanalyzer.tools.psiu_local_harness import active_tone_region, estimate_tone_hz, inner_outer_one_khz_comparison, inspect, local_turntable_report, spectral_diagnostics, trim_one_khz_edges
 
 
 def tone(seconds: float, rate: int = 48_000, frequency: float = 1_000.0) -> np.ndarray:
@@ -68,6 +68,18 @@ def test_trim_one_khz_edges_scans_only_capture_boundaries(tmp_path: Path) -> Non
     assert 1.9 < result["startSeconds"] < 2.1
     assert 11.9 < result["endSeconds"] < 12.1
     assert 9.9 < result["durationSeconds"] < 10.1
+
+
+def test_inner_outer_comparison_reports_balance_delta(tmp_path: Path) -> None:
+    source = tmp_path / "side.wav"
+    x = np.arange(48_000) / 48_000
+    outer = np.column_stack([.4 * np.sin(2 * math.pi * 1_000 * x), .4 * np.sin(2 * math.pi * 1_000 * x)])
+    inner = np.column_stack([.3 * np.sin(2 * math.pi * 1_000 * x), .4 * np.sin(2 * math.pi * 1_000 * x)])
+    write_pcm(source, np.vstack([np.zeros((48_000, 2)), outer, np.zeros((8 * 48_000, 2)), inner, np.zeros((48_000, 2))]))
+    result = inner_outer_one_khz_comparison(source, edge_scan_seconds=3, expected_duration_seconds=12)
+    assert result["outerMarker"]["balanceDbLeftRelativeToRight"] > -0.1
+    assert result["innerMarker"]["balanceDbLeftRelativeToRight"] < -2
+    assert result["deltas"]["innerMinusOuterBalanceDb"] < -2
 
 
 def test_local_turntable_report_includes_speed_balance_and_artifacts(tmp_path: Path) -> None:
