@@ -580,6 +580,10 @@ def frequency_modulation_diagnostics(samples: np.ndarray, rate: int, nominal_hz:
         transformed = np.fft.fft(samples[:limit, channel] - np.mean(samples[:limit, channel]))
         analytic = np.fft.ifft(np.where(keep, 2 * transformed, 0))
         instantaneous_hz = np.diff(np.unwrap(np.angle(analytic))) * rate / (2 * np.pi)
+        carrier_median = float(np.median(instantaneous_hz))
+        phase_slips = np.abs(instantaneous_hz - carrier_median) > 10
+        # A 10 Hz one-sample jump is phase-tracking corruption, not plausible platter variation.
+        instantaneous_hz[phase_slips] = carrier_median
         usable = instantaneous_hz[: len(instantaneous_hz) // decimation * decimation]
         trace_hz = usable.reshape(-1, decimation).mean(axis=1)
         trace_hz = trace_hz[250:-250] if len(trace_hz) > 500 else trace_hz
@@ -592,7 +596,7 @@ def frequency_modulation_diagnostics(samples: np.ndarray, rate: int, nominal_hz:
             selected = (modulation_frequencies >= lower) & (modulation_frequencies < upper)
             filtered = np.fft.irfft(np.where(selected, modulation, 0), n=len(deviation_percent))
             bands[name] = {"rmsPercent": float(np.sqrt(np.mean(filtered**2))), "sigmaPercent": float(np.std(filtered)), "peakPercent": float(np.max(np.abs(filtered)))}
-        output.append({"meanFrequencyHz": mean_hz, "overallSigmaPercent": float(np.std(deviation_percent)), "overallPeakPercent": float(np.max(np.abs(deviation_percent))), "bands": bands, "_timeSeconds": (np.arange(len(trace_hz)) + 250) / (rate / decimation), "_speedRpm": 33.333333 * trace_hz / nominal_hz})
+        output.append({"meanFrequencyHz": mean_hz, "phaseSlipRejectedSamples": int(np.count_nonzero(phase_slips)), "overallSigmaPercent": float(np.std(deviation_percent)), "overallPeakPercent": float(np.max(np.abs(deviation_percent))), "bands": bands, "_timeSeconds": (np.arange(len(trace_hz)) + 250) / (rate / decimation), "_speedRpm": 33.333333 * trace_hz / nominal_hz})
     return output
 
 
@@ -796,13 +800,41 @@ def inner_outer_one_khz_comparison(path: Path, nominal_hz: float = 1_000.0, edge
     return {"reportType": "local-inner-outer-1khz-comparison", "source": str(path), "nominalToneHz": nominal_hz, "outerMarker": {"startSeconds": start / rate, "endSeconds": (start + block) / rate, "channels": channel_summary(outer_diagnostics, outer_peaks), "balanceDbLeftRelativeToRight": outer_balance}, "innerMarker": {"startSeconds": (end - block) / rate, "endSeconds": end / rate, "channels": channel_summary(inner_diagnostics, inner_peaks), "balanceDbLeftRelativeToRight": inner_balance}, "deltas": {"innerMinusOuterBalanceDb": float(inner_balance - outer_balance), "harmonics": harmonic_changes}, "disclaimer": "Marker comparison is a diagnostic indicator. Inner-groove changes can involve anti-skate, alignment, stylus, groove, pressing, and playback factors; it does not identify a single cause.", **scan}
 
 
-def write_full_side_report_html(path: Path, report: dict[str, Any], outer_spectrum_filename: str, inner_spectrum_filename: str) -> None:
+def full_side_modulation_analysis(path: Path, start_frame: int, end_frame: int, nominal_hz: float, section_seconds: float = 20) -> tuple[dict[str, Any], list[tuple[np.ndarray, np.ndarray]]]:
+    """Memory-bounded 1 kHz modulation analysis across contiguous full-side sections."""
+    rate = int(wav_metadata(path)["sampleRateHz"])
+    section_frames = round(section_seconds * rate)
+    sections: list[dict[str, Any]] = []
+    channel_traces: list[list[tuple[np.ndarray, np.ndarray]]] = [[], []]
+    for section_start in range(start_frame, end_frame, section_frames):
+        count = min(section_frames, end_frame - section_start)
+        if count < 2 * rate:
+            continue
+        samples, _ = _pcm_samples_range(path, section_start, count)
+        diagnostics = frequency_modulation_diagnostics(samples, rate, nominal_hz)
+        section = {"startSeconds": section_start / rate, "endSeconds": (section_start + count) / rate, "channels": []}
+        for channel, entry in enumerate(diagnostics):
+            times = entry.pop("_timeSeconds") + section_start / rate
+            speeds = entry.pop("_speedRpm")
+            channel_traces[channel].append((times, speeds))
+            section["channels"].append(entry)
+        sections.append(section)
+    traces = [(np.concatenate([times for times, _ in entries]), np.concatenate([speeds for _, speeds in entries])) for entries in channel_traces]
+    aggregate_channels = []
+    for channel, (times, speeds) in enumerate(traces):
+        values = [section["channels"][channel] for section in sections]
+        aggregate_channels.append({"channel": ("left", "right")[channel], "meanFrequencyHz": float(np.mean([value["meanFrequencyHz"] for value in values])), "minimumRpm": float(np.min(speeds)), "maximumRpm": float(np.max(speeds)), "maximumDeviationPercent": float(100 * np.max(np.abs(speeds - np.mean(speeds))) / np.mean(speeds)), "bands": {name: {"rmsPercent": float(np.sqrt(np.mean([value["bands"][name]["rmsPercent"] ** 2 for value in values]))), "sigmaPercent": float(np.sqrt(np.mean([value["bands"][name]["sigmaPercent"] ** 2 for value in values]))), "peakPercent": float(np.max([value["bands"][name]["peakPercent"] for value in values]))} for name in ("wow", "flutter")}})
+    return {"method": "20-second section analysis with RMS-weighted whole-side aggregate", "sectionSeconds": section_seconds, "sections": sections, "wholeSide": aggregate_channels}, traces
+
+
+def write_full_side_report_html(path: Path, report: dict[str, Any], outer_spectrum_filename: str, inner_spectrum_filename: str, speed_filename: str, revolution_filename: str) -> None:
     comparison = report["innerOuterComparison"]
     def table(title: str, headers: list[str], rows: list[list[str]]) -> str:
         head = "".join(f"<th>{escape(header)}</th>" for header in headers)
         body = "".join("<tr>" + "".join(f"<td>{escape(value)}</td>" for value in row) + "</tr>" for row in rows)
         return f"<section><h2>{escape(title)}</h2><table><thead><tr>{head}</tr></thead><tbody>{body}</tbody></table></section>"
     capture = report["capture"]
+    modulation = report["wholeSideModulation"]
     disclaimer = escape(comparison["disclaimer"])
     outer, inner, delta = comparison["outerMarker"], comparison["innerMarker"], comparison["deltas"]
     channel_rows = []
@@ -811,8 +843,10 @@ def write_full_side_report_html(path: Path, report: dict[str, Any], outer_spectr
     harmonic_rows = [[item["channel"].title()] + [f'H{change["order"]}: {change["innerMinusOuterDbc"]:+.2f} dB' for change in item["harmonicDeltaDb"]] for item in delta["harmonics"]]
     quality_rows = [[marker, channel["channel"].title(), f'{channel["fundamentalHz"]:.3f} Hz', f'{channel["peakDbfs"]:.2f} dBFS', f'{channel["noiseFloorDbfsPerBin"]:.2f} dBFS/bin', f'{channel["peakToNoiseFloorDb"]:.2f} dB', f'{channel["broadbandSnrDb"]:.2f} dB'] for marker, values in (("Outer", outer), ("Inner", inner)) for channel in values["channels"]]
     peak_rows = [[marker, channel["channel"].title(), f'{peak["frequencyHz"]:.1f} Hz', f'{peak["levelDbc"]:.1f} dBc', peak["interpretationCandidate"]] for marker, values in (("Outer", outer), ("Inner", inner)) for channel in values["channels"] for peak in channel["nonHarmonicPeaks"][:3]]
-    sections = [table("Capture Information", ["Field", "Value"], [["Capture timestamp", report["sourceFileModifiedAt"]], ["Duration", f'{capture["durationSeconds"]:.3f} s'], ["Channels", str(capture["channels"])], ["Sample rate", f'{capture["sampleRateHz"] / 1000:.0f} kHz']]), table("Outer / Inner 1 kHz Markers", ["Field", "Outer", "Inner"], [["Marker time", f'{outer["startSeconds"]:.3f}–{outer["endSeconds"]:.3f} s', f'{inner["startSeconds"]:.3f}–{inner["endSeconds"]:.3f} s'], ["L relative to R", f'{outer["balanceDbLeftRelativeToRight"]:+.3f} dB', f'{inner["balanceDbLeftRelativeToRight"]:+.3f} dB']]), table("Channel Marker Measurements", ["Channel", "Outer peak", "Inner peak", "Outer H2 / H3", "Inner H2 / H3"], channel_rows), table("Marker Signal Quality", ["Marker", "Channel", "Carrier", "Peak", "Noise floor", "Peak/noise", "Broadband SNR"], quality_rows), table("Inner Minus Outer Change", ["Channel", "Harmonic changes"], harmonic_rows), table("Balance Change", ["Metric", "Value"], [["Inner minus outer L/R balance", f'{delta["innerMinusOuterBalanceDb"]:+.3f} dB']]), table("Wow / Flutter and Speed Trace", ["Status", "Reason"], [["Not calculated", "The current edge marker is one second; at least two seconds of continuous clean 1 kHz material is required."]]), table("Top Non-Harmonic Peaks", ["Marker", "Channel", "Frequency", "Relative level", "Interpretation"], peak_rows)]
-    path.write_text(f"<!doctype html><html><head><meta charset=\"utf-8\"><title>Wally local full-side diagnostic</title><style>body{{font:15px system-ui;margin:2rem;max-width:1100px;color:#17212b}}h2{{margin-top:1.8rem}}table{{border-collapse:collapse;width:100%;margin:.5rem 0}}th,td{{border:1px solid #cbd5df;padding:.45rem;text-align:left}}th{{background:#eaf0f5}}tr:nth-child(even){{background:#f8fafc}}.note{{background:#fff8db;padding:.8rem}}</style></head><body><h1>Wally local full-side diagnostic</h1><p class=\"note\">{disclaimer}</p>{''.join(sections)}<h2>Outer Marker Harmonic Spectrum</h2><img src=\"{escape(outer_spectrum_filename)}\" alt=\"Outer marker harmonic spectrum\"><h2>Inner Marker Harmonic Spectrum</h2><img src=\"{escape(inner_spectrum_filename)}\" alt=\"Inner marker harmonic spectrum\"></body></html>", encoding="utf-8")
+    whole_rows = [[channel["channel"].title(), f'{channel["meanFrequencyHz"]:.4f} Hz', f'{channel["minimumRpm"]:.4f} / {channel["maximumRpm"]:.4f} RPM', " / ".join(f'{channel["bands"]["wow"][key]:.4f}%' for key in ("rmsPercent", "sigmaPercent", "peakPercent")), " / ".join(f'{channel["bands"]["flutter"][key]:.4f}%' for key in ("rmsPercent", "sigmaPercent", "peakPercent"))] for channel in modulation["wholeSide"]]
+    section_rows = [[f'{section["startSeconds"]:.0f}–{section["endSeconds"]:.0f} s', channel["channel"].title(), f'{channel["bands"]["wow"]["rmsPercent"]:.4f}%', f'{channel["bands"]["flutter"]["rmsPercent"]:.4f}%'] for section in modulation["sections"] for channel in [{**entry, "channel": ("left", "right")[index]} for index, entry in enumerate(section["channels"])]]
+    sections = [table("Capture Information", ["Field", "Value"], [["Capture timestamp", report["sourceFileModifiedAt"]], ["Duration", f'{capture["durationSeconds"]:.3f} s'], ["Channels", str(capture["channels"])], ["Sample rate", f'{capture["sampleRateHz"] / 1000:.0f} kHz']]), table("Outer / Inner 1 kHz Markers", ["Field", "Outer", "Inner"], [["Marker time", f'{outer["startSeconds"]:.3f}–{outer["endSeconds"]:.3f} s', f'{inner["startSeconds"]:.3f}–{inner["endSeconds"]:.3f} s'], ["L relative to R", f'{outer["balanceDbLeftRelativeToRight"]:+.3f} dB', f'{inner["balanceDbLeftRelativeToRight"]:+.3f} dB']]), table("Whole-Side Wow / Flutter", ["Channel", "Mean carrier", "Minimum / maximum", "Wow RMS / σ / peak", "Flutter RMS / σ / peak"], whole_rows), table("Section Wow / Flutter", ["Section", "Channel", "Wow RMS", "Flutter RMS"], section_rows), table("Channel Marker Measurements", ["Channel", "Outer peak", "Inner peak", "Outer H2 / H3", "Inner H2 / H3"], channel_rows), table("Marker Signal Quality",  ["Marker", "Channel", "Carrier", "Peak", "Noise floor", "Peak/noise", "Broadband SNR"], quality_rows), table("Inner Minus Outer Change", ["Channel", "Harmonic changes"], harmonic_rows), table("Balance Change", ["Metric", "Value"], [["Inner minus outer L/R balance", f'{delta["innerMinusOuterBalanceDb"]:+.3f} dB']]), table("Top Non-Harmonic Peaks", ["Marker", "Channel", "Frequency", "Relative level", "Interpretation"], peak_rows)]
+    path.write_text(f"<!doctype html><html><head><meta charset=\"utf-8\"><title>Wally local full-side diagnostic</title><style>body{{font:15px system-ui;margin:2rem;max-width:1100px;color:#17212b}}h2{{margin-top:1.8rem}}table{{border-collapse:collapse;width:100%;margin:.5rem 0}}th,td{{border:1px solid #cbd5df;padding:.45rem;text-align:left}}th{{background:#eaf0f5}}tr:nth-child(even){{background:#f8fafc}}.note{{background:#fff8db;padding:.8rem}}</style></head><body><h1>Wally local full-side diagnostic</h1><p class=\"note\">{disclaimer}</p>{''.join(sections)}<h2>Outer Marker Harmonic Spectrum</h2><img src=\"{escape(outer_spectrum_filename)}\" alt=\"Outer marker harmonic spectrum\"><h2>Inner Marker Harmonic Spectrum</h2><img src=\"{escape(inner_spectrum_filename)}\" alt=\"Inner marker harmonic spectrum\"><h2>Whole-Side Speed over Time</h2><img src=\"{escape(speed_filename)}\" alt=\"Whole-side speed graph\"><h2>Whole-Side Speed by Revolution</h2><img src=\"{escape(revolution_filename)}\" alt=\"Whole-side folded speed graph\"></body></html>", encoding="utf-8")
 
 
 def local_full_side_report(path: Path, nominal_hz: float, output_dir: Path, edge_scan_seconds: float = 20, expected_duration_seconds: float = 405) -> dict[str, Any]:
@@ -824,16 +858,21 @@ def local_full_side_report(path: Path, nominal_hz: float, output_dir: Path, edge
     pdf_path = output_dir / f"{stem}-full-side-report.pdf"
     outer_spectrum_path = output_dir / f"{stem}-outer-marker-spectrum.svg"
     inner_spectrum_path = output_dir / f"{stem}-inner-marker-spectrum.svg"
+    speed_path = output_dir / f"{stem}-full-side-speed.svg"
+    revolution_path = output_dir / f"{stem}-full-side-revolution-speed.svg"
     rate = int(wav_metadata(path)["sampleRateHz"])
+    modulation, speed_traces = full_side_modulation_analysis(path, round(comparison["outerMarker"]["startSeconds"] * rate), round(comparison["innerMarker"]["endSeconds"] * rate), nominal_hz)
     outer_samples, _ = _pcm_samples_range(path, round(comparison["outerMarker"]["startSeconds"] * rate), rate)
     inner_samples, _ = _pcm_samples_range(path, round(comparison["innerMarker"]["startSeconds"] * rate), rate)
     outer_diagnostics, outer_frequencies, outer_spectra = spectral_diagnostics(outer_samples, rate, nominal_hz)
     inner_diagnostics, inner_frequencies, inner_spectra = spectral_diagnostics(inner_samples, rate, nominal_hz)
     write_spectrum_svg(outer_spectrum_path, outer_frequencies, outer_spectra, outer_diagnostics)
     write_spectrum_svg(inner_spectrum_path, inner_frequencies, inner_spectra, inner_diagnostics)
-    report = {"reportType": "local-full-side-1khz-diagnostic", "algorithmVersion": "local-1.0", "generatedAt": datetime.now(timezone.utc).isoformat(), "source": str(path), "sourceFileModifiedAt": datetime.fromtimestamp(path.stat().st_mtime, timezone.utc).isoformat(), "capture": wav_metadata(path), "innerOuterComparison": comparison, "artifacts": {"reportJson": str(json_path), "reportHtml": str(html_path), "reportPdf": str(pdf_path), "outerSpectrumSvg": str(outer_spectrum_path), "innerSpectrumSvg": str(inner_spectrum_path)}}
+    write_speed_svg(speed_path, speed_traces)
+    write_revolution_folded_speed_svg(revolution_path, speed_traces)
+    report = {"reportType": "local-full-side-1khz-diagnostic", "algorithmVersion": "local-1.0", "generatedAt": datetime.now(timezone.utc).isoformat(), "source": str(path), "sourceFileModifiedAt": datetime.fromtimestamp(path.stat().st_mtime, timezone.utc).isoformat(), "capture": wav_metadata(path), "wholeSideModulation": modulation, "innerOuterComparison": comparison, "artifacts": {"reportJson": str(json_path), "reportHtml": str(html_path), "reportPdf": str(pdf_path), "outerSpectrumSvg": str(outer_spectrum_path), "innerSpectrumSvg": str(inner_spectrum_path), "speedSvg": str(speed_path), "revolutionSpeedSvg": str(revolution_path)}}
     json_path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
-    write_full_side_report_html(html_path, report, outer_spectrum_path.name, inner_spectrum_path.name)
+    write_full_side_report_html(html_path, report, outer_spectrum_path.name, inner_spectrum_path.name, speed_path.name, revolution_path.name)
     write_local_report_pdf(html_path, pdf_path)
     return report
 
