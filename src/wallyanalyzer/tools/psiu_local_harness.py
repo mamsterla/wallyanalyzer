@@ -781,12 +781,18 @@ def trim_one_khz_edges(source_path: Path, output_path: Path, nominal_hz: float =
     return {"source": str(source_path), "trimmedOutput": str(output_path), "nominalToneHz": nominal_hz, "startSeconds": start / rate, "endSeconds": end / rate, "durationSeconds": (end - start) / rate, **scan}
 
 
-def inner_outer_one_khz_comparison(path: Path, nominal_hz: float = 1_000.0, edge_scan_seconds: float = 20, expected_duration_seconds: float = 405) -> dict[str, Any]:
-    """Compare clean outer/inner 1 kHz markers without loading the full side."""
+def inner_outer_one_khz_comparison(path: Path, nominal_hz: float = 1_000.0, edge_scan_seconds: float = 20, expected_duration_seconds: float = 405, analysis_seconds: float = 10) -> dict[str, Any]:
+    """Compare representative clean outer/inner 1 kHz windows without loading the full side."""
     start, end, scan = one_khz_cleanup_region(path, nominal_hz, edge_scan_seconds, expected_duration_seconds)
-    metadata = wav_metadata(path); rate = int(metadata["sampleRateHz"]); block = rate
+    metadata = wav_metadata(path); rate = int(metadata["sampleRateHz"]); block = round(analysis_seconds * rate)
+    if block < rate or end - start < 2 * block:
+        raise ValueError("Full-side comparison needs two clean analysis windows of at least one second.")
     outer, _ = _pcm_samples_range(path, start, block)
     inner, _ = _pcm_samples_range(path, end - block, block)
+    for samples, label in ((outer, "outer"), (inner, "inner")):
+        for offset in range(0, len(samples) - rate + 1, rate):
+            if not _is_clean_tone_block(samples[offset : offset + rate], rate, nominal_hz):
+                raise ValueError(f"The {label} {analysis_seconds:g}-second analysis window is not continuously clean {nominal_hz:g} Hz material.")
     outer_diagnostics, outer_frequencies, outer_spectra = spectral_diagnostics(outer, rate, nominal_hz)
     inner_diagnostics, inner_frequencies, inner_spectra = spectral_diagnostics(inner, rate, nominal_hz)
     outer_peaks = non_harmonic_peaks(outer_frequencies, outer_spectra, outer_diagnostics)
@@ -802,7 +808,7 @@ def inner_outer_one_khz_comparison(path: Path, nominal_hz: float = 1_000.0, edge
         inner_harmonics = {item["order"]: item for item in inner_diagnostics[channel]["harmonics"]}
         harmonic_changes.append({"channel": name, "harmonicDeltaDb": [{"order": order, "innerMinusOuterDbc": float(inner_harmonics[order]["levelDbc"] - outer_harmonics[order]["levelDbc"])} for order in sorted(set(outer_harmonics) & set(inner_harmonics))]})
     outer_balance, inner_balance = balance(outer_diagnostics), balance(inner_diagnostics)
-    return {"reportType": "local-inner-outer-1khz-comparison", "source": str(path), "nominalToneHz": nominal_hz, "outerMarker": {"startSeconds": start / rate, "endSeconds": (start + block) / rate, "channels": channel_summary(outer_diagnostics, outer_peaks, outer_carrier), "balanceDbLeftRelativeToRight": outer_balance}, "innerMarker": {"startSeconds": (end - block) / rate, "endSeconds": end / rate, "channels": channel_summary(inner_diagnostics, inner_peaks, inner_carrier), "balanceDbLeftRelativeToRight": inner_balance}, "deltas": {"innerMinusOuterBalanceDb": float(inner_balance - outer_balance), "harmonics": harmonic_changes}, "disclaimer": "Marker comparison is a diagnostic indicator. Inner-groove changes can involve anti-skate, alignment, stylus, groove, pressing, and playback factors; it does not identify a single cause.", **scan}
+    return {"reportType": "local-inner-outer-1khz-comparison", "source": str(path), "nominalToneHz": nominal_hz, "analysisWindowSeconds": analysis_seconds, "outerMarker": {"startSeconds": start / rate, "endSeconds": (start + block) / rate, "channels": channel_summary(outer_diagnostics, outer_peaks, outer_carrier), "balanceDbLeftRelativeToRight": outer_balance}, "innerMarker": {"startSeconds": (end - block) / rate, "endSeconds": end / rate, "channels": channel_summary(inner_diagnostics, inner_peaks, inner_carrier), "balanceDbLeftRelativeToRight": inner_balance}, "deltas": {"innerMinusOuterBalanceDb": float(inner_balance - outer_balance), "harmonics": harmonic_changes}, "disclaimer": "Marker comparison is a diagnostic indicator. Inner-groove changes can involve anti-skate, alignment, stylus, groove, pressing, and playback factors; it does not identify a single cause.", **scan}
 
 
 def full_side_modulation_analysis(path: Path, start_frame: int, end_frame: int, nominal_hz: float, section_seconds: float = 20) -> tuple[dict[str, Any], list[tuple[np.ndarray, np.ndarray]]]:
@@ -856,9 +862,9 @@ def write_full_side_report_html(path: Path, report: dict[str, Any], outer_spectr
     path.write_text(f"<!doctype html><html><head><meta charset=\"utf-8\"><title>Wally local full-side diagnostic</title><style>body{{font:15px system-ui;margin:2rem;max-width:1100px;color:#17212b}}h2{{margin-top:1.8rem}}table{{border-collapse:collapse;width:100%;margin:.5rem 0}}th,td{{border:1px solid #cbd5df;padding:.45rem;text-align:left}}th{{background:#eaf0f5}}tr:nth-child(even){{background:#f8fafc}}.note{{background:#fff8db;padding:.8rem}}</style></head><body><h1>Wally local full-side diagnostic</h1><p class=\"note\">{disclaimer}</p>{''.join(sections)}<h2>Outer Marker Harmonic Spectrum</h2><img src=\"{escape(outer_spectrum_filename)}\" alt=\"Outer marker harmonic spectrum\"><h2>Inner Marker Harmonic Spectrum</h2><img src=\"{escape(inner_spectrum_filename)}\" alt=\"Inner marker harmonic spectrum\"><h2>Whole-Side Speed over Time</h2><img src=\"{escape(speed_filename)}\" alt=\"Whole-side speed graph\"><h2>Whole-Side Speed by Revolution</h2><img src=\"{escape(revolution_filename)}\" alt=\"Whole-side folded speed graph\"></body></html>", encoding="utf-8")
 
 
-def local_full_side_report(path: Path, nominal_hz: float, output_dir: Path, edge_scan_seconds: float = 20, expected_duration_seconds: float = 405) -> dict[str, Any]:
+def local_full_side_report(path: Path, nominal_hz: float, output_dir: Path, edge_scan_seconds: float = 20, expected_duration_seconds: float = 405, analysis_seconds: float = 10) -> dict[str, Any]:
     output_dir.mkdir(parents=True, exist_ok=True)
-    comparison = inner_outer_one_khz_comparison(path, nominal_hz, edge_scan_seconds, expected_duration_seconds)
+    comparison = inner_outer_one_khz_comparison(path, nominal_hz, edge_scan_seconds, expected_duration_seconds, analysis_seconds)
     stem = path.stem
     json_path = output_dir / f"{stem}-full-side-report.json"
     html_path = output_dir / f"{stem}-full-side-report.html"
@@ -868,9 +874,10 @@ def local_full_side_report(path: Path, nominal_hz: float, output_dir: Path, edge
     speed_path = output_dir / f"{stem}-full-side-speed.svg"
     revolution_path = output_dir / f"{stem}-full-side-revolution-speed.svg"
     rate = int(wav_metadata(path)["sampleRateHz"])
+    analysis_frames = round(comparison["analysisWindowSeconds"] * rate)
     modulation, speed_traces = full_side_modulation_analysis(path, round(comparison["outerMarker"]["startSeconds"] * rate), round(comparison["innerMarker"]["endSeconds"] * rate), nominal_hz)
-    outer_samples, _ = _pcm_samples_range(path, round(comparison["outerMarker"]["startSeconds"] * rate), rate)
-    inner_samples, _ = _pcm_samples_range(path, round(comparison["innerMarker"]["startSeconds"] * rate), rate)
+    outer_samples, _ = _pcm_samples_range(path, round(comparison["outerMarker"]["startSeconds"] * rate), analysis_frames)
+    inner_samples, _ = _pcm_samples_range(path, round(comparison["innerMarker"]["startSeconds"] * rate), analysis_frames)
     outer_diagnostics, outer_frequencies, outer_spectra = spectral_diagnostics(outer_samples, rate, nominal_hz)
     inner_diagnostics, inner_frequencies, inner_spectra = spectral_diagnostics(inner_samples, rate, nominal_hz)
     write_spectrum_svg(outer_spectrum_path, outer_frequencies, outer_spectra, outer_diagnostics)
@@ -938,6 +945,7 @@ def main() -> None:
     report_parser.add_argument("--full-side", action="store_true", help="Generate memory-bounded outer/inner marker report for a full-side capture.")
     report_parser.add_argument("--edge-scan-seconds", type=float, default=20)
     report_parser.add_argument("--expected-duration-seconds", type=float, default=405)
+    report_parser.add_argument("--edge-analysis-seconds", type=float, default=10)
     cleanup_parser = subcommands.add_parser("trim-1khz", help="Trim capture edges to clean 1 kHz markers without loading a full side.")
     cleanup_parser.add_argument("wav", type=Path)
     cleanup_parser.add_argument("--output", type=Path, required=True)
@@ -949,6 +957,7 @@ def main() -> None:
     comparison_parser.add_argument("--nominal-hz", type=float, default=1_000.0)
     comparison_parser.add_argument("--edge-scan-seconds", type=float, default=20)
     comparison_parser.add_argument("--expected-duration-seconds", type=float, default=405)
+    comparison_parser.add_argument("--analysis-seconds", type=float, default=10)
     inspect_parser = subcommands.add_parser("inspect", help="Inspect a PSIU WAV and optionally trim lead-in/runout.")
     inspect_parser.add_argument("wav", type=Path)
     inspect_parser.add_argument("--nominal-hz", type=float, default=1_000.0)
@@ -966,12 +975,12 @@ def main() -> None:
     elif args.command == "capture":
         print(capture(args.base_url, args.seconds, args.output_dir, args.audio_wait_seconds, args.status_interval_seconds))
     elif args.command == "report":
-        report = local_full_side_report(args.wav, args.nominal_hz, args.output_dir, args.edge_scan_seconds, args.expected_duration_seconds) if args.full_side else local_turntable_report(args.wav, args.nominal_hz, args.output_dir)
+        report = local_full_side_report(args.wav, args.nominal_hz, args.output_dir, args.edge_scan_seconds, args.expected_duration_seconds, args.edge_analysis_seconds) if args.full_side else local_turntable_report(args.wav, args.nominal_hz, args.output_dir)
         print(json.dumps(report, indent=2))
     elif args.command == "trim-1khz":
         print(json.dumps(trim_one_khz_edges(args.wav, args.output, args.nominal_hz, args.edge_scan_seconds, args.expected_duration_seconds), indent=2))
     elif args.command == "compare-1khz-edges":
-        print(json.dumps(inner_outer_one_khz_comparison(args.wav, args.nominal_hz, args.edge_scan_seconds, args.expected_duration_seconds), indent=2))
+        print(json.dumps(inner_outer_one_khz_comparison(args.wav, args.nominal_hz, args.edge_scan_seconds, args.expected_duration_seconds, args.analysis_seconds), indent=2))
     else:
         print(json.dumps(inspect(args.wav, args.nominal_hz, args.trim_output, args.spectrum_output), indent=2))
 
