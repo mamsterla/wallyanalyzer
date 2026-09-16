@@ -4,7 +4,7 @@ from pathlib import Path
 
 import numpy as np
 
-from wallyanalyzer.tools.psiu_local_harness import active_tone_region, estimate_tone_hz, inner_outer_one_khz_comparison, inspect, local_full_side_report, local_turntable_report, spectral_diagnostics, trim_one_khz_edges
+from wallyanalyzer.tools.psiu_local_harness import active_tone_region, estimate_tone_hz, inner_outer_one_khz_comparison, inspect, local_channel_report, local_full_side_report, local_turntable_report, spectral_diagnostics, trim_one_khz_edges
 
 
 def tone(seconds: float, rate: int = 48_000, frequency: float = 1_000.0) -> np.ndarray:
@@ -18,6 +18,17 @@ def write_pcm(path: Path, samples: np.ndarray, rate: int = 48_000) -> None:
     with wave.open(str(path), "wb") as output:
         output.setparams((2, 2, rate, 0, "NONE", "not compressed"))
         output.writeframes(pcm.tobytes())
+
+
+def test_channel_report_measures_directional_stereo_separation(tmp_path: Path) -> None:
+    source = tmp_path / "channel.wav"
+    values = 0.4 * np.sin(2 * math.pi * 1_000 * np.arange(3 * 48_000) / 48_000)
+    write_pcm(source, np.column_stack([values, values * 0.03]))
+    report = local_channel_report(source, tmp_path, [{"name": "Left test", "startSeconds": 0, "endSeconds": 3, "type": "left-only"}])
+    section = report["sections"][0]
+    assert section["stereoSeparationDb"] > 25
+    assert abs(section["leftCarrierHz"] - 1_000) < 1
+    assert Path(report["artifacts"]["reportPdf"]).exists()
 
 
 def test_finds_loud_program_region_and_verifies_stereo_tone(tmp_path: Path) -> None:

@@ -921,6 +921,59 @@ def inspect(path: Path, nominal_hz: float, trim_output: Path | None = None, spec
     return result
 
 
+SIDE_TWO_1KHZ_SECTION_CATALOG = [
+    {"name": "Equal-level reference", "startSeconds": 27, "endSeconds": 30, "type": "equal-level"},
+    {"name": "Right-only A", "startSeconds": 38, "endSeconds": 47, "type": "right-only"}, {"name": "Left-only A", "startSeconds": 48, "endSeconds": 57, "type": "left-only"},
+    {"name": "Equal-level low", "startSeconds": 70, "endSeconds": 88, "type": "equal-level"},
+    {"name": "Right-only B", "startSeconds": 99, "endSeconds": 118, "type": "right-only"}, {"name": "Left-only B", "startSeconds": 119, "endSeconds": 139, "type": "left-only"}, {"name": "Equal-level B", "startSeconds": 139, "endSeconds": 162, "type": "equal-level"},
+    {"name": "Right-only C", "startSeconds": 169, "endSeconds": 188, "type": "right-only"}, {"name": "Left-only C", "startSeconds": 189, "endSeconds": 209, "type": "left-only"}, {"name": "Equal-level C", "startSeconds": 209, "endSeconds": 232, "type": "equal-level"},
+    {"name": "Right-only D", "startSeconds": 239, "endSeconds": 258, "type": "right-only"}, {"name": "Left-only D", "startSeconds": 259, "endSeconds": 279, "type": "left-only"}, {"name": "Equal-level D1", "startSeconds": 279, "endSeconds": 283, "type": "equal-level"}, {"name": "Equal-level D2", "startSeconds": 284, "endSeconds": 302, "type": "equal-level"},
+    {"name": "Right-only E", "startSeconds": 309, "endSeconds": 328, "type": "right-only"}, {"name": "Left-only E", "startSeconds": 329, "endSeconds": 347, "type": "left-only"},
+]
+
+
+def channel_section_metrics(path: Path, section: dict[str, Any], nominal_hz: float = 1_000.0) -> dict[str, Any]:
+    """Measure a catalogued 1 kHz routing section in bounded one-second windows."""
+    rate = int(wav_metadata(path)["sampleRateHz"])
+    windows = []
+    for second in range(math.ceil(section["startSeconds"]), math.floor(section["endSeconds"])):
+        samples, _ = _pcm_samples_range(path, second * rate, rate)
+        window = np.hanning(rate); reference = np.exp(-2j * np.pi * nominal_hz * np.arange(rate) / rate) * window
+        carriers = 2 * np.sum(samples * reference[:, None], axis=0) / np.sum(window)
+        levels = 20 * np.log10(np.maximum(np.abs(carriers), 1e-15))
+        windows.append((levels[0], levels[1], np.angle(np.exp(1j * (np.angle(carriers[1]) - np.angle(carriers[0])))), *estimate_tone_hz(samples, rate, nominal_hz)))
+    if not windows:
+        raise ValueError(f'No full analysis windows in section {section["name"]}.')
+    values = np.asarray(windows); left, right = np.median(values[:, :2], axis=0)
+    phase_vector = np.mean(np.exp(1j * values[:, 2])); phase = float(np.degrees(np.angle(phase_vector)))
+    phase_stability = float(np.degrees(np.sqrt(-2 * np.log(max(abs(phase_vector), 1e-12)))))
+    result = {**section, "leftLevelDbfs": float(left), "rightLevelDbfs": float(right), "balanceDbLeftRelativeToRight": float(left - right), "leftCarrierHz": float(np.median(values[:, 3])), "rightCarrierHz": float(np.median(values[:, 4])), "phaseDifferenceDegrees": phase, "phaseStabilityDegrees": phase_stability}
+    if section["type"] == "left-only": result["stereoSeparationDb"] = float(left - right)
+    elif section["type"] == "right-only": result["stereoSeparationDb"] = float(right - left)
+    return result
+
+
+def write_channel_report_html(path: Path, report: dict[str, Any]) -> None:
+    def table(title: str, headers: list[str], rows: list[list[str]]) -> str:
+        return f'<h2>{title}</h2><table><tr>{"".join(f"<th>{escape(header)}</th>" for header in headers)}</tr>{"".join("<tr>" + "".join(f"<td>{escape(value)}</td>" for value in row) + "</tr>" for row in rows)}</table>'
+    sections = report["sections"]
+    routing = [[item["name"], item["type"], f'{item["startSeconds"]:.0f}–{item["endSeconds"]:.0f} s', f'{item["leftCarrierHz"]:.3f} Hz', f'{item["rightCarrierHz"]:.3f} Hz', f'{item["leftLevelDbfs"]:.1f}', f'{item["rightLevelDbfs"]:.1f}', f'{item["balanceDbLeftRelativeToRight"]:+.1f} dB'] for item in sections]
+    separation = [[item["name"], item["type"], f'{item["stereoSeparationDb"]:.1f} dB'] for item in sections if "stereoSeparationDb" in item]
+    azimuth = [[item["name"], f'{item["balanceDbLeftRelativeToRight"]:+.1f} dB', f'{item["phaseDifferenceDegrees"]:+.2f}°', f'{item["phaseStabilityDegrees"]:.2f}°'] for item in sections if item["type"] == "equal-level"]
+    capture = report["capture"]
+    html = f'<!doctype html><html><head><meta charset="utf-8"><title>Wally local channel diagnostic</title><style>body{{font:15px system-ui;margin:2rem;max-width:1100px;color:#17212b}}table{{border-collapse:collapse;width:100%;margin:.5rem 0}}th,td{{border:1px solid #cbd5df;padding:.45rem;text-align:left}}th{{background:#eaf0f5}}.note{{background:#fff8db;padding:.8rem}}</style></head><body><h1>Wally local channel diagnostic</h1><p class="note">Diagnostic only. Stereo separation is the driven-channel 1 kHz level minus opposite-channel leakage. Equal-level phase is an azimuth indicator; adjust only against confirmed test-record instructions.</p>' + table("Capture", ["Duration", "Sample rate", "Runout start"], [[f'{capture["durationSeconds"]:.3f} s', f'{capture["sampleRateHz"] / 1000:.0f} kHz', f'{report["runoutStartSeconds"]:.1f} s']]) + table("Section Catalog and Levels", ["Section", "Expected routing", "Offset", "L carrier", "R carrier", "L dBFS", "R dBFS", "L/R imbalance"], routing) + table("Stereo Separation", ["Section", "Driven channel", "Separation"], separation) + table("Equal-level Phase / Azimuth", ["Section", "L/R imbalance", "Phase difference", "Phase stability"], azimuth) + '</body></html>'
+    path.write_text(html, encoding="utf-8")
+
+
+def local_channel_report(path: Path, output_dir: Path, sections: list[dict[str, Any]] | None = None) -> dict[str, Any]:
+    output_dir.mkdir(parents=True, exist_ok=True); catalog = sections or SIDE_TWO_1KHZ_SECTION_CATALOG
+    metrics = [channel_section_metrics(path, section) for section in catalog]; stem = path.stem
+    json_path, html_path, pdf_path = (output_dir / f'{stem}-channel-report.{suffix}' for suffix in ("json", "html", "pdf"))
+    report = {"reportType": "local-1khz-channel-diagnostic", "algorithmVersion": "local-1.0", "source": str(path), "capture": wav_metadata(path), "runoutStartSeconds": 348.5, "sectionCatalog": catalog, "sections": metrics, "artifacts": {"reportJson": str(json_path), "reportHtml": str(html_path), "reportPdf": str(pdf_path)}}
+    json_path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8"); write_channel_report_html(html_path, report); write_local_report_pdf(html_path, pdf_path)
+    return report
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Capture and inspect local PSIU WAVs without cloud upload.")
     subcommands = parser.add_subparsers(dest="command", required=True)
@@ -964,6 +1017,9 @@ def main() -> None:
     comparison_parser.add_argument("--expected-duration-seconds", type=float, default=405)
     comparison_parser.add_argument("--analysis-seconds", type=float, default=10)
     comparison_parser.add_argument("--start-qualification-seconds", type=float, default=5)
+    channel_report_parser = subcommands.add_parser("channel-report", help="Generate a local catalogued 1 kHz channel separation and azimuth report.")
+    channel_report_parser.add_argument("wav", type=Path)
+    channel_report_parser.add_argument("--output-dir", type=Path, default=Path("data/local-psiu"))
     inspect_parser = subcommands.add_parser("inspect", help="Inspect a PSIU WAV and optionally trim lead-in/runout.")
     inspect_parser.add_argument("wav", type=Path)
     inspect_parser.add_argument("--nominal-hz", type=float, default=1_000.0)
@@ -983,6 +1039,8 @@ def main() -> None:
     elif args.command == "report":
         report = local_full_side_report(args.wav, args.nominal_hz, args.output_dir, args.edge_scan_seconds, args.expected_duration_seconds, args.edge_analysis_seconds, args.start_qualification_seconds) if args.full_side else local_turntable_report(args.wav, args.nominal_hz, args.output_dir)
         print(json.dumps(report, indent=2))
+    elif args.command == "channel-report":
+        print(json.dumps(local_channel_report(args.wav, args.output_dir), indent=2))
     elif args.command == "trim-1khz":
         print(json.dumps(trim_one_khz_edges(args.wav, args.output, args.nominal_hz, args.edge_scan_seconds, args.expected_duration_seconds, args.start_qualification_seconds), indent=2))
     elif args.command == "compare-1khz-edges":
