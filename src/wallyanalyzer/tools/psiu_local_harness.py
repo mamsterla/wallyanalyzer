@@ -794,6 +794,37 @@ def inner_outer_one_khz_comparison(path: Path, nominal_hz: float = 1_000.0, edge
     return {"reportType": "local-inner-outer-1khz-comparison", "source": str(path), "nominalToneHz": nominal_hz, "outerMarker": {"startSeconds": start / rate, "endSeconds": (start + block) / rate, "channels": channel_summary(outer_diagnostics), "balanceDbLeftRelativeToRight": outer_balance}, "innerMarker": {"startSeconds": (end - block) / rate, "endSeconds": end / rate, "channels": channel_summary(inner_diagnostics), "balanceDbLeftRelativeToRight": inner_balance}, "deltas": {"innerMinusOuterBalanceDb": float(inner_balance - outer_balance), "harmonics": harmonic_changes}, "disclaimer": "Marker comparison is a diagnostic indicator. Inner-groove changes can involve anti-skate, alignment, stylus, groove, pressing, and playback factors; it does not identify a single cause.", **scan}
 
 
+def write_full_side_report_html(path: Path, report: dict[str, Any]) -> None:
+    comparison = report["innerOuterComparison"]
+    def table(title: str, headers: list[str], rows: list[list[str]]) -> str:
+        head = "".join(f"<th>{escape(header)}</th>" for header in headers)
+        body = "".join("<tr>" + "".join(f"<td>{escape(value)}</td>" for value in row) + "</tr>" for row in rows)
+        return f"<section><h2>{escape(title)}</h2><table><thead><tr>{head}</tr></thead><tbody>{body}</tbody></table></section>"
+    capture = report["capture"]
+    disclaimer = escape(comparison["disclaimer"])
+    outer, inner, delta = comparison["outerMarker"], comparison["innerMarker"], comparison["deltas"]
+    channel_rows = []
+    for index, name in enumerate(("Left", "Right")):
+        channel_rows.append([name, f'{outer["channels"][index]["peakDbfs"]:.2f} dBFS', f'{inner["channels"][index]["peakDbfs"]:.2f} dBFS', f'{outer["channels"][index]["harmonics"][0]["levelDbc"]:.2f} / {outer["channels"][index]["harmonics"][1]["levelDbc"]:.2f} dBc', f'{inner["channels"][index]["harmonics"][0]["levelDbc"]:.2f} / {inner["channels"][index]["harmonics"][1]["levelDbc"]:.2f} dBc'])
+    harmonic_rows = [[item["channel"].title()] + [f'H{change["order"]}: {change["innerMinusOuterDbc"]:+.2f} dB' for change in item["harmonicDeltaDb"]] for item in delta["harmonics"]]
+    sections = [table("Capture Information", ["Field", "Value"], [["Capture timestamp", report["sourceFileModifiedAt"]], ["Duration", f'{capture["durationSeconds"]:.3f} s'], ["Channels", str(capture["channels"])], ["Sample rate", f'{capture["sampleRateHz"] / 1000:.0f} kHz']]), table("Outer / Inner 1 kHz Markers", ["Field", "Outer", "Inner"], [["Marker time", f'{outer["startSeconds"]:.3f}–{outer["endSeconds"]:.3f} s', f'{inner["startSeconds"]:.3f}–{inner["endSeconds"]:.3f} s'], ["L relative to R", f'{outer["balanceDbLeftRelativeToRight"]:+.3f} dB', f'{inner["balanceDbLeftRelativeToRight"]:+.3f} dB']]), table("Channel Marker Measurements", ["Channel", "Outer peak", "Inner peak", "Outer H2 / H3", "Inner H2 / H3"], channel_rows), table("Inner Minus Outer Change", ["Channel", "Harmonic changes"], harmonic_rows), table("Balance Change", ["Metric", "Value"], [["Inner minus outer L/R balance", f'{delta["innerMinusOuterBalanceDb"]:+.3f} dB']])]
+    path.write_text(f"<!doctype html><html><head><meta charset=\"utf-8\"><title>Wally local full-side diagnostic</title><style>body{{font:15px system-ui;margin:2rem;max-width:1100px;color:#17212b}}h2{{margin-top:1.8rem}}table{{border-collapse:collapse;width:100%;margin:.5rem 0}}th,td{{border:1px solid #cbd5df;padding:.45rem;text-align:left}}th{{background:#eaf0f5}}tr:nth-child(even){{background:#f8fafc}}.note{{background:#fff8db;padding:.8rem}}</style></head><body><h1>Wally local full-side diagnostic</h1><p class=\"note\">{disclaimer}</p>{''.join(sections)}</body></html>", encoding="utf-8")
+
+
+def local_full_side_report(path: Path, nominal_hz: float, output_dir: Path, edge_scan_seconds: float = 20, expected_duration_seconds: float = 405) -> dict[str, Any]:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    comparison = inner_outer_one_khz_comparison(path, nominal_hz, edge_scan_seconds, expected_duration_seconds)
+    stem = path.stem
+    json_path = output_dir / f"{stem}-full-side-report.json"
+    html_path = output_dir / f"{stem}-full-side-report.html"
+    pdf_path = output_dir / f"{stem}-full-side-report.pdf"
+    report = {"reportType": "local-full-side-1khz-diagnostic", "algorithmVersion": "local-1.0", "generatedAt": datetime.now(timezone.utc).isoformat(), "source": str(path), "sourceFileModifiedAt": datetime.fromtimestamp(path.stat().st_mtime, timezone.utc).isoformat(), "capture": wav_metadata(path), "innerOuterComparison": comparison, "artifacts": {"reportJson": str(json_path), "reportHtml": str(html_path), "reportPdf": str(pdf_path)}}
+    json_path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+    write_full_side_report_html(html_path, report)
+    write_local_report_pdf(html_path, pdf_path)
+    return report
+
+
 def inspect(path: Path, nominal_hz: float, trim_output: Path | None = None, spectrum_output: Path | None = None) -> dict[str, Any]:
     samples, rate = _pcm_samples(path)
     start, end = active_tone_region(samples, rate)
@@ -840,6 +871,9 @@ def main() -> None:
     report_parser.add_argument("wav", type=Path)
     report_parser.add_argument("--nominal-hz", type=float, default=1_000.0)
     report_parser.add_argument("--output-dir", type=Path, default=Path("data/local-psiu"))
+    report_parser.add_argument("--full-side", action="store_true", help="Generate memory-bounded outer/inner marker report for a full-side capture.")
+    report_parser.add_argument("--edge-scan-seconds", type=float, default=20)
+    report_parser.add_argument("--expected-duration-seconds", type=float, default=405)
     cleanup_parser = subcommands.add_parser("trim-1khz", help="Trim capture edges to clean 1 kHz markers without loading a full side.")
     cleanup_parser.add_argument("wav", type=Path)
     cleanup_parser.add_argument("--output", type=Path, required=True)
@@ -868,7 +902,8 @@ def main() -> None:
     elif args.command == "capture":
         print(capture(args.base_url, args.seconds, args.output_dir, args.audio_wait_seconds, args.status_interval_seconds))
     elif args.command == "report":
-        print(json.dumps(local_turntable_report(args.wav, args.nominal_hz, args.output_dir), indent=2))
+        report = local_full_side_report(args.wav, args.nominal_hz, args.output_dir, args.edge_scan_seconds, args.expected_duration_seconds) if args.full_side else local_turntable_report(args.wav, args.nominal_hz, args.output_dir)
+        print(json.dumps(report, indent=2))
     elif args.command == "trim-1khz":
         print(json.dumps(trim_one_khz_edges(args.wav, args.output, args.nominal_hz, args.edge_scan_seconds, args.expected_duration_seconds), indent=2))
     elif args.command == "compare-1khz-edges":

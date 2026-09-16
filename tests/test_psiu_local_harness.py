@@ -4,7 +4,7 @@ from pathlib import Path
 
 import numpy as np
 
-from wallyanalyzer.tools.psiu_local_harness import active_tone_region, estimate_tone_hz, inner_outer_one_khz_comparison, inspect, local_turntable_report, spectral_diagnostics, trim_one_khz_edges
+from wallyanalyzer.tools.psiu_local_harness import active_tone_region, estimate_tone_hz, inner_outer_one_khz_comparison, inspect, local_full_side_report, local_turntable_report, spectral_diagnostics, trim_one_khz_edges
 
 
 def tone(seconds: float, rate: int = 48_000, frequency: float = 1_000.0) -> np.ndarray:
@@ -80,6 +80,16 @@ def test_inner_outer_comparison_reports_balance_delta(tmp_path: Path) -> None:
     assert result["outerMarker"]["balanceDbLeftRelativeToRight"] > -0.1
     assert result["innerMarker"]["balanceDbLeftRelativeToRight"] < -2
     assert result["deltas"]["innerMinusOuterBalanceDb"] < -2
+
+
+def test_full_side_report_includes_inner_outer_comparison(tmp_path: Path) -> None:
+    source = tmp_path / "side.wav"
+    samples = np.vstack([np.zeros((48_000, 2)), tone(1), np.zeros((8 * 48_000, 2)), tone(1), np.zeros((48_000, 2))])
+    write_pcm(source, samples)
+    report = local_full_side_report(source, 1_000, tmp_path, edge_scan_seconds=3, expected_duration_seconds=12)
+    assert report["reportType"] == "local-full-side-1khz-diagnostic"
+    assert "innerOuterComparison" in report
+    assert Path(report["artifacts"]["reportPdf"]).exists()
 
 
 def test_local_turntable_report_includes_speed_balance_and_artifacts(tmp_path: Path) -> None:
