@@ -77,7 +77,8 @@ export interface CompleteSampleUploadResponse { sample: SampleSummary; }
 export interface SampleDownloadResponse { downloadUrl: string; expiresAt: string; }
 export interface AnalysisReportSummary { id: string; sampleId: string; algorithmVersion: string; status: AnalysisStatus; createdAt: string; completedAt?: string; }
 export interface ReportDefinition { key: string; displayName: string; algorithmVersion: string; presets: Array<{ key: string; displayName: string; version: string; notice: string }> }
-export interface CreateReportRequest { idempotencyKey: string; batchId: string; reports: Array<{ definitionKey: string; presetKey: string }> }
+export interface YawGeometryParameters { effectiveLengthMm: number; offsetAngleDeg: number; overhangMm: number; mountYawDeg: number; }
+export interface CreateReportRequest { idempotencyKey: string; batchId: string; reports: Array<{ definitionKey: string; presetKey: string; yawGeometry?: YawGeometryParameters }> }
 export interface ReportArtifact { kind: 'manifest' | 'metrics_json' | 'graph_svg' | 'report_pdf'; contentType: string; createdAt: string }
 export interface ReportHistoryItem { id: string; requestId: string; reportType: string; algorithmVersion: string; presetName: string; presetVersion: string; status: AnalysisStatus; createdAt: string; completedAt?: string; systemName: string; artifacts: ReportArtifact[] }
 export interface ReportHistoryPage { items: ReportHistoryItem[]; limit: number; nextCursor?: string }

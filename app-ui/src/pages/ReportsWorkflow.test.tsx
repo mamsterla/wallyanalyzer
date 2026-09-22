@@ -24,7 +24,9 @@ describe('ReportPicker', () => {
     expect(screen.getByText('Uses fixed demonstration alignment assumptions.')).toBeTruthy();
     fireEvent.click(screen.getByRole('checkbox', { name: 'Future Report' }));
     fireEvent.click(screen.getByRole('button', { name: 'Queue 2 reports' }));
-    expect(submit).toHaveBeenCalledWith([{ definitionKey: 'tracking-error', presetKey: 'rti-demo' }, { definitionKey: 'future-report', presetKey: 'future-preset' }]);
+    expect(screen.getByDisplayValue('280')).toBeTruthy();
+    expect(screen.getByDisplayValue('19.495')).toBeTruthy();
+    expect(submit).toHaveBeenCalledWith([{ definitionKey: 'tracking-error', presetKey: 'rti-demo', yawGeometry: { effectiveLengthMm: 280, offsetAngleDeg: 19.495, overhangMm: 14.63, mountYawDeg: 0 } }, { definitionKey: 'future-report', presetKey: 'future-preset' }]);
   });
 });
 
