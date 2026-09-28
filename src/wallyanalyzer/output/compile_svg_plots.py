@@ -25,7 +25,12 @@ def render_compile_validation_svg(
     output = Path(output_path)
     output.parent.mkdir(parents=True, exist_ok=True)
 
-    panel_height = (SVG_HEIGHT - MARGIN_TOP - MARGIN_BOTTOM - PANEL_GAP) / 2
+    # Validation reports reserve a compact header and a dedicated summary card.
+    # Keep these local: sweep reports use the legacy shared geometry below.
+    validation_top = 118
+    validation_bottom = 80
+    validation_gap = 155
+    panel_height = (SVG_HEIGHT - validation_top - validation_bottom - validation_gap) / 2
     panel_width = SVG_WIDTH - MARGIN_LEFT - MARGIN_RIGHT
     radius_valid = result.radius_valid_mm
     radius_smooth = result.radius_smooth_mm
@@ -56,14 +61,17 @@ def render_compile_validation_svg(
     title_line_1 = title or f"Wally Analysis, {Path(result.measurement.source_file).name}"
     title_line_2 = system_line
     source_algorithm = str(result.diagnostics.get("source_algorithm", "Python port"))
-    side_stamp = datetime.now().strftime("%d-%b-%Y %H:%M") + f"   {source_algorithm}"
+    provenance_line = f"Analysis: {source_algorithm} · 1 kHz tracking test · diagnostic report"
 
     svg = [
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{SVG_WIDTH}" height="{SVG_HEIGHT}" viewBox="0 0 {SVG_WIDTH} {SVG_HEIGHT}">',
         '<style>text{font-family:Arial,sans-serif;fill:#000} .title{font-size:22px;font-weight:bold} .subtitle{font-size:20px;font-weight:bold} .label{font-size:14px} .small{font-size:12px;fill:#000} .mid{font-size:13px} .axis{stroke:#444;stroke-width:1} .grid{stroke:#ddd;stroke-width:1} .raw{fill:none;stroke:#e6a400;stroke-width:1.1;opacity:0.95;stroke-dasharray:2 2} .fit1{fill:none;stroke:#0057ff;stroke-width:2} .fit2{fill:none;stroke:#111;stroke-width:2;stroke-dasharray:10 6} .fit3{fill:none;stroke:#d95f02;stroke-width:2} .fit4{fill:none;stroke:#1b9e77;stroke-width:2;stroke-dasharray:8 5} .fit5{fill:none;stroke:#7f3fbf;stroke-width:2;stroke-dasharray:5 4} .legend-bg{fill:#fff;fill-opacity:1;stroke:#555;stroke-width:1} .marker-blue{fill:white;stroke:#0057ff;stroke-width:2} .marker-black{fill:#111;stroke:#111} .marker-red{fill:#d62728;stroke:#d62728} .marker-green{fill:#2ca02c;stroke:#2ca02c} .marker-open{fill:white;stroke-width:2}</style>',
         f'<rect x="0" y="0" width="{SVG_WIDTH}" height="{SVG_HEIGHT}" fill="#fff"/>',
-        f'<text x="{SVG_WIDTH/2:.1f}" y="34" text-anchor="middle" class="title">{_escape(title_line_1)}</text>',
-        f'<text x="{SVG_WIDTH/2:.1f}" y="62" text-anchor="middle" class="subtitle">{_escape(title_line_2)}</text>',
+        f'<rect x="0" y="0" width="{SVG_WIDTH}" height="82" fill="#f6f8fa"/>',
+        '<text x="80" y="25" class="small" style="font-weight:bold;letter-spacing:1.5px;fill:#36536b">WALLY ANALYZER</text>',
+        f'<text x="80" y="53" class="title">{_escape(title_line_1)}</text>',
+        f'<text x="80" y="75" class="small">{_escape(title_line_2)}</text>',
+        f'<text x="{SVG_WIDTH - 80}" y="53" text-anchor="end" class="small">{_escape(provenance_line)}</text>',
     ]
 
     ate_xmin, ate_xmax = _x_bounds([radius_valid, radius_smooth])
@@ -80,7 +88,7 @@ def render_compile_validation_svg(
             label="Apparent Tracking Error (°)",
             xlabel="Radius (mm)",
             left=MARGIN_LEFT,
-            top=MARGIN_TOP,
+            top=validation_top,
             width=panel_width,
             height=panel_height,
             ymin=ate_ymin,
@@ -90,7 +98,7 @@ def render_compile_validation_svg(
     svg.extend(
         _marker_svg(
             left=MARGIN_LEFT,
-            top=MARGIN_TOP,
+            top=validation_top,
             width=panel_width,
             height=panel_height,
             xmin=ate_xmin,
@@ -109,37 +117,38 @@ def render_compile_validation_svg(
     svg.extend(
         _legend_svg(
             left=MARGIN_LEFT + 28,
-            top=MARGIN_TOP + 12,
+            top=validation_top + 12,
             entries=[
-                ("raw", f"ATEraw±{float(raw_noise_deg):.3g}"),
-                ("fit1", f"{avg_rotations}rot avg"),
-                ("fit4", f"ATEfit±{3.0 * summary.apparent_tracking_fit_rms_deg:.3g}°"),
+                ("raw", f"Raw measurements (±{float(raw_noise_deg):.3g}°)"),
+                ("fit1", f"{avg_rotations}-rotation average"),
+                ("fit4", f"Fitted tracking-error curve (±{3.0 * summary.apparent_tracking_fit_rms_deg:.3g}°)"),
             ],
         )
     )
 
-    middle_y = MARGIN_TOP + panel_height + 54
+    summary_top = validation_top + panel_height + 20
     svg.extend([
-        f'<text x="{SVG_WIDTH/2:.1f}" y="{middle_y:.1f}" text-anchor="middle" class="mid">{_escape(f"Mount: Z={summary.effective_mount_yaw_deg:.3g}°, L={float(acquisition.effective_length_mm):.3f}mm, ATEfit: SY={summary.effective_stylus_yaw_deg:.3g}°, LR={summary.effective_lr_um:.3g}µm")}</text>',
-        f'<text x="{SVG_WIDTH/2:.1f}" y="{middle_y + 28:.1f}" text-anchor="middle" class="mid">{_escape(f"OH={summary.effective_overhang_mm:.3f}mm, max| |= {summary.apparent_tracking_error_peak_abs_deg:.3g}°, |ATE|={summary.apparent_tracking_error_mean_deg:.3g}°, APivSpin={piv_spin_adj:.3f}mm")}</text>',
-        f'<text x="{SVG_WIDTH/2:.1f}" y="{middle_y + 56:.1f}" text-anchor="middle" class="mid">{_escape(f"RMSfit={summary.apparent_tracking_fit_rms_deg:.4f}°, {result.measurement.periods_per_segment}cycles of 1kHz every {result.measurement.skip_deg:.0f}°")}</text>',
-        f'<text x="{SVG_WIDTH - 12:.1f}" y="{SVG_HEIGHT/2:.1f}" transform="rotate(-90 {SVG_WIDTH - 12:.1f},{SVG_HEIGHT/2:.1f})" text-anchor="middle" class="small">{_escape(side_stamp)}</text>',
+        f'<rect x="{MARGIN_LEFT}" y="{summary_top:.1f}" width="{panel_width}" height="112" rx="5" fill="#f6f8fa" stroke="#d5dde5"/>',
+        f'<text x="{MARGIN_LEFT + 20}" y="{summary_top + 24:.1f}" class="small" style="font-weight:bold;fill:#36536b">MEASUREMENT SUMMARY</text>',
+        f'<text x="{MARGIN_LEFT + 20}" y="{summary_top + 50:.1f}" class="mid">{_escape(f"Geometry  ·  L {float(acquisition.effective_length_mm):.3f} mm   OH {summary.effective_overhang_mm:.3f} mm   Mount yaw {summary.effective_mount_yaw_deg:.3g}°")}</text>',
+        f'<text x="{MARGIN_LEFT + 20}" y="{summary_top + 78:.1f}" class="mid">{_escape(f"Tracking  ·  peak |ATE| {summary.apparent_tracking_error_peak_abs_deg:.3g}°   mean |ATE| {summary.apparent_tracking_error_mean_deg:.3g}°   fit RMS {summary.apparent_tracking_fit_rms_deg:.4f}°")}</text>',
+        f'<text x="{MARGIN_LEFT + 20}" y="{summary_top + 101:.1f}" class="small">{_escape(f"Sampling  ·  {result.measurement.periods_per_segment} cycles of 1 kHz every {result.measurement.skip_deg:.0f}°   ·   LR {summary.effective_lr_um:.3g} µm   ·   pivot/spindle adjustment {piv_spin_adj:.3f} mm")}</text>',
     ])
 
-    lower_top = MARGIN_TOP + panel_height + PANEL_GAP
+    lower_top = validation_top + panel_height + validation_gap
     lower_series = [harm2_pct, harm3_pct, dist_model_pct, lr_diff_over_sum_rms_pct]
     lower_classes = ["fit1", "fit5", "fit2", "fit3"]
     lower_x_series = [radius_smooth, radius_smooth, radius_smooth, radius_smooth]
     legend_entries = [
-        ("fit1", f"<2nd>={float(np.nanmean(harm2_pct)):.4g}%"),
-        ("fit5", f"<3rd>={float(np.nanmean(harm3_pct)):.4g}%"),
-        ("fit2", f"Dist.Param({result.measurement.cut_velocity_m_per_s * 100.0:.3g}cm/s)"),
+        ("fit1", f"Mean 2nd harmonic: {float(np.nanmean(harm2_pct)):.4g}%"),
+        ("fit5", f"Mean 3rd harmonic: {float(np.nanmean(harm3_pct)):.4g}%"),
+        ("fit2", f"Modelled distortion ({result.measurement.cut_velocity_m_per_s * 100.0:.3g} cm/s)"),
     ]
     if show_dist_fit:
         lower_series.append(dist_fit_pct)
         lower_classes.append("fit4")
         lower_x_series.append(radius_smooth)
-        legend_entries.append(("fit4", "Dist.Fit"))
+        legend_entries.append(("fit4", "Fitted distortion"))
     lower_ymax = max(
         3.0,
         float(np.nanmax(np.concatenate(lower_series))) * 1.08,
@@ -168,6 +177,10 @@ def render_compile_validation_svg(
         )
     )
 
+    svg.extend([
+        f'<line x1="{MARGIN_LEFT}" y1="{SVG_HEIGHT - 29}" x2="{SVG_WIDTH - MARGIN_RIGHT}" y2="{SVG_HEIGHT - 29}" stroke="#d5dde5"/>',
+        f'<text x="{MARGIN_LEFT}" y="{SVG_HEIGHT - 12}" class="small" style="fill:#4b5563">Interpretation: Tracking-error and distortion measurements are diagnostic. This report does not certify alignment or playback compliance.</text>',
+    ])
     svg.append("</svg>")
     output.write_text("\n".join(svg), encoding="utf-8")
     return output

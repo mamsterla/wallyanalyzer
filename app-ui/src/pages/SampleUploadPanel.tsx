@@ -3,7 +3,8 @@ import type { CreateReportRequest, ReportDefinition, YawGeometryParameters } fro
 import { useState } from 'react';
 import { WallySelect } from '../designSystemSelect.js';
 
-const defaultYawGeometry: YawGeometryParameters={effectiveLengthMm:280,offsetAngleDeg:19.495,overhangMm:14.63,mountYawDeg:0};
+// Must match algorithms/wally_report_worker.py PRESET until saved system geometry is available.
+const defaultYawGeometry: YawGeometryParameters={effectiveLengthMm:245,offsetAngleDeg:22.42,overhangMm:16.9,mountYawDeg:0};
 const numeric=(value:string,fallback:number)=>Number.isFinite(Number(value))?Number(value):fallback;
 
 /** Report selection is shared by the controller and report workflow tests. No file selection occurs here. */

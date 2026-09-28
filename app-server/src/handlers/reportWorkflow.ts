@@ -58,7 +58,9 @@ export async function preflight(event:WorkflowInput){
 
 /** Deliberately projects only worker-required, non-display data into Step Functions state. */
 export function buildWorkerInput(value:{requestId:string;reportId:string;ownerId:string;algorithmVersion:string;parameterProvenance:Record<string,unknown>;inputs:PinnedInput[]}){
-  return {requestId:value.requestId,reportId:value.reportId,algorithmVersion:value.algorithmVersion,inputs:value.inputs,effectiveAlgorithmValues:(value.parameterProvenance?.fixedDemoValues??{}) as Record<string,unknown>,outputPrefix:prefixFor(value.ownerId,value.reportId)};
+  const fixed=(value.parameterProvenance?.fixedDemoValues??{}) as Record<string,unknown>;
+  const entered=(value.parameterProvenance?.userEnteredValues??{}) as Record<string,unknown>;
+  return {requestId:value.requestId,reportId:value.reportId,algorithmVersion:value.algorithmVersion,inputs:value.inputs,effectiveAlgorithmValues:{...fixed,...entered},outputPrefix:prefixFor(value.ownerId,value.reportId)};
 }
 
 /** Worker descriptors are accepted only at the database-derived report prefix and exact S3 version. */

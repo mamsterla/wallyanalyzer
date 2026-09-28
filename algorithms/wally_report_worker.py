@@ -6,9 +6,9 @@ No credentials are read here; AWS access belongs to the adapter role.
 from __future__ import annotations
 import hashlib
 import json
-from dataclasses import asdict
+import math
 from pathlib import Path
-from typing import Any
+from typing import Any, Mapping
 from wallyanalyzer.metadata.provider import InMemoryMetadataProvider
 from wallyanalyzer.pipelines.compile_sine import compile_sine_results
 from wallyanalyzer.pipelines.measure_sine import measure_sine_file
@@ -25,7 +25,12 @@ PRESET = {
     "cartridge_lr_um": 10.0,
 }
 
-def build_tracking_error_artifacts(inputs: list[Path], output_dir: Path, system_name: str) -> list[dict[str, Any]]:
+def build_tracking_error_artifacts(
+    inputs: list[Path],
+    output_dir: Path,
+    system_name: str,
+    effective_algorithm_values: Mapping[str, Any] | None = None,
+) -> list[dict[str, Any]]:
     """Build deterministic-named artifacts for ordered WAV inputs.
 
     Timestamps are intentionally absent from asserted JSON fields. SVG rendering has a display
@@ -34,7 +39,8 @@ def build_tracking_error_artifacts(inputs: list[Path], output_dir: Path, system_
     if not inputs:
         raise ValueError("Tracking Error requires at least one WAV input")
     output_dir.mkdir(parents=True, exist_ok=True)
-    provider = _provider(inputs)
+    preset = _resolve_preset(effective_algorithm_values)
+    provider = _provider(inputs, preset)
     measurements = [measure_sine_file(path, provider) for path in inputs]
     compiled = compile_sine_results(measurements, provider)
     artifacts: list[dict[str, Any]] = []
@@ -51,18 +57,50 @@ def build_tracking_error_artifacts(inputs: list[Path], output_dir: Path, system_
         render_compile_sweep_svg(compiled, sweep, title=f"Tracking Error sweep — {system_name}")
         artifacts.append(_artifact(sweep, "graph_svg", "image/svg+xml"))
     metrics = output_dir / "metrics.json"
-    metrics.write_text(json.dumps({"reportType":"Tracking Error","algorithmVersion":"1.0.0","preset":"RTI Test 1 Track 1 Side A","fixedDemoAssumptions":PRESET,"inputCount":len(inputs),"systemName":system_name,"measurements":[{"file":m.file_stem,"validSegments":m.diagnostics["n_valid_segments"],"processingSeconds":m.processing_time_s} for m in measurements]}, indent=2), encoding="utf-8")
+    metrics.write_text(json.dumps({"reportType":"Tracking Error","algorithmVersion":"1.0.0","preset":"RTI Test 1 Track 1 Side A","effectiveAlgorithmValues":_geometry_provenance(preset),"inputCount":len(inputs),"systemName":system_name,"measurements":[{"file":m.file_stem,"validSegments":m.diagnostics["n_valid_segments"],"processingSeconds":m.processing_time_s} for m in measurements]}, indent=2), encoding="utf-8")
     artifacts.append(_artifact(metrics, "metrics_json", "application/json"))
     manifest = output_dir / "manifest.json"
-    manifest.write_text(json.dumps({"algorithm":"tracking-error","algorithmVersion":"1.0.0","presetSnapshot":PRESET,"fixedDemoNotice":"This report uses fixed demonstration alignment assumptions; future parameter resolution may use saved system data.","artifacts":artifacts}, indent=2), encoding="utf-8")
+    manifest.write_text(json.dumps({"algorithm":"tracking-error","algorithmVersion":"1.0.0","presetSnapshot":PRESET,"effectiveAlgorithmValues":_geometry_provenance(preset),"artifacts":artifacts}, indent=2), encoding="utf-8")
     artifacts.append(_artifact(manifest, "manifest", "application/json"))
     return artifacts
 
-def _provider(inputs: list[Path]) -> InMemoryMetadataProvider:
-    track = TestTrackRecord(name=PRESET["name"], outer_radius_mm=PRESET["outer_radius_mm"], inner_radius_mm=PRESET["inner_radius_mm"])
-    acquisitions = {path.stem: AcquisitionRecord(file_stem=path.stem, digitizer=PRESET["digitizer"], test_track_name=PRESET["name"], system_id=PRESET["system_id"], cartridge_name=PRESET["cartridge_name"], cantilever_yaw_deg=PRESET["cantilever_yaw_deg"], stylus_yaw_deg=PRESET["stylus_yaw_deg"], effective_length_mm=PRESET["effective_length_mm"], offset_angle_deg=PRESET["offset_angle_deg"], overhang_mm=PRESET["overhang_mm"], actual_pivot_to_spindle_mm=PRESET["actual_pivot_to_spindle_mm"]) for path in inputs}
-    cartridge = CartridgeRecord(cartridge_name=PRESET["cartridge_name"], lr_um=PRESET["cartridge_lr_um"])
-    return InMemoryMetadataProvider(acquisitions=acquisitions, test_tracks={track.name: track}, cartridges={cartridge.cartridge_name: cartridge}, systems={PRESET["system_id"]: SystemRecord(system_id=PRESET["system_id"])})
+def _resolve_preset(values: Mapping[str, Any] | None) -> dict[str, Any]:
+    """Apply the persisted report geometry without mutating shared defaults."""
+    preset = dict(PRESET)
+    if not values:
+        return preset
+    if not isinstance(values, Mapping):
+        raise ValueError("Tracking Error geometry is invalid.")
+    fields = {
+        "effectiveLengthMm": ("effective_length_mm", lambda value: value > 0),
+        "offsetAngleDeg": ("offset_angle_deg", lambda value: 0 < value < 90),
+        "overhangMm": ("overhang_mm", lambda value: value >= 0),
+        "mountYawDeg": ("cantilever_yaw_deg", lambda value: abs(value) <= 45),
+    }
+    for source, (target, valid) in fields.items():
+        if source not in values:
+            continue
+        value = values[source]
+        if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or not valid(float(value)):
+            raise ValueError("Tracking Error geometry is invalid.")
+        preset[target] = float(value)
+    return preset
+
+
+def _geometry_provenance(preset: Mapping[str, Any]) -> dict[str, float]:
+    return {
+        "effectiveLengthMm": float(preset["effective_length_mm"]),
+        "offsetAngleDeg": float(preset["offset_angle_deg"]),
+        "overhangMm": float(preset["overhang_mm"]),
+        "mountYawDeg": float(preset["cantilever_yaw_deg"]),
+    }
+
+
+def _provider(inputs: list[Path], preset: Mapping[str, Any]) -> InMemoryMetadataProvider:
+    track = TestTrackRecord(name=preset["name"], outer_radius_mm=preset["outer_radius_mm"], inner_radius_mm=preset["inner_radius_mm"])
+    acquisitions = {path.stem: AcquisitionRecord(file_stem=path.stem, digitizer=preset["digitizer"], test_track_name=preset["name"], system_id=preset["system_id"], cartridge_name=preset["cartridge_name"], cantilever_yaw_deg=preset["cantilever_yaw_deg"], stylus_yaw_deg=preset["stylus_yaw_deg"], effective_length_mm=preset["effective_length_mm"], offset_angle_deg=preset["offset_angle_deg"], overhang_mm=preset["overhang_mm"], actual_pivot_to_spindle_mm=preset["actual_pivot_to_spindle_mm"]) for path in inputs}
+    cartridge = CartridgeRecord(cartridge_name=preset["cartridge_name"], lr_um=preset["cartridge_lr_um"])
+    return InMemoryMetadataProvider(acquisitions=acquisitions, test_tracks={track.name: track}, cartridges={cartridge.cartridge_name: cartridge}, systems={preset["system_id"]: SystemRecord(system_id=preset["system_id"])})
 
 def _svg_to_pdf(svg: Path, pdf: Path) -> None:
     try:
