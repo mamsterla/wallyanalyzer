@@ -71,7 +71,7 @@ export function createProductionServer(dependencies: ProductionDependencies) {
   return createServer(async (request, response) => {
     try {
       if (request.method === 'GET' && request.url === '/health')
-        return sendJson(response, 200, { status: 'ok', service: 'wally-app-server' });
+        return sendJson(response, 200, { status: 'ok', service: 'wally-app-server', release: releaseVersion() });
       const path = new URL(request.url ?? '/', 'http://wally.local').pathname;
       const principal = await verify(bearerToken(request), cognitoSettings());
       if (request.method === 'POST' && path === '/v1/me/confirm-email') {
@@ -774,6 +774,7 @@ function requestId(r: IncomingMessage) {
   const x = r.headers['x-request-id'];
   return typeof x === 'string' && /^[A-Za-z0-9_-]{1,128}$/.test(x) ? x : undefined;
 }
+function releaseVersion(){const value=(process.env.RELEASE_VERSION??'unknown').trim();return/^[A-Za-z0-9._/-]{1,128}$/.test(value)?value:'unknown';}
 function sendJson(r: ServerResponse, status: number, body?: unknown) {
   r.writeHead(status, { 'content-type': 'application/json; charset=utf-8' });
   r.end(body === undefined ? '' : JSON.stringify(body));

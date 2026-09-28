@@ -9,6 +9,13 @@ import { HttpError } from './services/auth.js';
 process.env.COGNITO_USER_POOL_ID = 'pool';
 process.env.COGNITO_WEB_CLIENT_ID = 'client';
 
+test('health exposes the non-secret deployed release version', async () => {
+  const prior=process.env.RELEASE_VERSION; process.env.RELEASE_VERSION='cf7831a';
+  const server=createProductionServer({pool:{} as never}); await new Promise<void>(r=>server.listen(0,'127.0.0.1',r));
+  try { const result=await call(server,'GET','/health'); assert.equal(result.status,200); assert.deepEqual(JSON.parse(result.body),{status:'ok',service:'wally-app-server',release:'cf7831a'}); }
+  finally { await new Promise<void>(r=>server.close(()=>r())); if(prior===undefined)delete process.env.RELEASE_VERSION;else process.env.RELEASE_VERSION=prior; }
+});
+
 test('legacy fulfillment remains supported and invites the detached customer', async () => {
   const calls: string[] = []; const customers = new Map<string, { id:string; email:string; lifecycle:any }>(); let unit = 0;
   const repository = {

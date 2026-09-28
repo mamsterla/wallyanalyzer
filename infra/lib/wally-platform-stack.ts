@@ -36,6 +36,8 @@ export class WallyPlatformStack extends cdk.Stack {
     super(scope, id, props);
 
     const retention = cdk.RemovalPolicy.RETAIN;
+    const sourceRevision=process.env.CODEBUILD_RESOLVED_SOURCE_VERSION??'unknown';
+    const releaseVersion=/^[A-Za-z0-9._/-]{1,128}$/.test(sourceRevision)?sourceRevision:'unknown';
     const applicationHostname = 'wally-analytics.app';
     const wwwApplicationHostname = `www.${applicationHostname}`;
     const applicationHostedZoneId = requiredContext(this, 'applicationHostedZoneId');
@@ -313,6 +315,7 @@ export class WallyPlatformStack extends cdk.Stack {
       logging: ecs.LogDrivers.awsLogs({ streamPrefix: 'wally-app', logGroup: applicationLogGroup }),
       environment: {
         NODE_ENV: 'production',
+        RELEASE_VERSION: releaseVersion,
         COGNITO_USER_POOL_ID: userPool.userPoolId,
         COGNITO_WEB_CLIENT_ID: webClient.userPoolClientId,
         // Public identifiers are rendered into runtime-config.js by the container
