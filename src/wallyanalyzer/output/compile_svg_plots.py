@@ -85,7 +85,7 @@ def render_compile_validation_svg(
             x_series=[radius_valid, radius_smooth, radius_smooth],
             y_series=[result.ate_raw_deg, result.ate_measured_deg, result.ate_fitted_deg],
             classes=["raw", "fit1", "fit4"],
-            label="Apparent Tracking Error (°)",
+            label="Play Yaw (°)",
             xlabel="Radius (mm)",
             left=MARGIN_LEFT,
             top=validation_top,
@@ -119,9 +119,9 @@ def render_compile_validation_svg(
             left=MARGIN_LEFT + 28,
             top=validation_top + 12,
             entries=[
-                ("raw", f"Raw measurements (±{float(raw_noise_deg):.3g}°)"),
+                ("raw", f"Raw play-yaw estimates (±{float(raw_noise_deg):.3g}°)"),
                 ("fit1", f"{avg_rotations}-rotation average"),
-                ("fit4", f"Fitted tracking-error curve (±{3.0 * summary.apparent_tracking_fit_rms_deg:.3g}°)"),
+                ("fit4", f"Fitted play-yaw curve (±{3.0 * summary.apparent_tracking_fit_rms_deg:.3g}°)"),
             ],
         )
     )
@@ -131,7 +131,7 @@ def render_compile_validation_svg(
         f'<rect x="{MARGIN_LEFT}" y="{summary_top:.1f}" width="{panel_width}" height="112" rx="5" fill="#f6f8fa" stroke="#d5dde5"/>',
         f'<text x="{MARGIN_LEFT + 20}" y="{summary_top + 24:.1f}" class="small" style="font-weight:bold;fill:#36536b">MEASUREMENT SUMMARY</text>',
         f'<text x="{MARGIN_LEFT + 20}" y="{summary_top + 50:.1f}" class="mid">{_escape(f"Geometry  ·  L {float(acquisition.effective_length_mm):.3f} mm   OH {summary.effective_overhang_mm:.3f} mm   Mount yaw {summary.effective_mount_yaw_deg:.3g}°")}</text>',
-        f'<text x="{MARGIN_LEFT + 20}" y="{summary_top + 78:.1f}" class="mid">{_escape(f"Tracking  ·  peak |ATE| {summary.apparent_tracking_error_peak_abs_deg:.3g}°   mean |ATE| {summary.apparent_tracking_error_mean_deg:.3g}°   fit RMS {summary.apparent_tracking_fit_rms_deg:.4f}°")}</text>',
+        f'<text x="{MARGIN_LEFT + 20}" y="{summary_top + 78:.1f}" class="mid">{_escape(f"Play Yaw  ·  peak {summary.apparent_tracking_error_peak_abs_deg:.3g}°   mean {summary.apparent_tracking_error_mean_deg:.3g}°   fit RMS {summary.apparent_tracking_fit_rms_deg:.4f}°")}</text>',
         f'<text x="{MARGIN_LEFT + 20}" y="{summary_top + 101:.1f}" class="small">{_escape(f"Sampling  ·  {result.measurement.periods_per_segment} cycles of 1 kHz every {result.measurement.skip_deg:.0f}°   ·   LR {summary.effective_lr_um:.3g} µm   ·   pivot/spindle adjustment {piv_spin_adj:.3f} mm")}</text>',
     ])
 
@@ -179,7 +179,7 @@ def render_compile_validation_svg(
 
     svg.extend([
         f'<line x1="{MARGIN_LEFT}" y1="{SVG_HEIGHT - 29}" x2="{SVG_WIDTH - MARGIN_RIGHT}" y2="{SVG_HEIGHT - 29}" stroke="#d5dde5"/>',
-        f'<text x="{MARGIN_LEFT}" y="{SVG_HEIGHT - 12}" class="small" style="fill:#4b5563">Interpretation: Tracking-error and distortion measurements are diagnostic. This report does not certify alignment or playback compliance.</text>',
+        f'<text x="{MARGIN_LEFT}" y="{SVG_HEIGHT - 12}" class="small" style="fill:#4b5563">Interpretation: Play Yaw includes radial geometry plus stylus and mount yaw. Results are diagnostic and do not certify alignment or playback compliance.</text>',
     ])
     svg.append("</svg>")
     output.write_text("\n".join(svg), encoding="utf-8")
