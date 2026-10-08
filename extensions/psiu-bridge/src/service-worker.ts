@@ -29,8 +29,7 @@ async function handle(port: any, message: Request) {
         return reply(port, message.requestId, await json('/status'));
       case 'sampling':
         if (typeof message.running !== 'boolean') throw new Error('Invalid sampling request.');
-        await json('/api/sampling', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ running: message.running }) });
-        return reply(port, message.requestId, await json('/status'));
+        return reply(port, message.requestId, await setRecording(message.running));
       case 'audio': return streamAudio(port, message.requestId);
       default: throw new Error('Unsupported bridge command.');
     }
@@ -44,6 +43,28 @@ async function json(path: string, init?: RequestInit): Promise<unknown> {
   if (!response.ok) throw new Error(`PSIU returned HTTP ${response.status} for ${path}.`);
   return response.json();
 }
+
+async function setRecording(running: boolean): Promise<unknown> {
+  let lastError: Error | undefined;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try { await json('/api/sampling', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ running }) }); } catch (error) { lastError = error instanceof Error ? error : new Error('PSIU sampling request failed.'); }
+    try {
+      const status = await json('/status');
+      if (typeof (status as { recording?: unknown }).recording === 'boolean' && (status as { recording: boolean }).recording === running) return status;
+      lastError = new Error(`PSIU did not confirm recording=${running}.`);
+    } catch (error) { lastError = error instanceof Error ? error : new Error('PSIU status request failed.'); }
+    if (attempt < 2) await wait(500);
+  }
+  try {
+    await json(running ? '/api/samplestart' : '/api/samplestop', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: true }) });
+    const status = await json('/status');
+    if (typeof (status as { recording?: unknown }).recording === 'boolean' && (status as { recording: boolean }).recording === running) return status;
+    lastError = new Error(`PSIU fallback did not confirm recording=${running}.`);
+  } catch (error) { lastError = error instanceof Error ? error : new Error('PSIU sampling fallback failed.'); }
+  throw lastError ?? new Error(`PSIU did not confirm recording=${running}.`);
+}
+
+function wait(milliseconds: number) { return new Promise<void>((resolve) => setTimeout(resolve, milliseconds)); }
 
 async function streamAudio(port: any, requestId: string) {
   const response = await fetch(`${base}/audio.wav`, { headers: { range: 'bytes=0-' } });
