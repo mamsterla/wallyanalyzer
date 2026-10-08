@@ -10,7 +10,7 @@ const ids = [
 const row = (id: string, createdAt: string) => ({
   id,
   request_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-  display_name: 'Tracking Error',
+  display_name: 'Yaw Angle Report',
   algorithm_version: '0.1.0',
   preset_name: 'RTI Test 1',
   preset_version: '1',

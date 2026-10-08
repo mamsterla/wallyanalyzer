@@ -1,4 +1,4 @@
-"""Tracking Error artifact builder used by the private analysis worker image.
+"""Yaw Angle Report artifact builder used by the private analysis worker image.
 
 The cloud adapter supplies an isolated temporary directory and uploads only returned files.
 No credentials are read here; AWS access belongs to the adapter role.
@@ -15,13 +15,15 @@ from wallyanalyzer.pipelines.measure_sine import measure_sine_file
 from wallyanalyzer.output.compile_svg_plots import render_compile_validation_svg, render_compile_sweep_svg
 from wallyanalyzer.schemas.metadata import AcquisitionRecord, CartridgeRecord, SystemRecord, TestTrackRecord
 
+REPORT_TITLE = "Yaw Angle Report"
+
 PRESET = {
     "name": "RTI Test 1 Track 1 Side A", "outer_radius_mm": 144.5, "inner_radius_mm": 58.5,
     "digitizer": "Cosmos", "effective_length_mm": 245.0, "offset_angle_deg": 22.42,
     "overhang_mm": 16.9, "cantilever_yaw_deg": 0.0, "stylus_yaw_deg": -0.2,
     "actual_pivot_to_spindle_mm": 228.1,
     "system_id": 1,
-    "cartridge_name": "Tracking Error reference cartridge",
+    "cartridge_name": "Yaw Angle Report reference cartridge",
     "cartridge_lr_um": 10.0,
 }
 
@@ -37,7 +39,7 @@ def build_tracking_error_artifacts(
     timestamp, so tests assert artifact existence/shape rather than byte equality.
     """
     if not inputs:
-        raise ValueError("Tracking Error requires at least one WAV input")
+        raise ValueError("Yaw Angle Report requires at least one WAV input")
     output_dir.mkdir(parents=True, exist_ok=True)
     preset = _resolve_preset(effective_algorithm_values)
     provider = _provider(inputs, preset)
@@ -46,7 +48,7 @@ def build_tracking_error_artifacts(
     artifacts: list[dict[str, Any]] = []
     for index, result in enumerate(compiled.single_results):
         svg = output_dir / f"tracking-error-{index + 1}.svg"
-        render_compile_validation_svg(result, svg, title=f"Tracking Error — {system_name}")
+        render_compile_validation_svg(result, svg, title=f"{REPORT_TITLE} — {system_name}")
         artifacts.append(_artifact(svg, "graph_svg", "image/svg+xml"))
         if index == 0:
             pdf = output_dir / "tracking-error.pdf"
@@ -54,10 +56,10 @@ def build_tracking_error_artifacts(
             artifacts.append(_artifact(pdf, "report_pdf", "application/pdf"))
     if compiled.aggregate_summary is not None:
         sweep = output_dir / "tracking-error-sweep.svg"
-        render_compile_sweep_svg(compiled, sweep, title=f"Tracking Error sweep — {system_name}")
+        render_compile_sweep_svg(compiled, sweep, title=f"{REPORT_TITLE} sweep — {system_name}")
         artifacts.append(_artifact(sweep, "graph_svg", "image/svg+xml"))
     metrics = output_dir / "metrics.json"
-    metrics.write_text(json.dumps({"reportType":"Tracking Error","algorithmVersion":"1.0.0","preset":"RTI Test 1 Track 1 Side A","effectiveAlgorithmValues":_geometry_provenance(preset),"inputCount":len(inputs),"systemName":system_name,"measurements":[{"file":m.file_stem,"validSegments":m.diagnostics["n_valid_segments"],"processingSeconds":m.processing_time_s} for m in measurements]}, indent=2), encoding="utf-8")
+    metrics.write_text(json.dumps({"reportType":REPORT_TITLE,"algorithmVersion":"1.0.0","preset":"RTI Test 1 Track 1 Side A","effectiveAlgorithmValues":_geometry_provenance(preset),"inputCount":len(inputs),"systemName":system_name,"measurements":[{"file":m.file_stem,"validSegments":m.diagnostics["n_valid_segments"],"processingSeconds":m.processing_time_s} for m in measurements]}, indent=2), encoding="utf-8")
     artifacts.append(_artifact(metrics, "metrics_json", "application/json"))
     manifest = output_dir / "manifest.json"
     manifest.write_text(json.dumps({"algorithm":"tracking-error","algorithmVersion":"1.0.0","presetSnapshot":PRESET,"effectiveAlgorithmValues":_geometry_provenance(preset),"artifacts":artifacts}, indent=2), encoding="utf-8")
@@ -70,7 +72,7 @@ def _resolve_preset(values: Mapping[str, Any] | None) -> dict[str, Any]:
     if not values:
         return preset
     if not isinstance(values, Mapping):
-        raise ValueError("Tracking Error geometry is invalid.")
+        raise ValueError("Yaw Angle Report geometry is invalid.")
     fields = {
         "effectiveLengthMm": ("effective_length_mm", lambda value: value > 0),
         "offsetAngleDeg": ("offset_angle_deg", lambda value: 0 < value < 90),
@@ -82,7 +84,7 @@ def _resolve_preset(values: Mapping[str, Any] | None) -> dict[str, Any]:
             continue
         value = values[source]
         if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or not valid(float(value)):
-            raise ValueError("Tracking Error geometry is invalid.")
+            raise ValueError("Yaw Angle Report geometry is invalid.")
         preset[target] = float(value)
     return preset
 

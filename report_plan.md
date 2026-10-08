@@ -155,9 +155,9 @@ A persistent, on-demand smoke lane validates deployed asynchronous processing wi
 4. What timeout, memory, and ephemeral-storage profile does the selected algorithm need?
 5. When products arrive, should credits debit at request acceptance, worker start, or successful completion?
 
-## Approved Tracking Error vertical-slice decisions
+## Approved Yaw Angle Report vertical-slice decisions
 
-- First report definition: `tracking-error` / **Tracking Error** / algorithm version `1.0.0`.
+- First report definition: stable key `tracking-error` / **Yaw Angle Report** / algorithm version `1.0.0`.
 - First versioned preset: **RTI Test 1 Track 1 Side A** v1 (144.5 mm to 58.5 mm).
 - The initial report uses fixed demonstration acquisition/alignment values from the existing fixture. Artifacts and immutable provenance must state this limitation.
 - A report request owns the ordered, fully verified WAV upload batch. One selected definition/preset creates one child analysis report; a future multi-selection request fans out child reports through a bounded Standard Step Functions Map.

@@ -652,7 +652,7 @@ export class WallyPlatformStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'SampleBucketName', { value: sampleBucket.bucketName });
     new cdk.CfnOutput(this, 'ReportBucketName', { value: reportBucket.bucketName });
     new cdk.CfnOutput(this, 'DatabaseProxyEndpoint', { value: databaseProxy.endpoint });
-    new cdk.CfnOutput(this, 'ReportSmokeRunnerFunctionName', { value: smokeRunnerFn.functionName, description: 'Manually invoked isolated Tracking Error smoke runner.' });
+    new cdk.CfnOutput(this, 'ReportSmokeRunnerFunctionName', { value: smokeRunnerFn.functionName, description: 'Manually invoked isolated Yaw Angle Report smoke runner.' });
     new cdk.CfnOutput(this, 'BootstrapAdministratorSecretArn', { value: bootstrapAdminSecret.secretArn });
     new cdk.CfnOutput(this, 'BootstrapAdministratorTaskDefinitionArn', { value: bootstrapTaskDefinition.taskDefinitionArn });
     new cdk.CfnOutput(this, 'ApplicationTaskDefinitionArn', { value: taskDefinition.taskDefinitionArn });

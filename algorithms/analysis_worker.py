@@ -40,7 +40,7 @@ def handler(event: dict[str, Any] | str, _context: Any) -> dict[str, Any]:
         # System display data remains in Postgres; only validated calculation values enter the worker.
         effective_values=event.get('effectiveAlgorithmValues', {})
         if not isinstance(effective_values, dict):
-            raise ValueError('Tracking Error calculation values are invalid.')
+            raise ValueError('Yaw Angle Report calculation values are invalid.')
         artifacts=build_tracking_error_artifacts(inputs,root/'output','Recording system',effective_values)
         output=[]; graph_count=0
         for artifact in artifacts:

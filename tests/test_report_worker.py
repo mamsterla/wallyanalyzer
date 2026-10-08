@@ -27,7 +27,7 @@ class TrackingErrorWorkerGeometryTests(unittest.TestCase):
         self.assertEqual(PRESET["effective_length_mm"], 245.0)
 
     def test_invalid_persisted_geometry_is_rejected(self) -> None:
-        with self.assertRaisesRegex(ValueError, "geometry is invalid"):
+        with self.assertRaisesRegex(ValueError, "Yaw Angle Report geometry is invalid"):
             _resolve_preset({"mountYawDeg": 90.0})
 
     def test_report_pdf_and_metrics_use_persisted_geometry(self) -> None:
@@ -41,6 +41,7 @@ class TrackingErrorWorkerGeometryTests(unittest.TestCase):
             self.assertIn("report_pdf", {artifact["kind"] for artifact in artifacts})
             self.assertTrue((Path(tmpdir) / "tracking-error.pdf").is_file())
             metrics = json.loads((Path(tmpdir) / "metrics.json").read_text(encoding="utf-8"))
+            self.assertEqual(metrics["reportType"], "Yaw Angle Report")
             self.assertEqual(metrics["effectiveAlgorithmValues"], {"effectiveLengthMm": 250.0, "offsetAngleDeg": 23.0, "overhangMm": 17.5, "mountYawDeg": -0.4})
 
 
