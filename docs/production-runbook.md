@@ -7,6 +7,45 @@
 
 Use `AWS_PROFILE=wallyanalyzer AWS_REGION=us-east-1` for every operator command.
 
+## Routine application deployment
+
+Production application releases are **manual CodePipeline executions**. A push to `main` updates the source revision available to the pipeline but does **not** deploy it.
+
+1. Validate the intended commit locally, commit it, and push it to `main`.
+2. Confirm the pushed revision:
+
+```bash
+git rev-parse HEAD
+git ls-remote origin refs/heads/main
+```
+
+3. Start the production pipeline explicitly:
+
+```bash
+export AWS_PROFILE=wallyanalyzer AWS_REGION=us-east-1
+PIPELINE=wally-analyzer-production
+EXECUTION_ID=$(aws codepipeline start-pipeline-execution --name "$PIPELINE" \
+  --client-request-token "wally-production-$(date +%s)" \
+  --query pipelineExecutionId --output text)
+printf 'Started %s\n' "$EXECUTION_ID"
+```
+
+4. Monitor that exact execution until it reaches `Succeeded` or a terminal failure:
+
+```bash
+aws codepipeline get-pipeline-execution --pipeline-name "$PIPELINE" \
+  --pipeline-execution-id "$EXECUTION_ID" \
+  --query 'pipelineExecution.status' --output text
+```
+
+5. Verify the public release and ensure its `release` SHA is the intended `main` commit:
+
+```bash
+curl --fail --silent --show-error https://wally-analytics.app/health
+```
+
+Do not start a second execution while one is in progress. Do not use a direct CDK deploy for routine application releases. Use the separate domain-activation pipeline only for approved domain or certificate activation work.
+
 ## Node base image
 
 Local and production image builds use AWS Public ECR directly:

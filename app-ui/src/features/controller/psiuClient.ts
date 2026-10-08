@@ -1,9 +1,9 @@
 import type { PsiuSignal, PsiuStatus } from '@wally/contracts';
 
 export class PsiuUnavailableError extends Error { constructor(message = 'PSIU is unavailable. Wally PSIU Bridge cannot reach the device.') { super(message); } }
-export interface PsiuClient { scanUid(): Promise<string>; getStatus(): Promise<PsiuStatus>; getSignal(): Promise<PsiuSignal>; setInput(xlr: boolean): Promise<PsiuStatus>; startCapture(): Promise<PsiuStatus>; stopCapture(): Promise<PsiuStatus>; getCompletedCapture(): Promise<Blob | null>; }
+export interface PsiuClient { scanUid(): Promise<string>; getStatus(): Promise<PsiuStatus>; getSignal(): Promise<PsiuSignal>; setInput(xlr: boolean): Promise<PsiuStatus>; setSampleRate(hz: 96_000 | 192_000): Promise<PsiuStatus>; startCapture(): Promise<PsiuStatus>; stopCapture(): Promise<PsiuStatus>; getCompletedCapture(): Promise<Blob | null>; }
 export type FetchLike = typeof fetch;
-type BridgeCommand = 'probe' | 'uid' | 'status' | 'signal' | 'inputsel' | 'sampling' | 'audio';
+type BridgeCommand = 'probe' | 'uid' | 'status' | 'signal' | 'inputsel' | 'samplerate' | 'sampling' | 'audio';
 type BridgeResponse = { channel: 'wally-psiu-bridge'; type: 'result' | 'error' | 'audio-chunk' | 'audio-complete'; requestId: string; value?: unknown; data?: string };
 const bridgeChannel = 'wally-psiu-bridge';
 
@@ -19,6 +19,7 @@ function createDirectClient(fetchImplementation: FetchLike, base: string): PsiuC
     async getStatus() { return requestStatus(fetchImplementation, `${base}/status`); },
     async getSignal() { return parseSignal(await requestJson(fetchImplementation, `${base}/signal`)); },
     async setInput(xlr: boolean) { return requestStatus(fetchImplementation, `${base}/input`, inputInit(xlr)); },
+    async setSampleRate(hz: 96_000 | 192_000) { return requestStatus(fetchImplementation, `${base}/samplerate`, sampleRateInit(hz)); },
     async startCapture() { await requestJson(fetchImplementation, `${base}/capture`, captureInit(true)); return requestStatus(fetchImplementation, `${base}/status`); },
     async stopCapture() { await requestJson(fetchImplementation, `${base}/capture`, captureInit(false)); return requestStatus(fetchImplementation, `${base}/status`); },
     async getCompletedCapture() { return wavResponse(await response(fetchImplementation, `${base}/wav`, { headers: { range: 'bytes=0-' } })); },
@@ -36,13 +37,14 @@ export function createExtensionClient(): PsiuClient {
     async getStatus() { return parseStatus(await bridgeRequest('status')); },
     async getSignal() { return parseSignal(await bridgeRequest('signal')); },
     async setInput(xlr: boolean) { return parseStatus(await bridgeRequest('inputsel', undefined, 10_000, xlr)); },
+    async setSampleRate(hz: 96_000 | 192_000) { return parseStatus(await bridgeRequest('samplerate', undefined, 10_000, undefined, hz)); },
     async startCapture() { return parseStatus(await bridgeRequest('sampling', true)); },
     async stopCapture() { return parseStatus(await bridgeRequest('sampling', false)); },
     async getCompletedCapture() { return bridgeAudio(); },
   };
 }
 
-function bridgeRequest(command: Exclude<BridgeCommand, 'audio'>, running?: boolean, timeoutMs = 10_000, xlr?: boolean): Promise<unknown> {
+function bridgeRequest(command: Exclude<BridgeCommand, 'audio'>, running?: boolean, timeoutMs = 10_000, xlr?: boolean, hz?: 96_000 | 192_000): Promise<unknown> {
   return new Promise((resolve, reject) => {
     const requestId = crypto.randomUUID();
     const timer = window.setTimeout(() => finish(new PsiuUnavailableError()), timeoutMs);
@@ -55,7 +57,7 @@ function bridgeRequest(command: Exclude<BridgeCommand, 'audio'>, running?: boole
     };
     const finish = (error?: Error, value?: unknown) => { window.clearTimeout(timer); window.removeEventListener('message', onMessage); error ? reject(error) : resolve(value); };
     window.addEventListener('message', onMessage);
-    window.postMessage({ channel: bridgeChannel, type: 'request', requestId, command, ...(command === 'sampling' ? { running } : {}), ...(command === 'inputsel' ? { xlr } : {}) }, window.location.origin);
+    window.postMessage({ channel: bridgeChannel, type: 'request', requestId, command, ...(command === 'sampling' ? { running } : {}), ...(command === 'inputsel' ? { xlr } : {}), ...(command === 'samplerate' ? { hz } : {}) }, window.location.origin);
   });
 }
 
@@ -81,6 +83,7 @@ function bridgeAudio(): Promise<Blob | null> {
 function fromBase64(value: string) { const binary = atob(value); return Uint8Array.from(binary, character => character.charCodeAt(0)); }
 function captureInit(running: boolean): RequestInit { return { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ running }) }; }
 function inputInit(xlr: boolean): RequestInit { return { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ xlr }) }; }
+function sampleRateInit(hz: 96_000 | 192_000): RequestInit { return { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ hz }) }; }
 async function response(fetchImplementation: FetchLike, input: RequestInfo | URL, init?: RequestInit): Promise<Response> { try { return init === undefined ? await fetchImplementation(input) : await fetchImplementation(input, init); } catch { throw new PsiuUnavailableError(); } }
 async function requestJson(fetchImplementation: FetchLike, input: RequestInfo | URL, init?: RequestInit): Promise<unknown> { const result = await response(fetchImplementation, input, init); if (!result.ok) throw new PsiuUnavailableError(); try { return await result.json(); } catch { throw new PsiuUnavailableError(); } }
 async function requestStatus(fetchImplementation: FetchLike, input: RequestInfo | URL, init?: RequestInit): Promise<PsiuStatus> { return parseStatus(await requestJson(fetchImplementation, input, init)); }

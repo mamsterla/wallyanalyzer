@@ -1,8 +1,8 @@
 export {};
 declare const chrome: any;
 
-type Command = 'probe' | 'uid' | 'status' | 'signal' | 'inputsel' | 'sampling' | 'audio';
-type Request = { type: 'request'; requestId: string; command: Command; running?: boolean; xlr?: boolean };
+type Command = 'probe' | 'uid' | 'status' | 'signal' | 'inputsel' | 'samplerate' | 'sampling' | 'audio';
+type Request = { type: 'request'; requestId: string; command: Command; running?: boolean; xlr?: boolean; hz?: number };
 const base = 'http://psiu.local';
 const chunkBytes = 48 * 1024;
 
@@ -22,6 +22,10 @@ async function handle(port: any, message: Request) {
       case 'inputsel':
         if (typeof message.xlr !== 'boolean') throw new Error('Invalid input selection request.');
         await json('/api/inputsel', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ xlr: message.xlr }) });
+        return reply(port, message.requestId, await json('/status'));
+      case 'samplerate':
+        if (message.hz !== 96_000 && message.hz !== 192_000) throw new Error('Invalid sample-rate request.');
+        await json('/samplerate', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ hz: message.hz }) });
         return reply(port, message.requestId, await json('/status'));
       case 'sampling':
         if (typeof message.running !== 'boolean') throw new Error('Invalid sampling request.');

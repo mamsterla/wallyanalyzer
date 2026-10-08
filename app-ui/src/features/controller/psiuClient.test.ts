@@ -68,6 +68,14 @@ describe('PSIU client', () => {
     expect(fetchMock).toHaveBeenCalledWith('/api/psiu/input', expect.objectContaining({ method: 'POST', body: '{"xlr":true}' }));
   });
 
+  it('sets a supported sample rate only through the same-origin local proxy', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ ...status, sample_rate_hz: 96_000 }));
+    const client = createPsuClient(fetchMock);
+
+    await expect(client.setSampleRate(96_000)).resolves.toMatchObject({ sampleRateHz: 96_000 });
+    expect(fetchMock).toHaveBeenCalledWith('/api/psiu/samplerate', expect.objectContaining({ method: 'POST', body: '{"hz":96000}' }));
+  });
+
   it('sends capture actions only to the same-origin local proxy', async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(jsonResponse({ accepted: true }))
