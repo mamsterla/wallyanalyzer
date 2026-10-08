@@ -36,15 +36,15 @@ export function createExtensionClient(): PsiuClient {
     async scanUid() { return uid(await bridgeRequest('uid')); },
     async getStatus() { return parseStatus(await bridgeRequest('status')); },
     async getSignal() { return parseSignal(await bridgeRequest('signal')); },
-    async setInput(xlr: boolean) { return parseStatus(await bridgeRequest('inputsel', undefined, 10_000, xlr)); },
-    async setSampleRate(hz: 96_000 | 192_000) { return parseStatus(await bridgeRequest('samplerate', undefined, 10_000, undefined, hz)); },
+    async setInput(xlr: boolean) { return parseStatus(await bridgeRequest('inputsel', undefined, 60_000, xlr)); },
+    async setSampleRate(hz: 96_000 | 192_000) { return parseStatus(await bridgeRequest('samplerate', undefined, 60_000, undefined, hz)); },
     async startCapture() { return parseStatus(await bridgeRequest('sampling', true)); },
     async stopCapture() { return parseStatus(await bridgeRequest('sampling', false)); },
     async getCompletedCapture() { return bridgeAudio(); },
   };
 }
 
-function bridgeRequest(command: Exclude<BridgeCommand, 'audio'>, running?: boolean, timeoutMs = 10_000, xlr?: boolean, hz?: 96_000 | 192_000): Promise<unknown> {
+function bridgeRequest(command: Exclude<BridgeCommand, 'audio'>, running?: boolean, timeoutMs = 60_000, xlr?: boolean, hz?: 96_000 | 192_000): Promise<unknown> {
   return new Promise((resolve, reject) => {
     const requestId = crypto.randomUUID();
     const timer = window.setTimeout(() => finish(new PsiuUnavailableError()), timeoutMs);
@@ -65,7 +65,7 @@ function bridgeAudio(): Promise<Blob | null> {
   return new Promise((resolve, reject) => {
     const requestId = crypto.randomUUID(); const chunks: Uint8Array[] = [];
     let timer = 0;
-    const armInactivityTimer = () => { window.clearTimeout(timer); timer = window.setTimeout(() => finish(new PsiuUnavailableError('PSIU audio transfer timed out while waiting for data.')), 60_000); };
+    const armInactivityTimer = () => { window.clearTimeout(timer); timer = window.setTimeout(() => finish(new PsiuUnavailableError('PSIU audio transfer timed out while waiting for data.')), 300_000); };
     const onMessage = (event: MessageEvent<unknown>) => {
       if (event.source !== window || event.origin !== window.location.origin) return;
       const message = event.data as Partial<BridgeResponse> | null;
