@@ -1,10 +1,10 @@
 import type { PsiuSignal, PsiuStatus } from '@wally/contracts';
 
 export class PsiuUnavailableError extends Error { constructor(message = 'PSIU is unavailable. Wally PSIU Bridge cannot reach the device.') { super(message); } }
-export interface PsiuClient { scanUid(): Promise<string>; getStatus(): Promise<PsiuStatus>; getSignal(): Promise<PsiuSignal>; setInput(xlr: boolean): Promise<PsiuStatus>; setSampleRate(hz: 96_000 | 192_000): Promise<PsiuStatus>; startCapture(): Promise<PsiuStatus>; stopCapture(): Promise<PsiuStatus>; getCompletedCapture(): Promise<Blob | null>; }
+export interface PsiuClient { scanUid(): Promise<string>; getStatus(): Promise<PsiuStatus>; getSignal(): Promise<PsiuSignal>; setInput(xlr: boolean): Promise<PsiuStatus>; setSampleRate(hz: 96_000 | 192_000): Promise<PsiuStatus>; startCapture(): Promise<PsiuStatus>; stopCapture(): Promise<PsiuStatus>; getCompletedCapture(onProgress?: (receivedBytes: number, totalBytes?: number) => void): Promise<Blob | null>; }
 export type FetchLike = typeof fetch;
 type BridgeCommand = 'probe' | 'uid' | 'status' | 'signal' | 'inputsel' | 'samplerate' | 'sampling' | 'audio';
-type BridgeResponse = { channel: 'wally-psiu-bridge'; type: 'result' | 'error' | 'audio-chunk' | 'audio-complete'; requestId: string; value?: unknown; data?: string; message?: string };
+type BridgeResponse = { channel: 'wally-psiu-bridge'; type: 'result' | 'error' | 'audio-start' | 'audio-chunk' | 'audio-complete'; requestId: string; value?: unknown; data?: string; message?: string; totalBytes?: number };
 const bridgeChannel = 'wally-psiu-bridge';
 
 /** Local Compose uses its same-origin proxy; deployed Wally uses the installed browser bridge. */
@@ -22,7 +22,7 @@ function createDirectClient(fetchImplementation: FetchLike, base: string): PsiuC
     async setSampleRate(hz: 96_000 | 192_000) { return requestStatus(fetchImplementation, `${base}/samplerate`, sampleRateInit(hz)); },
     async startCapture() { await requestJson(fetchImplementation, `${base}/capture`, captureInit(true)); return requestStatus(fetchImplementation, `${base}/status`); },
     async stopCapture() { await requestJson(fetchImplementation, `${base}/capture`, captureInit(false)); return requestStatus(fetchImplementation, `${base}/status`); },
-    async getCompletedCapture() { return wavResponse(await response(fetchImplementation, `${base}/wav`, { headers: { range: 'bytes=0-' } })); },
+    async getCompletedCapture(onProgress) { const wav = await wavResponse(await response(fetchImplementation, `${base}/wav`, { headers: { range: 'bytes=0-' } })); if (wav) onProgress?.(wav.size, wav.size); return wav; },
   };
 }
 
@@ -40,7 +40,7 @@ export function createExtensionClient(): PsiuClient {
     async setSampleRate(hz: 96_000 | 192_000) { return parseStatus(await bridgeRequest('samplerate', undefined, 900_000, undefined, hz)); },
     async startCapture() { return parseStatus(await bridgeRequest('sampling', true)); },
     async stopCapture() { return parseStatus(await bridgeRequest('sampling', false)); },
-    async getCompletedCapture() { return bridgeAudio(); },
+    async getCompletedCapture(onProgress) { return bridgeAudio(onProgress); },
   };
 }
 
@@ -61,9 +61,9 @@ function bridgeRequest(command: Exclude<BridgeCommand, 'audio'>, running?: boole
   });
 }
 
-function bridgeAudio(): Promise<Blob | null> {
+function bridgeAudio(onProgress?: (receivedBytes: number, totalBytes?: number) => void): Promise<Blob | null> {
   return new Promise((resolve, reject) => {
-    const requestId = crypto.randomUUID(); const chunks: Uint8Array[] = [];
+    const requestId = crypto.randomUUID(); const chunks: Uint8Array[] = []; let totalBytes: number | undefined; let receivedBytes = 0;
     let timer = 0;
     const armInactivityTimer = () => { window.clearTimeout(timer); timer = window.setTimeout(() => finish(new PsiuUnavailableError('PSIU audio transfer timed out while waiting for data.')), 1_800_000); };
     const onMessage = (event: MessageEvent<unknown>) => {
@@ -71,7 +71,8 @@ function bridgeAudio(): Promise<Blob | null> {
       const message = event.data as Partial<BridgeResponse> | null;
       if (!message || message.channel !== bridgeChannel || message.requestId !== requestId) return;
       if (message.type === 'result') finish(undefined, message.value === null ? null : undefined);
-      else if (message.type === 'audio-chunk' && typeof message.data === 'string') { chunks.push(fromBase64(message.data)); armInactivityTimer(); }
+      else if (message.type === 'audio-start') { totalBytes = typeof message.totalBytes === 'number' && message.totalBytes > 0 ? message.totalBytes : undefined; onProgress?.(0, totalBytes); armInactivityTimer(); }
+      else if (message.type === 'audio-chunk' && typeof message.data === 'string') { const chunk = fromBase64(message.data); chunks.push(chunk); receivedBytes += chunk.byteLength; onProgress?.(receivedBytes, totalBytes); armInactivityTimer(); }
       else if (message.type === 'audio-complete') finish(undefined, new Blob(chunks.map((chunk) => chunk.buffer.slice(chunk.byteOffset, chunk.byteOffset + chunk.byteLength) as ArrayBuffer), { type: 'audio/wav' }));
       else if (message.type === 'error') finish(new PsiuUnavailableError(safeBridgeMessage(message.message)));
     };

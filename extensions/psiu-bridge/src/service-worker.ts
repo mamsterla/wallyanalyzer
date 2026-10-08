@@ -70,6 +70,8 @@ async function streamAudio(port: any, requestId: string) {
   const response = await fetch(`${base}/audio.wav`, { headers: { range: 'bytes=0-' } });
   if (response.status === 404) return reply(port, requestId, null);
   if (!response.ok || !response.headers.get('content-type')?.toLowerCase().startsWith('audio/wav') || !response.body) throw new Error('PSIU audio is unavailable.');
+  const totalBytes = response.headers.get('content-range')?.split('/').at(-1) ?? response.headers.get('content-length');
+  port.postMessage({ requestId, type: 'audio-start', ...(totalBytes && /^\d+$/.test(totalBytes) ? { totalBytes: Number(totalBytes) } : {}) });
   const reader = response.body.getReader();
   for (;;) {
     const next = await reader.read();
