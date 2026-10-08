@@ -97,7 +97,7 @@ export function ControllerPage({ units, systems }: { units: CustomerUnit[]; syst
       const next = await client.startCapture(); setStatus(next); setUnit(eligibility.unit);
       if (!next.recording) { setPhase('ready'); setNotice('PSIU did not confirm recording. Capture was not started.'); return; }
       setPhase('capturing'); setNotice('PSIU is recording. Monitor progress, then stop capture.');
-    } catch { setPhase('unavailable'); setNotice('Capture did not start. Confirm Wally PSIU Bridge can reach the PSIU.'); }
+    } catch (reason) { setPhase('unavailable'); setNotice(reason instanceof Error ? `Capture did not start: ${reason.message}` : 'Capture did not start. Confirm Wally PSIU Bridge can reach the PSIU.'); }
   };
   const stop = async () => {
     setPhase('stopping'); setError('');

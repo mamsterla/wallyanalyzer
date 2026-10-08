@@ -34,14 +34,14 @@ async function handle(port: any, message: Request) {
       case 'audio': return streamAudio(port, message.requestId);
       default: throw new Error('Unsupported bridge command.');
     }
-  } catch {
-    port.postMessage({ requestId: message.requestId, type: 'error', message: 'PSIU bridge request failed.' });
+  } catch (error) {
+    port.postMessage({ requestId: message.requestId, type: 'error', message: error instanceof Error ? error.message : 'PSIU bridge request failed.' });
   }
 }
 
 async function json(path: string, init?: RequestInit): Promise<unknown> {
-  const response = await fetch(`${base}${path}`, init);
-  if (!response.ok) throw new Error('PSIU request failed.');
+  const response = await fetch(`${base}${path}`, { ...init, credentials: 'include' });
+  if (!response.ok) throw new Error(`PSIU returned HTTP ${response.status} for ${path}.`);
   return response.json();
 }
 

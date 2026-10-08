@@ -4,7 +4,7 @@ export class PsiuUnavailableError extends Error { constructor(message = 'PSIU is
 export interface PsiuClient { scanUid(): Promise<string>; getStatus(): Promise<PsiuStatus>; getSignal(): Promise<PsiuSignal>; setInput(xlr: boolean): Promise<PsiuStatus>; setSampleRate(hz: 96_000 | 192_000): Promise<PsiuStatus>; startCapture(): Promise<PsiuStatus>; stopCapture(): Promise<PsiuStatus>; getCompletedCapture(): Promise<Blob | null>; }
 export type FetchLike = typeof fetch;
 type BridgeCommand = 'probe' | 'uid' | 'status' | 'signal' | 'inputsel' | 'samplerate' | 'sampling' | 'audio';
-type BridgeResponse = { channel: 'wally-psiu-bridge'; type: 'result' | 'error' | 'audio-chunk' | 'audio-complete'; requestId: string; value?: unknown; data?: string };
+type BridgeResponse = { channel: 'wally-psiu-bridge'; type: 'result' | 'error' | 'audio-chunk' | 'audio-complete'; requestId: string; value?: unknown; data?: string; message?: string };
 const bridgeChannel = 'wally-psiu-bridge';
 
 /** Local Compose uses its same-origin proxy; deployed Wally uses the installed browser bridge. */
@@ -53,7 +53,7 @@ function bridgeRequest(command: Exclude<BridgeCommand, 'audio'>, running?: boole
       const message = event.data as Partial<BridgeResponse> | null;
       if (!message || message.channel !== bridgeChannel || message.requestId !== requestId) return;
       if (message.type === 'result') finish(undefined, message.value);
-      else if (message.type === 'error') finish(new PsiuUnavailableError());
+      else if (message.type === 'error') finish(new PsiuUnavailableError(safeBridgeMessage(message.message)));
     };
     const finish = (error?: Error, value?: unknown) => { window.clearTimeout(timer); window.removeEventListener('message', onMessage); error ? reject(error) : resolve(value); };
     window.addEventListener('message', onMessage);
@@ -80,6 +80,7 @@ function bridgeAudio(): Promise<Blob | null> {
   });
 }
 
+function safeBridgeMessage(value: unknown) { return typeof value === 'string' && /^PSIU (?:returned HTTP \d{3} for \/[a-z./]+\.|bridge request failed\.)$/.test(value) ? value : undefined; }
 function fromBase64(value: string) { const binary = atob(value); return Uint8Array.from(binary, character => character.charCodeAt(0)); }
 function captureInit(running: boolean): RequestInit { return { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ running }) }; }
 function inputInit(xlr: boolean): RequestInit { return { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ xlr }) }; }
