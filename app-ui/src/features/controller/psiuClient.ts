@@ -64,18 +64,20 @@ function bridgeRequest(command: Exclude<BridgeCommand, 'audio'>, running?: boole
 function bridgeAudio(): Promise<Blob | null> {
   return new Promise((resolve, reject) => {
     const requestId = crypto.randomUUID(); const chunks: Uint8Array[] = [];
-    const timer = window.setTimeout(() => finish(new PsiuUnavailableError()), 120_000);
+    let timer = 0;
+    const armInactivityTimer = () => { window.clearTimeout(timer); timer = window.setTimeout(() => finish(new PsiuUnavailableError('PSIU audio transfer timed out while waiting for data.')), 60_000); };
     const onMessage = (event: MessageEvent<unknown>) => {
       if (event.source !== window || event.origin !== window.location.origin) return;
       const message = event.data as Partial<BridgeResponse> | null;
       if (!message || message.channel !== bridgeChannel || message.requestId !== requestId) return;
       if (message.type === 'result') finish(undefined, message.value === null ? null : undefined);
-      else if (message.type === 'audio-chunk' && typeof message.data === 'string') chunks.push(fromBase64(message.data));
+      else if (message.type === 'audio-chunk' && typeof message.data === 'string') { chunks.push(fromBase64(message.data)); armInactivityTimer(); }
       else if (message.type === 'audio-complete') finish(undefined, new Blob(chunks.map((chunk) => chunk.buffer.slice(chunk.byteOffset, chunk.byteOffset + chunk.byteLength) as ArrayBuffer), { type: 'audio/wav' }));
-      else if (message.type === 'error') finish(new PsiuUnavailableError());
+      else if (message.type === 'error') finish(new PsiuUnavailableError(safeBridgeMessage(message.message)));
     };
     const finish = (error?: Error, value?: Blob | null) => { window.clearTimeout(timer); window.removeEventListener('message', onMessage); error ? reject(error) : resolve(value ?? null); };
     window.addEventListener('message', onMessage);
+    armInactivityTimer();
     window.postMessage({ channel: bridgeChannel, type: 'request', requestId, command: 'audio' }, window.location.origin);
   });
 }
