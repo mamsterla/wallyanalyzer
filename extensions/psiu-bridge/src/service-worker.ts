@@ -5,6 +5,7 @@ type Command = 'probe' | 'uid' | 'status' | 'signal' | 'inputsel' | 'samplerate'
 type Request = { type: 'request'; requestId: string; command: Command; running?: boolean; xlr?: boolean; hz?: number };
 const base = 'http://psiu.local';
 const chunkBytes = 48 * 1024;
+const audioRangeBytes = 1 * 1024 * 1024;
 
 chrome.runtime.onConnect.addListener((port: any) => {
   if (port.name !== 'wally-psiu-bridge') return;
@@ -67,18 +68,25 @@ async function setRecording(running: boolean): Promise<unknown> {
 function wait(milliseconds: number) { return new Promise<void>((resolve) => setTimeout(resolve, milliseconds)); }
 
 async function streamAudio(port: any, requestId: string) {
-  const response = await fetch(`${base}/audio.wav`, { headers: { range: 'bytes=0-' } });
-  if (response.status === 404) return reply(port, requestId, null);
-  if (!response.ok || !response.headers.get('content-type')?.toLowerCase().startsWith('audio/wav') || !response.body) throw new Error('PSIU audio is unavailable.');
-  const totalBytes = response.headers.get('content-range')?.split('/').at(-1) ?? response.headers.get('content-length');
-  port.postMessage({ requestId, type: 'audio-start', ...(totalBytes && /^\d+$/.test(totalBytes) ? { totalBytes: Number(totalBytes) } : {}) });
-  const reader = response.body.getReader();
+  let offset = 0;
+  let totalBytes: number | undefined;
   for (;;) {
-    const next = await reader.read();
-    if (next.done) break;
-    for (let offset = 0; offset < next.value.length; offset += chunkBytes) {
-      port.postMessage({ requestId, type: 'audio-chunk', data: base64(next.value.subarray(offset, offset + chunkBytes)) });
+    const response = await fetch(`${base}/audio.wav`, { headers: { range: `bytes=${offset}-${offset + audioRangeBytes - 1}`, connection: 'close' } });
+    if (response.status === 404 && offset === 0) return reply(port, requestId, null);
+    if (response.status !== 206 || !response.headers.get('content-type')?.toLowerCase().startsWith('audio/wav')) throw new Error('PSIU audio range is unavailable.');
+    const contentRange = response.headers.get('content-range');
+    const match = contentRange?.match(new RegExp(`^bytes ${offset}-(\\d+)/(\\d+)$`));
+    if (!match) throw new Error('PSIU returned an invalid audio range.');
+    totalBytes = Number(match[2]);
+    if (!Number.isSafeInteger(totalBytes) || totalBytes < 44) throw new Error('PSIU returned an invalid audio length.');
+    if (offset === 0) port.postMessage({ requestId, type: 'audio-start', totalBytes });
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    if (!bytes.byteLength || offset + bytes.byteLength > totalBytes) throw new Error('PSIU returned an invalid audio range body.');
+    for (let chunkOffset = 0; chunkOffset < bytes.length; chunkOffset += chunkBytes) {
+      port.postMessage({ requestId, type: 'audio-chunk', data: base64(bytes.subarray(chunkOffset, chunkOffset + chunkBytes)) });
     }
+    offset += bytes.byteLength;
+    if (offset === totalBytes) break;
   }
   port.postMessage({ requestId, type: 'audio-complete' });
 }
