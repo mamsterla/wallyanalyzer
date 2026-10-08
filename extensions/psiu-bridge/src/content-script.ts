@@ -1,9 +1,9 @@
 (() => {
   const chromeApi: any = (globalThis as any).chrome;
-  type Command = 'probe' | 'uid' | 'status' | 'signal' | 'inputsel' | 'samplerate' | 'sampling' | 'audio';
-  type PageRequest = { channel: 'wally-psiu-bridge'; type: 'request'; requestId: string; command: Command; running?: boolean; xlr?: boolean; hz?: number };
+  type Command = 'probe' | 'uid' | 'status' | 'signal' | 'inputsel' | 'samplerate' | 'sampling' | 'audio' | 'audio-cancel';
+  type PageRequest = { channel: 'wally-psiu-bridge'; type: 'request'; requestId: string; command: Command; running?: boolean; xlr?: boolean; hz?: number; targetRequestId?: string };
   const channel = 'wally-psiu-bridge';
-  const commands = new Set<Command>(['probe', 'uid', 'status', 'signal', 'inputsel', 'samplerate', 'sampling', 'audio']);
+  const commands = new Set<Command>(['probe', 'uid', 'status', 'signal', 'inputsel', 'samplerate', 'sampling', 'audio', 'audio-cancel']);
   let port: any;
   const connect = () => {
     const next = chromeApi.runtime.connect({ name: channel });
@@ -27,7 +27,8 @@
     if (value.command === 'sampling' && typeof value.running !== 'boolean') return;
     if (value.command === 'inputsel' && typeof value.xlr !== 'boolean') return;
     if (value.command === 'samplerate' && value.hz !== 96_000 && value.hz !== 192_000) return;
-    post({ type: 'request', requestId: value.requestId, command: value.command, ...(value.command === 'sampling' ? { running: value.running } : {}), ...(value.command === 'inputsel' ? { xlr: value.xlr } : {}), ...(value.command === 'samplerate' ? { hz: value.hz } : {}) });
+    if (value.command === 'audio-cancel' && typeof value.targetRequestId !== 'string') return;
+    post({ type: 'request', requestId: value.requestId, command: value.command, ...(value.command === 'sampling' ? { running: value.running } : {}), ...(value.command === 'inputsel' ? { xlr: value.xlr } : {}), ...(value.command === 'samplerate' ? { hz: value.hz } : {}), ...(value.command === 'audio-cancel' ? { targetRequestId: value.targetRequestId } : {}) });
   });
 
   window.postMessage({ channel, type: 'ready' }, window.location.origin);

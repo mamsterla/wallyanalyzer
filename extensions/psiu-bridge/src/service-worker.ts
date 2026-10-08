@@ -1,11 +1,12 @@
 export {};
 declare const chrome: any;
 
-type Command = 'probe' | 'uid' | 'status' | 'signal' | 'inputsel' | 'samplerate' | 'sampling' | 'audio';
-type Request = { type: 'request'; requestId: string; command: Command; running?: boolean; xlr?: boolean; hz?: number };
+type Command = 'probe' | 'uid' | 'status' | 'signal' | 'inputsel' | 'samplerate' | 'sampling' | 'audio' | 'audio-cancel';
+type Request = { type: 'request'; requestId: string; command: Command; running?: boolean; xlr?: boolean; hz?: number; targetRequestId?: string };
 const base = 'http://psiu.local';
 const chunkBytes = 48 * 1024;
 const audioRangeBytes = 1 * 1024 * 1024;
+const audioTransfers = new Map<string, AbortController>();
 
 chrome.runtime.onConnect.addListener((port: any) => {
   if (port.name !== 'wally-psiu-bridge') return;
@@ -31,7 +32,11 @@ async function handle(port: any, message: Request) {
       case 'sampling':
         if (typeof message.running !== 'boolean') throw new Error('Invalid sampling request.');
         return reply(port, message.requestId, await setRecording(message.running));
-      case 'audio': return streamAudio(port, message.requestId);
+      case 'audio': return runAudioTransfer(port, message.requestId);
+      case 'audio-cancel':
+        if (typeof message.targetRequestId !== 'string') throw new Error('Invalid audio cancellation request.');
+        audioTransfers.get(message.targetRequestId)?.abort();
+        return reply(port, message.requestId, { cancelled: true });
       default: throw new Error('Unsupported bridge command.');
     }
   } catch (error) {
@@ -67,14 +72,21 @@ async function setRecording(running: boolean): Promise<unknown> {
 
 function wait(milliseconds: number) { return new Promise<void>((resolve) => setTimeout(resolve, milliseconds)); }
 
-async function streamAudio(port: any, requestId: string) {
+async function runAudioTransfer(port: any, requestId: string) {
+  const controller = new AbortController();
+  audioTransfers.set(requestId, controller);
+  try { await streamAudio(port, requestId, controller.signal); }
+  finally { audioTransfers.delete(requestId); }
+}
+
+async function streamAudio(port: any, requestId: string, signal: AbortSignal) {
   let offset = 0;
   let totalBytes: number | undefined;
   let retriesWithoutProgress = 0;
   while (totalBytes === undefined || offset < totalBytes) {
     const startingOffset = offset;
     try {
-      const response = await fetch(`${base}/audio.wav`, { headers: { range: `bytes=${offset}-${offset + audioRangeBytes - 1}`, connection: 'close' }, signal: AbortSignal.timeout(60_000) });
+      const response = await fetch(`${base}/audio.wav`, { headers: { range: `bytes=${offset}-${offset + audioRangeBytes - 1}`, connection: 'close' }, signal: AbortSignal.any([signal, AbortSignal.timeout(60_000)]) });
       if (response.status === 404 && offset === 0) return reply(port, requestId, null);
       if (response.status !== 206 || !response.headers.get('content-type')?.toLowerCase().startsWith('audio/wav') || !response.body) throw new Error('PSIU audio range is unavailable.');
       const contentRange = response.headers.get('content-range');
