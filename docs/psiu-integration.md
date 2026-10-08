@@ -20,6 +20,8 @@ Required firmware/browser capabilities:
 
 ### Current firmware evidence
 
+Firmware 1.25 and later exposes the fixed REST interface without authentication. Wally PSIU Bridge sends no device credential, authorization header, or browser session cookie. The device remains LAN-only; the network boundary is its access control for this milestone. Treat older PDF authentication notes as superseded by this tested firmware behavior.
+
 `GET /status` exposes live recorder counters. On the verified PSIU, `pages_written × 2,048 words/page × 2 bytes/word` exactly matched completed `/audio.wav` `data_bytes`; use this as the current-capture byte count.
 
 A local device check returned `GET http://psiu.local/status` with no `Access-Control-Allow-*` headers. `OPTIONS http://psiu.local/api/sampling`, with origin `http://localhost:8081` and requested `authorization,content-type` headers, returned `403` with no CORS headers. The browser cannot call PSIU directly, but the local same-origin Compose proxy supports capture until firmware handles this CORS flow.
