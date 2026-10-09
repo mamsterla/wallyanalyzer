@@ -19,8 +19,7 @@ import {
   Toolbar,
   Typography,
 } from '@mui/material';
-import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
-import { BrowserRouter } from 'react-router-dom';
+import { BrowserRouter, Link as RouterLink, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import type {
   CreditsResponse,
@@ -53,6 +52,7 @@ import { ControllerPage } from './pages/ControllerPage.js';
 import { WallySelect } from './designSystemSelect.js';
 import { CreditsPage, ProfilePage, ReportsPage, SystemsPage } from './pages/UserExperiencePages.js';
 import { AdminConsole } from './pages/AdminConsole.js';
+import { PrivacyPolicyPage } from './pages/PrivacyPolicyPage.js';
 import { isPsiuBridgeInstalled } from './features/controller/psiuClient.js';
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const token = await accessToken();
@@ -776,10 +776,30 @@ function Shell() {
     </>
   );
 }
+function SiteFooter() {
+  return (
+    <Box component="footer" borderTop={1} borderColor="divider" py={2}>
+      <Container maxWidth="lg">
+        <Button component={RouterLink} to="/privacy" color="inherit">
+          Privacy Policy
+        </Button>
+      </Container>
+    </Box>
+  );
+}
+
 export function App() {
   return (
     <BrowserRouter>
-      <Shell />
+      <Box minHeight="100vh" display="flex" flexDirection="column">
+        <Box flexGrow={1}>
+          <Routes>
+            <Route path="/privacy" element={<PrivacyPolicyPage />} />
+            <Route path="*" element={<Shell />} />
+          </Routes>
+        </Box>
+        <SiteFooter />
+      </Box>
     </BrowserRouter>
   );
 }

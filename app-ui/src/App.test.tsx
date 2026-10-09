@@ -3,7 +3,7 @@ import { cleanup, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { CustomerUnit } from '@wally/contracts';
-import { Home, psiuBridgeStoreUrl } from './App.js';
+import { App, Home, psiuBridgeStoreUrl } from './App.js';
 
 vi.mock('./auth.js', () => ({ accessToken: vi.fn(async () => 'token') }));
 
@@ -19,6 +19,16 @@ function responseFor(url: string) {
   if (url.includes('/v1/reports?')) return { items: [] }; 
   return {};
 }
+
+describe('Privacy policy', () => {
+  it('is publicly available at /privacy and linked from the site footer', () => {
+    window.history.pushState({}, '', '/privacy');
+    render(<App />);
+    expect(screen.getByRole('heading', { name: 'Privacy Policy' })).toBeTruthy();
+    expect(screen.getAllByText(/privacy@wally-analytics\.app/)).toHaveLength(2);
+    expect(screen.getByRole('link', { name: 'Privacy Policy' }).getAttribute('href')).toBe('/privacy');
+  });
+});
 
 describe('Home', () => {
   it('routes Chrome and Edge users to their respective extension stores', () => {
