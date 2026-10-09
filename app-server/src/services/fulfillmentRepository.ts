@@ -46,23 +46,20 @@ export class PostgresFulfillmentRepository implements FulfillmentRepository, Act
     const client = await this.pool.connect();
     try {
       await client.query('begin');
-      await client.query(`select pg_advisory_xact_lock(hashtext($1))`, ['wally-initial-admin']);
-      const existingAdmin = await client.query<{ id: string; cognito_subject: string; email: string }>(
-        `select id, cognito_subject, email from users where role = 'admin' for update`,
+      await client.query(`select pg_advisory_xact_lock(hashtext($1))`, ['wally-admin-provisioning']);
+      const existingAdmin = await client.query<{ id: string }>(
+        `select id from users where cognito_subject = $1 and email = $2 and role = 'admin' for update`,
+        [input.cognitoSubject, input.email],
       );
       if (existingAdmin.rowCount) {
-        const existing = existingAdmin.rows[0];
-        if (existing.cognito_subject === input.cognitoSubject && existing.email === input.email) {
-          await client.query('commit');
-          return { id: existing.id };
-        }
-        throw new Error('An initial administrator already exists.');
+        await client.query('commit');
+        return { id: existingAdmin.rows[0]!.id };
       }
       const existingIdentity = await client.query(
         `select 1 from users where cognito_subject = $1 or email = $2`,
         [input.cognitoSubject, input.email],
       );
-      if (existingIdentity.rowCount) throw new Error('Bootstrap identity is already associated with another account.');
+      if (existingIdentity.rowCount) throw new Error('Administrator identity is already associated with another account.');
 
       const id = randomUUID();
       await client.query(
@@ -70,7 +67,7 @@ export class PostgresFulfillmentRepository implements FulfillmentRepository, Act
          values ($1, $2, $3, 'admin', 'active', 'active')`,
         [id, input.cognitoSubject, input.email],
       );
-      await insertAuditEvent(client, id, 'admin.bootstrap', 'user', id, undefined, {});
+      await insertAuditEvent(client, id, 'admin.provisioned', 'user', id, undefined, {});
       await client.query('commit');
       return { id };
     } catch (error) {
