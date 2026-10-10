@@ -5,18 +5,25 @@
   const channel = 'wally-psiu-bridge';
   const commands = new Set<Command>(['probe', 'uid', 'status', 'signal', 'inputsel', 'samplerate', 'sampling', 'audio', 'audio-cancel']);
   let port: any;
+  const audioBytes = new Map<string, number>();
+  const nextAudioTraceAt = new Map<string, number>();
+  const trace = (event: string, details: Record<string, unknown> = {}) => console.info('[Wally PSIU Bridge content]', event, details);
   const connect = () => {
     const next = chromeApi.runtime.connect({ name: channel });
-    next.onMessage.addListener((message: unknown) => {
+    next.onMessage.addListener((message: any) => {
+      if (message?.type === 'audio-start') { audioBytes.set(message.requestId, 0); nextAudioTraceAt.set(message.requestId, 256 * 1024); trace('audio-forward-start', { requestId: message.requestId, totalBytes: message.totalBytes }); }
+      if (message?.type === 'audio-chunk' && typeof message.data === 'string') { const bytes = Math.floor(message.data.length * 3 / 4); const received = (audioBytes.get(message.requestId) ?? 0) + bytes; audioBytes.set(message.requestId, received); if (received >= (nextAudioTraceAt.get(message.requestId) ?? 0)) { trace('audio-forward-progress', { requestId: message.requestId, receivedBytes: received }); nextAudioTraceAt.set(message.requestId, received + 256 * 1024); } }
+      if (message?.type === 'audio-complete' || message?.type === 'error') { trace('audio-forward-terminal', { requestId: message.requestId, type: message.type, message: message.message }); audioBytes.delete(message.requestId); nextAudioTraceAt.delete(message.requestId); }
       window.postMessage({ channel, type: 'response', ...(message as object) }, window.location.origin);
     });
-    next.onDisconnect.addListener(() => { if (port === next) port = undefined; });
+    next.onDisconnect.addListener(() => { trace('port-disconnect'); if (port === next) port = undefined; });
     port = next;
+    trace('port-connect');
   };
   const post = (message: object) => {
     if (!port) connect();
     try { port.postMessage(message); }
-    catch { port = undefined; connect(); port.postMessage(message); }
+    catch (error) { trace('port-reconnect', { message: error instanceof Error ? error.message : String(error) }); port = undefined; connect(); port.postMessage(message); }
   };
   connect();
 

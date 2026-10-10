@@ -63,7 +63,8 @@ function bridgeRequest(command: Exclude<BridgeCommand, 'audio'>, running?: boole
 
 function bridgeAudio(onProgress?: (receivedBytes: number, totalBytes?: number) => void, signal?: AbortSignal): Promise<Blob | null> {
   return new Promise((resolve, reject) => {
-    const requestId = crypto.randomUUID(); const chunks: Uint8Array[] = []; let totalBytes: number | undefined; let receivedBytes = 0;
+    const requestId = crypto.randomUUID(); const chunks: Uint8Array[] = []; let totalBytes: number | undefined; let receivedBytes = 0; let nextTraceAt = 256 * 1024;
+    const trace = (event: string, details: Record<string, unknown> = {}) => console.info('[Wally PSIU page]', event, { requestId, ...details });
     let timer = 0;
     const armInactivityTimer = () => { window.clearTimeout(timer); timer = window.setTimeout(() => finish(new PsiuUnavailableError('PSIU audio transfer timed out while waiting for data.')), 1_800_000); };
     const onMessage = (event: MessageEvent<unknown>) => {
@@ -71,10 +72,10 @@ function bridgeAudio(onProgress?: (receivedBytes: number, totalBytes?: number) =
       const message = event.data as Partial<BridgeResponse> | null;
       if (!message || message.channel !== bridgeChannel || message.requestId !== requestId) return;
       if (message.type === 'result') finish(undefined, message.value === null ? null : undefined);
-      else if (message.type === 'audio-start') { totalBytes = typeof message.totalBytes === 'number' && message.totalBytes > 0 ? message.totalBytes : undefined; onProgress?.(0, totalBytes); armInactivityTimer(); }
-      else if (message.type === 'audio-chunk' && typeof message.data === 'string') { const chunk = fromBase64(message.data); chunks.push(chunk); receivedBytes += chunk.byteLength; onProgress?.(receivedBytes, totalBytes); armInactivityTimer(); }
-      else if (message.type === 'audio-complete') finish(undefined, new Blob(chunks.map((chunk) => chunk.buffer.slice(chunk.byteOffset, chunk.byteOffset + chunk.byteLength) as ArrayBuffer), { type: 'audio/wav' }));
-      else if (message.type === 'error') finish(new PsiuUnavailableError(safeBridgeMessage(message.message)));
+      else if (message.type === 'audio-start') { totalBytes = typeof message.totalBytes === 'number' && message.totalBytes > 0 ? message.totalBytes : undefined; trace('audio-received-start', { totalBytes }); onProgress?.(0, totalBytes); armInactivityTimer(); }
+      else if (message.type === 'audio-chunk' && typeof message.data === 'string') { const chunk = fromBase64(message.data); chunks.push(chunk); receivedBytes += chunk.byteLength; if (receivedBytes >= nextTraceAt || receivedBytes === totalBytes) { trace('audio-received-progress', { receivedBytes, totalBytes }); nextTraceAt = receivedBytes + 256 * 1024; } onProgress?.(receivedBytes, totalBytes); armInactivityTimer(); }
+      else if (message.type === 'audio-complete') { trace('audio-received-complete', { receivedBytes, totalBytes }); finish(undefined, new Blob(chunks.map((chunk) => chunk.buffer.slice(chunk.byteOffset, chunk.byteOffset + chunk.byteLength) as ArrayBuffer), { type: 'audio/wav' })); }
+      else if (message.type === 'error') { trace('audio-received-error', { message: message.message }); finish(new PsiuUnavailableError(safeBridgeMessage(message.message))); }
     };
     const cancel = () => { window.postMessage({ channel: bridgeChannel, type: 'request', requestId: crypto.randomUUID(), command: 'audio-cancel', targetRequestId: requestId }, window.location.origin); finish(new PsiuUnavailableError('Capture transfer cancelled.')); };
     const finish = (error?: Error, value?: Blob | null) => { window.clearTimeout(timer); signal?.removeEventListener('abort', cancel); window.removeEventListener('message', onMessage); error ? reject(error) : resolve(value ?? null); };
