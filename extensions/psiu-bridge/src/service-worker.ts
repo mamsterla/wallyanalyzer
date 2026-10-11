@@ -7,6 +7,8 @@ type AudioTransfer = { controller: AbortController };
 const base = 'http://psiu.local';
 const chunkBytes = 48 * 1024;
 const audioRangeBytes = 1 * 1024 * 1024;
+const minimumAudioRangeBytes = 128 * 1024;
+const maximumNoProgressRetries = 12;
 const audioTransfers = new Map<string, AudioTransfer>();
 const trace = (event: string, details: Record<string, unknown> = {}) => console.info('[Wally PSIU Bridge]', event, details);
 const failure = (error: unknown) => error instanceof Error ? { name: error.name, message: error.message } : { message: String(error) };
@@ -95,12 +97,13 @@ async function streamAudio(port: any, requestId: string, initialOffset: number, 
   let offset = initialOffset;
   let totalBytes: number | undefined;
   let retriesWithoutProgress = 0;
+  let rangeBytes = audioRangeBytes;
   let rangeNumber = 0;
   while (totalBytes === undefined || offset < totalBytes) {
     const startingOffset = offset;
-    const rangeEnd = offset + audioRangeBytes - 1;
+    const rangeEnd = offset + rangeBytes - 1;
     rangeNumber += 1;
-    trace('audio-range-request', { requestId, rangeNumber, offset, rangeEnd, totalBytes });
+    trace('audio-range-request', { requestId, rangeNumber, offset, rangeEnd, rangeBytes, totalBytes });
     try {
       const response = await fetch(`${base}/audio.wav`, { headers: { range: `bytes=${offset}-${rangeEnd}`, connection: 'close' }, signal: AbortSignal.any([signal, AbortSignal.timeout(60_000)]) });
       if (response.status === 404 && offset === 0) return reply(port, requestId, null);
@@ -128,13 +131,20 @@ async function streamAudio(port: any, requestId: string, initialOffset: number, 
       if (offset === startingOffset) throw new Error('PSIU returned an empty audio range.');
       trace('audio-range-complete', { requestId, rangeNumber, receivedBytes: offset, rangeBytes: offset - startingOffset, totalBytes });
       retriesWithoutProgress = 0;
+      rangeBytes = Math.min(audioRangeBytes, rangeBytes * 2);
     } catch (error) {
       if (signal.aborted) throw error;
       if (offset > startingOffset) { trace('audio-range-partial-retry', { requestId, rangeNumber, receivedBytes: offset, rangeBytes: offset - startingOffset, ...failure(error) }); retriesWithoutProgress = 0; continue; }
       retriesWithoutProgress += 1;
-      trace('audio-range-retry', { requestId, rangeNumber, offset, retriesWithoutProgress, ...failure(error) });
-      if (retriesWithoutProgress >= 3) throw error instanceof Error ? error : new Error('PSIU audio range failed.');
-      await wait(1_000);
+      const priorRangeBytes = rangeBytes;
+      rangeBytes = Math.max(minimumAudioRangeBytes, Math.floor(rangeBytes / 2));
+      const retryDelayMs = Math.min(10_000, 1_000 * 2 ** (retriesWithoutProgress - 1));
+      trace('audio-range-retry', { requestId, rangeNumber, offset, retriesWithoutProgress, priorRangeBytes, nextRangeBytes: rangeBytes, retryDelayMs, ...failure(error) });
+      if (retriesWithoutProgress >= maximumNoProgressRetries) throw error instanceof Error ? error : new Error('PSIU audio range failed.');
+      await wait(retryDelayMs);
+      try { await json('/status'); trace('audio-recovery-probe', { requestId, offset, status: 'ok' }); }
+      catch (probeError) { trace('audio-recovery-probe', { requestId, offset, status: 'failed', ...failure(probeError) }); }
+      await wait(250);
     }
   }
   trace('audio-transfer-complete', { requestId, totalBytes: offset });
