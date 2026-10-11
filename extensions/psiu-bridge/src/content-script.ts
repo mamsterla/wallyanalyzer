@@ -6,30 +6,42 @@
   const commands = new Set<Command>(['probe', 'uid', 'status', 'signal', 'inputsel', 'samplerate', 'sampling', 'audio', 'audio-resume', 'audio-cancel']);
   let port: any;
   let reconnecting = false;
+  let activeAudioRequestId: string | undefined;
+  const pending = new Set<string>();
   const trace = (event: string, details: Record<string, unknown> = {}) => console.info('[Wally PSIU Bridge content]', event, details);
+  const busy = () => Boolean(activeAudioRequestId) || pending.size > 0;
+  const disconnect = () => { if (port && !busy()) { trace('port-idle-disconnect'); port.disconnect(); port = undefined; } };
   const connect = () => {
+    if (port) return;
     try {
       const next = chromeApi.runtime.connect({ name: channel });
-      next.onMessage.addListener((message: unknown) => window.postMessage({ channel, type: 'response', ...(message as object) }, window.location.origin));
+      next.onMessage.addListener((message: any) => {
+        if (message?.type === 'result' || message?.type === 'error') pending.delete(message.requestId);
+        if (message?.requestId === activeAudioRequestId && (message?.type === 'audio-complete' || message?.type === 'error')) activeAudioRequestId = undefined;
+        window.postMessage({ channel, type: 'response', ...(message as object) }, window.location.origin);
+        disconnect();
+      });
       next.onDisconnect.addListener(() => {
         if (port !== next) return;
         port = undefined;
-        trace('port-disconnect', { message: chromeApi.runtime.lastError?.message });
-        reconnecting = true;
-        queueMicrotask(connect);
+        trace('port-disconnect', { message: chromeApi.runtime.lastError?.message, busy: busy() });
+        if (busy()) { reconnecting = true; queueMicrotask(connect); }
       });
       port = next;
       trace('port-connect', { reconnected: reconnecting });
       if (reconnecting) { reconnecting = false; window.postMessage({ channel, type: 'bridge-reconnected' }, window.location.origin); }
     } catch (error) { trace('port-connect-failed', { message: error instanceof Error ? error.message : String(error) }); }
   };
-  const post = (message: object) => {
-    if (!port) connect();
+  const post = (message: any) => {
+    if (message.command === 'audio') activeAudioRequestId = message.requestId;
+    if (message.command === 'audio-resume') activeAudioRequestId = message.targetRequestId;
+    if (message.command === 'audio-cancel') activeAudioRequestId = undefined;
+    pending.add(message.requestId);
+    connect();
     if (!port) throw new Error('Wally PSIU Bridge is unavailable. Reload this page after enabling the extension.');
     try { port.postMessage(message); }
-    catch (error) { trace('port-reconnect', { message: error instanceof Error ? error.message : String(error) }); port = undefined; reconnecting = true; connect(); if (port) port.postMessage(message); }
+    catch (error) { trace('port-send-failed', { message: error instanceof Error ? error.message : String(error) }); port = undefined; reconnecting = true; connect(); if (port) port.postMessage(message); }
   };
-  connect();
 
   window.addEventListener('message', (event: MessageEvent<unknown>) => {
     if (event.source !== window || event.origin !== window.location.origin) return;
@@ -42,6 +54,5 @@
     if (value.command === 'audio-resume' && (!Number.isSafeInteger(value.receivedBytes) || (value.receivedBytes ?? -1) < 0)) return;
     post({ type: 'request', requestId: value.requestId, command: value.command, ...(value.command === 'sampling' ? { running: value.running } : {}), ...(value.command === 'inputsel' ? { xlr: value.xlr } : {}), ...(value.command === 'samplerate' ? { hz: value.hz } : {}), ...((value.command === 'audio-cancel' || value.command === 'audio-resume') ? { targetRequestId: value.targetRequestId } : {}), ...(value.command === 'audio-resume' ? { receivedBytes: value.receivedBytes } : {}) });
   });
-
   window.postMessage({ channel, type: 'ready' }, window.location.origin);
 })();
