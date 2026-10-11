@@ -1,12 +1,13 @@
 export {};
 declare const chrome: any;
 
-type Command = 'probe' | 'uid' | 'status' | 'signal' | 'inputsel' | 'samplerate' | 'sampling' | 'audio' | 'audio-cancel';
-type Request = { type: 'request'; requestId: string; command: Command; running?: boolean; xlr?: boolean; hz?: number; targetRequestId?: string };
+type Command = 'probe' | 'uid' | 'status' | 'signal' | 'inputsel' | 'samplerate' | 'sampling' | 'audio' | 'audio-resume' | 'audio-cancel';
+type Request = { type: 'request'; requestId: string; command: Command; running?: boolean; xlr?: boolean; hz?: number; targetRequestId?: string; receivedBytes?: number };
+type AudioTransfer = { controller: AbortController };
 const base = 'http://psiu.local';
 const chunkBytes = 48 * 1024;
 const audioRangeBytes = 1 * 1024 * 1024;
-const audioTransfers = new Map<string, AbortController>();
+const audioTransfers = new Map<string, AudioTransfer>();
 const trace = (event: string, details: Record<string, unknown> = {}) => console.info('[Wally PSIU Bridge]', event, details);
 const failure = (error: unknown) => error instanceof Error ? { name: error.name, message: error.message } : { message: String(error) };
 
@@ -34,17 +35,41 @@ async function handle(port: any, message: Request) {
       case 'sampling':
         if (typeof message.running !== 'boolean') throw new Error('Invalid sampling request.');
         return reply(port, message.requestId, await setRecording(message.running));
-      case 'audio': return runAudioTransfer(port, message.requestId);
+      case 'audio':
+        launchAudioTransfer(port, message.requestId, 0);
+        return;
+      case 'audio-resume': {
+        const receivedBytes = message.receivedBytes;
+        if (typeof message.targetRequestId !== 'string' || typeof receivedBytes !== 'number' || !Number.isSafeInteger(receivedBytes) || receivedBytes < 0) throw new Error('Invalid audio resume request.');
+        const resumeOffset = receivedBytes as number;
+        trace('audio-resume', { requestId: message.targetRequestId, receivedBytes: resumeOffset, active: audioTransfers.has(message.targetRequestId) });
+        audioTransfers.get(message.targetRequestId)?.controller.abort();
+        launchAudioTransfer(port, message.targetRequestId, resumeOffset);
+        return reply(port, message.requestId, { resumed: true });
+      }
       case 'audio-cancel':
         if (typeof message.targetRequestId !== 'string') throw new Error('Invalid audio cancellation request.');
         trace('audio-cancel', { requestId: message.targetRequestId, active: audioTransfers.has(message.targetRequestId) });
-        audioTransfers.get(message.targetRequestId)?.abort();
+        audioTransfers.get(message.targetRequestId)?.controller.abort();
         return reply(port, message.requestId, { cancelled: true });
       default: throw new Error('Unsupported bridge command.');
     }
   } catch (error) {
     port.postMessage({ requestId: message.requestId, type: 'error', message: error instanceof Error ? error.message : 'PSIU bridge request failed.' });
   }
+}
+
+function launchAudioTransfer(port: any, requestId: string, offset: number) {
+  const transfer: AudioTransfer = { controller: new AbortController() };
+  audioTransfers.set(requestId, transfer);
+  trace('audio-transfer-start', { requestId, offset });
+  void streamAudio(port, requestId, offset, transfer.controller.signal).catch((error) => {
+    if (transfer.controller.signal.aborted) { trace('audio-transfer-cancelled', { requestId, offset }); return; }
+    trace('audio-transfer-failed', { requestId, offset, ...failure(error) });
+    port.postMessage({ requestId, type: 'error', message: error instanceof Error ? error.message : 'PSIU audio transfer failed.' });
+  }).finally(() => {
+    if (audioTransfers.get(requestId) === transfer) audioTransfers.delete(requestId);
+  });
 }
 
 async function json(path: string, init?: RequestInit): Promise<unknown> {
@@ -57,38 +82,17 @@ async function setRecording(running: boolean): Promise<unknown> {
   let lastError: Error | undefined;
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try { await json('/api/sampling', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ running }) }); } catch (error) { lastError = error instanceof Error ? error : new Error('PSIU sampling request failed.'); }
-    try {
-      const status = await json('/status');
-      if (typeof (status as { recording?: unknown }).recording === 'boolean' && (status as { recording: boolean }).recording === running) return status;
-      lastError = new Error(`PSIU did not confirm recording=${running}.`);
-    } catch (error) { lastError = error instanceof Error ? error : new Error('PSIU status request failed.'); }
+    try { const status = await json('/status'); if (typeof (status as { recording?: unknown }).recording === 'boolean' && (status as { recording: boolean }).recording === running) return status; lastError = new Error(`PSIU did not confirm recording=${running}.`); } catch (error) { lastError = error instanceof Error ? error : new Error('PSIU status request failed.'); }
     if (attempt < 2) await wait(500);
   }
-  try {
-    await json(running ? '/api/samplestart' : '/api/samplestop', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: true }) });
-    const status = await json('/status');
-    if (typeof (status as { recording?: unknown }).recording === 'boolean' && (status as { recording: boolean }).recording === running) return status;
-    lastError = new Error(`PSIU fallback did not confirm recording=${running}.`);
-  } catch (error) { lastError = error instanceof Error ? error : new Error('PSIU sampling fallback failed.'); }
+  try { await json(running ? '/api/samplestart' : '/api/samplestop', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: true }) }); const status = await json('/status'); if (typeof (status as { recording?: unknown }).recording === 'boolean' && (status as { recording: boolean }).recording === running) return status; lastError = new Error(`PSIU fallback did not confirm recording=${running}.`); } catch (error) { lastError = error instanceof Error ? error : new Error('PSIU sampling fallback failed.'); }
   throw lastError ?? new Error(`PSIU did not confirm recording=${running}.`);
 }
 
 function wait(milliseconds: number) { return new Promise<void>((resolve) => setTimeout(resolve, milliseconds)); }
 
-async function runAudioTransfer(port: any, requestId: string) {
-  const controller = new AbortController();
-  audioTransfers.set(requestId, controller);
-  trace('audio-transfer-start', { requestId });
-  try { await streamAudio(port, requestId, controller.signal); }
-  catch (error) {
-    if (controller.signal.aborted) { trace('audio-transfer-cancelled', { requestId }); return; }
-    trace('audio-transfer-failed', { requestId, ...failure(error) });
-    throw error;
-  } finally { audioTransfers.delete(requestId); }
-}
-
-async function streamAudio(port: any, requestId: string, signal: AbortSignal) {
-  let offset = 0;
+async function streamAudio(port: any, requestId: string, initialOffset: number, signal: AbortSignal) {
+  let offset = initialOffset;
   let totalBytes: number | undefined;
   let retriesWithoutProgress = 0;
   let rangeNumber = 0;
@@ -106,15 +110,18 @@ async function streamAudio(port: any, requestId: string, signal: AbortSignal) {
       const match = contentRange?.match(new RegExp(`^bytes ${offset}-(\\d+)/(\\d+)$`));
       if (!match) throw new Error('PSIU returned an invalid audio range.');
       totalBytes = Number(match[2]);
-      if (!Number.isSafeInteger(totalBytes) || totalBytes < 44) throw new Error('PSIU returned an invalid audio length.');
-      if (offset === 0) port.postMessage({ requestId, type: 'audio-start', totalBytes });
+      if (!Number.isSafeInteger(totalBytes) || totalBytes < 44 || offset > totalBytes) throw new Error('PSIU returned an invalid audio length.');
+      if (initialOffset === 0 && offset === 0) port.postMessage({ requestId, type: 'audio-start', totalBytes });
       const reader = response.body.getReader();
       let nextTraceAt = offset + 256 * 1024;
       for (;;) {
         const next = await reader.read();
         if (next.done) break;
         if (!next.value.byteLength || offset + next.value.byteLength > totalBytes) throw new Error('PSIU returned an invalid audio range body.');
-        for (let chunkOffset = 0; chunkOffset < next.value.length; chunkOffset += chunkBytes) port.postMessage({ requestId, type: 'audio-chunk', data: base64(next.value.subarray(chunkOffset, chunkOffset + chunkBytes)) });
+        for (let chunkOffset = 0; chunkOffset < next.value.length; chunkOffset += chunkBytes) {
+          const bytes = next.value.subarray(chunkOffset, chunkOffset + chunkBytes);
+          port.postMessage({ requestId, type: 'audio-chunk', offset: offset + chunkOffset, data: base64(bytes) });
+        }
         offset += next.value.byteLength;
         if (offset >= nextTraceAt || offset === totalBytes) { trace('audio-range-progress', { requestId, rangeNumber, receivedBytes: offset, rangeBytes: offset - startingOffset, totalBytes }); nextTraceAt = offset + 256 * 1024; }
       }
