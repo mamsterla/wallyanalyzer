@@ -138,7 +138,7 @@ async function streamAudio(port: any, requestId: string, initialOffset: number, 
       rangeBytes = Math.min(audioRangeBytes, rangeBytes * 2);
     } catch (error) {
       if (signal.aborted) throw error;
-      if (offset > startingOffset) { trace('audio-range-partial-retry', { requestId, rangeNumber, receivedBytes: offset, rangeBytes: offset - startingOffset, ...failure(error) }); retriesWithoutProgress = 0; continue; }
+      if (offset > startingOffset) { const priorRangeBytes = rangeBytes; rangeBytes = Math.max(minimumAudioRangeBytes, Math.floor(rangeBytes / 2)); trace('audio-range-partial-retry', { requestId, rangeNumber, receivedBytes: offset, rangeBytes: offset - startingOffset, priorRangeBytes, nextRangeBytes: rangeBytes, elapsedMs: Math.round(performance.now() - rangeStartedAt), ...failure(error) }); retriesWithoutProgress = 0; await wait(250); continue; }
       retriesWithoutProgress += 1;
       const priorRangeBytes = rangeBytes;
       rangeBytes = Math.max(minimumAudioRangeBytes, Math.floor(rangeBytes / 2));
