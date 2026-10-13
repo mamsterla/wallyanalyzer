@@ -27,10 +27,12 @@ def render_compile_validation_svg(
 
     # Validation reports reserve a compact header and a dedicated summary card.
     # Keep these local: sweep reports use the legacy shared geometry below.
+    validation_svg_height = 1_160
     validation_top = 118
-    validation_bottom = 80
     validation_gap = 155
-    panel_height = (SVG_HEIGHT - validation_top - validation_bottom - validation_gap) / 2
+    top_panel_height = 280
+    harmonic_panel_height = 210
+    diagnostic_panel_height = 190
     panel_width = SVG_WIDTH - MARGIN_LEFT - MARGIN_RIGHT
     radius_valid = result.radius_valid_mm
     radius_smooth = result.radius_smooth_mm
@@ -64,7 +66,7 @@ def render_compile_validation_svg(
     provenance_line = f"Analysis: {source_algorithm} · 1 kHz tracking test · diagnostic report"
 
     svg = [
-        f'<svg xmlns="http://www.w3.org/2000/svg" width="{SVG_WIDTH}" height="{SVG_HEIGHT}" viewBox="0 0 {SVG_WIDTH} {SVG_HEIGHT}">',
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{SVG_WIDTH}" height="{validation_svg_height}" viewBox="0 0 {SVG_WIDTH} {validation_svg_height}">',
         '<style>text{font-family:Arial,sans-serif;fill:#000} .title{font-size:22px;font-weight:bold} .subtitle{font-size:20px;font-weight:bold} .label{font-size:14px} .small{font-size:12px;fill:#000} .mid{font-size:13px} .axis{stroke:#444;stroke-width:1} .grid{stroke:#ddd;stroke-width:1} .raw{fill:none;stroke:#e6a400;stroke-width:1.1;opacity:0.95;stroke-dasharray:2 2} .fit1{fill:none;stroke:#0057ff;stroke-width:2} .fit2{fill:none;stroke:#111;stroke-width:2;stroke-dasharray:10 6} .fit3{fill:none;stroke:#d95f02;stroke-width:2} .fit4{fill:none;stroke:#1b9e77;stroke-width:2;stroke-dasharray:8 5} .fit5{fill:none;stroke:#7f3fbf;stroke-width:2;stroke-dasharray:5 4} .legend-bg{fill:#fff;fill-opacity:1;stroke:#555;stroke-width:1} .marker-blue{fill:white;stroke:#0057ff;stroke-width:2} .marker-black{fill:#111;stroke:#111} .marker-red{fill:#d62728;stroke:#d62728} .marker-green{fill:#2ca02c;stroke:#2ca02c} .marker-open{fill:white;stroke-width:2}</style>',
         f'<rect x="0" y="0" width="{SVG_WIDTH}" height="{SVG_HEIGHT}" fill="#fff"/>',
         f'<rect x="0" y="0" width="{SVG_WIDTH}" height="82" fill="#f6f8fa"/>',
@@ -90,7 +92,7 @@ def render_compile_validation_svg(
             left=MARGIN_LEFT,
             top=validation_top,
             width=panel_width,
-            height=panel_height,
+            height=top_panel_height,
             ymin=ate_ymin,
             ymax=ate_ymax,
         )
@@ -100,7 +102,7 @@ def render_compile_validation_svg(
             left=MARGIN_LEFT,
             top=validation_top,
             width=panel_width,
-            height=panel_height,
+            height=top_panel_height,
             xmin=ate_xmin,
             xmax=ate_xmax,
             ymin=ate_ymin,
@@ -126,7 +128,7 @@ def render_compile_validation_svg(
         )
     )
 
-    summary_top = validation_top + panel_height + 20
+    summary_top = validation_top + top_panel_height + 20
     svg.extend([
         f'<rect x="{MARGIN_LEFT}" y="{summary_top:.1f}" width="{panel_width}" height="112" rx="5" fill="#f6f8fa" stroke="#d5dde5"/>',
         f'<text x="{MARGIN_LEFT + 20}" y="{summary_top + 24:.1f}" class="small" style="font-weight:bold;fill:#36536b">MEASUREMENT SUMMARY</text>',
@@ -135,10 +137,10 @@ def render_compile_validation_svg(
         f'<text x="{MARGIN_LEFT + 20}" y="{summary_top + 101:.1f}" class="small">{_escape(f"Sampling  ·  {result.measurement.periods_per_segment} cycles of 1 kHz every {result.measurement.skip_deg:.0f}°   ·   LR {summary.effective_lr_um:.3g} µm   ·   pivot/spindle adjustment {piv_spin_adj:.3f} mm")}</text>',
     ])
 
-    lower_top = validation_top + panel_height + validation_gap
-    lower_series = [harm2_pct, harm3_pct, dist_model_pct, lr_diff_over_sum_rms_pct]
-    lower_classes = ["fit1", "fit5", "fit2", "fit3"]
-    lower_x_series = [radius_smooth, radius_smooth, radius_smooth, radius_smooth]
+    lower_top = validation_top + top_panel_height + validation_gap
+    lower_series = [harm2_pct, harm3_pct, dist_model_pct]
+    lower_classes = ["fit1", "fit5", "fit2"]
+    lower_x_series = [radius_smooth, radius_smooth, radius_smooth]
     legend_entries = [
         ("fit1", f"Mean 2nd harmonic: {float(np.nanmean(harm2_pct)):.4g}%"),
         ("fit5", f"Mean 3rd harmonic: {float(np.nanmean(harm3_pct)):.4g}%"),
@@ -163,7 +165,7 @@ def render_compile_validation_svg(
             left=MARGIN_LEFT,
             top=lower_top,
             width=panel_width,
-            height=panel_height,
+            height=harmonic_panel_height,
             ymin=0.0,
             ymax=lower_ymax,
         )
@@ -177,9 +179,35 @@ def render_compile_validation_svg(
         )
     )
 
+    diagnostic_top = lower_top + harmonic_panel_height + 50
+    diagnostic_ymax = max(1.0, float(np.nanmax(lr_diff_over_sum_rms_pct)) * 1.08)
+    svg.extend(
+        _panel_svg(
+            x_series=[radius_smooth],
+            y_series=[lr_diff_over_sum_rms_pct],
+            classes=["fit3"],
+            label="L/R difference-over-sum RMS (%)",
+            xlabel="Radius (mm)",
+            left=MARGIN_LEFT,
+            top=diagnostic_top,
+            width=panel_width,
+            height=diagnostic_panel_height,
+            ymin=0.0,
+            ymax=diagnostic_ymax,
+        )
+    )
+    svg.extend(
+        _legend_svg(
+            left=SVG_WIDTH - 320,
+            top=diagnostic_top + 10,
+            width=290,
+            entries=[("fit3", f"Mean L/R difference-over-sum RMS: {float(np.nanmean(lr_diff_over_sum_rms_pct)):.4g}%")],
+        )
+    )
+
     svg.extend([
-        f'<line x1="{MARGIN_LEFT}" y1="{SVG_HEIGHT - 29}" x2="{SVG_WIDTH - MARGIN_RIGHT}" y2="{SVG_HEIGHT - 29}" stroke="#d5dde5"/>',
-        f'<text x="{MARGIN_LEFT}" y="{SVG_HEIGHT - 12}" class="small" style="fill:#4b5563">Interpretation: Play Yaw includes radial geometry plus stylus and mount yaw. Results are diagnostic and do not certify alignment or playback compliance.</text>',
+        f'<line x1="{MARGIN_LEFT}" y1="{validation_svg_height - 29}" x2="{SVG_WIDTH - MARGIN_RIGHT}" y2="{validation_svg_height - 29}" stroke="#d5dde5"/>',
+        f'<text x="{MARGIN_LEFT}" y="{validation_svg_height - 12}" class="small" style="fill:#4b5563">Interpretation: Play Yaw includes radial geometry plus stylus and mount yaw. Results are diagnostic and do not certify alignment or playback compliance.</text>',
     ])
     svg.append("</svg>")
     output.write_text("\n".join(svg), encoding="utf-8")
