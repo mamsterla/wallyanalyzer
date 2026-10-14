@@ -178,11 +178,13 @@ def compile_one_measurement(
         rotation_sign=rotation_sign,
         max_iter=config.stylus_fit_max_iter,
     )
-    effective_lr_um = float(stylus_fit.x[0])
-    effective_stylus_yaw_deg = float(stylus_fit.x[1])
+    candidate_lr_um = float(stylus_fit.x[0])
+    candidate_stylus_yaw_deg = float(stylus_fit.x[1])
     candidate_overhang_mm = float(stylus_fit.x[2])
-    fit_overhang_valid = bool(np.isfinite(candidate_overhang_mm) and candidate_overhang_mm >= 0.0)
-    fitted_overhang_mm = candidate_overhang_mm if fit_overhang_valid else effective_overhang_mm
+    stylus_fit_accepted = bool(np.isfinite(candidate_lr_um) and candidate_lr_um > 0.0 and np.isfinite(candidate_stylus_yaw_deg) and np.isfinite(candidate_overhang_mm) and candidate_overhang_mm >= 0.0)
+    effective_lr_um = candidate_lr_um if stylus_fit_accepted else float(cartridge.lr_um)
+    effective_stylus_yaw_deg = candidate_stylus_yaw_deg if stylus_fit_accepted else stylus_yaw_guess_deg
+    fitted_overhang_mm = candidate_overhang_mm if stylus_fit_accepted else effective_overhang_mm
     t_stylus_fit = time.perf_counter() - t2
     ate_measured_deg = apparent_tracking_error_from_lag_deg(radius_smooth_mm, lag_fit_s, effective_lr_um)
     ate_fitted_deg = modeled_apparent_tracking_error_deg(
@@ -243,9 +245,11 @@ def compile_one_measurement(
         "fit_rejected_effective_windows": float(len(set(rejected_fit_indices)) / max(1, smoothing_window)),
         "lag_fit_params": np.asarray(lag_fit.x, dtype=float).tolist(),
         "lag_fit_objective": float(lag_fit.fun),
+        "stylus_fit_candidate_lr_um": candidate_lr_um,
+        "stylus_fit_candidate_stylus_yaw_deg": candidate_stylus_yaw_deg,
         "stylus_fit_candidate_overhang_mm": candidate_overhang_mm,
-        "stylus_fit_overhang_accepted": fit_overhang_valid,
-        "stylus_fit_overhang_fallback_mm": None if fit_overhang_valid else effective_overhang_mm,
+        "stylus_fit_accepted": stylus_fit_accepted,
+        "stylus_fit_fallback": None if stylus_fit_accepted else {"lr_um": float(cartridge.lr_um), "stylus_yaw_deg": stylus_yaw_guess_deg, "overhang_mm": effective_overhang_mm},
         "ate_fit_selected_start": "metadata",
         "play_yaw_sigma_deg": None if not np.isfinite(play_yaw_sigma_deg) else float(play_yaw_sigma_deg),
         "play_yaw_reject_sigma_multiplier": float(config.lag_fit_reject_sigma_multiplier),

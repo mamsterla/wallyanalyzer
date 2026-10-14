@@ -86,6 +86,8 @@ def _resolve_preset(values: Mapping[str, Any] | None) -> dict[str, Any]:
         if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or not valid(float(value)):
             raise ValueError("Yaw Angle Report geometry is invalid.")
         preset[target] = float(value)
+    if "effectiveLengthMm" in values or "overhangMm" in values:
+        preset["actual_pivot_to_spindle_mm"] = float(preset["effective_length_mm"] - preset["overhang_mm"])
     return preset
 
 
