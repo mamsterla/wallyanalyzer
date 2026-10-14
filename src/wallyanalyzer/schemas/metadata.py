@@ -62,6 +62,7 @@ class MeasureSineConfig:
     periods_per_segment: int = 64
     spectral_half_width_bins: int = 5
     rotation_period_s: float = 1.8
+    reference_track_revolutions: float = 194.0
     cut_velocity_m_per_s: float = 0.06
     envelope_threshold_fraction: float = 0.3
     envelope_end_threshold_fraction: float = 0.5

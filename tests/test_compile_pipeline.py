@@ -17,7 +17,7 @@ from wallyanalyzer.schemas import (
 
 
 class CompilePipelineTests(unittest.TestCase):
-    def test_compile_one_measurement_recovers_synthetic_parameters(self):
+    def test_compile_one_measurement_fits_lr_yaw_and_overhang_with_bounds(self):
         n = 24
         radii = np.linspace(146.0, 60.0, n)
         skip_deg = 90.0
@@ -87,8 +87,8 @@ class CompilePipelineTests(unittest.TestCase):
             pitch_estimate=1.0,
             envelope_level=1.0,
             envelope_start_sample=0,
-            envelope_end_sample=100,
-            modulation_duration_s=1.0,
+            envelope_end_sample=n - 1,
+            modulation_duration_s=(n - 1) * 0.0001,
             samples_per_revolution=100.0,
             samples_per_period=10,
             snippet_length_samples=64,
@@ -121,7 +121,15 @@ class CompilePipelineTests(unittest.TestCase):
         self.assertAlmostEqual(result.summary.effective_lr_um, lr_um, delta=3.0)
         self.assertAlmostEqual(result.summary.effective_stylus_yaw_deg, stylus_yaw_deg, delta=0.5)
         self.assertAlmostEqual(result.summary.effective_mount_yaw_deg, mount_yaw_deg, delta=0.5)
-        self.assertAlmostEqual(result.summary.effective_overhang_mm, overhang_mm, delta=1.0)
+        self.assertAlmostEqual(result.summary.effective_overhang_mm, overhang_mm, delta=0.5)
+        self.assertFalse(result.diagnostics["stylus_fit_geometry_locked"])
+        self.assertAlmostEqual(result.diagnostics["stylus_fit_input_overhang_mm"], overhang_mm)
+        self.assertAlmostEqual(result.diagnostics["stylus_fit_effective_overhang_mm"], overhang_mm, delta=1.0)
+        self.assertEqual(result.diagnostics["stereo_lag_sign_convention"], "positive lag means right channel leads left channel")
+        self.assertIsNotNone(result.diagnostics["stereo_lag_median_us"])
+        self.assertTrue(result.diagnostics["lr_within_sanity_range"])
+        self.assertIsNone(result.diagnostics["lr_sanity_warning"])
+        self.assertEqual(result.diagnostics["stylus_fit_mode"], "bounded_timing_fit_with_floating_overhang")
         self.assertLess(result.summary.apparent_tracking_fit_rms_deg, 0.25)
 
 

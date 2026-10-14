@@ -82,10 +82,34 @@ def compile_one_measurement(
     if valid_indices.size < 3:
         raise CompilePipelineError(f"Measurement {measurement.file_stem!r} has too few valid lag points")
 
-    radius_all_mm = np.linspace(
-        measurement.outer_radius_mm,
-        measurement.inner_radius_mm,
-        measurement.lag_s.shape[0],
+    tone_duration_s = (measurement.envelope_end_sample - measurement.envelope_start_sample) * measurement.dt_s
+    if tone_duration_s <= 0.0:
+        raise CompilePipelineError(f"Measurement {measurement.file_stem!r} has invalid tone boundaries")
+    segment_time_s = measurement.segment_midpoint_samples.astype(float) * measurement.dt_s
+    tone_elapsed_s = np.clip(
+        segment_time_s - measurement.envelope_start_sample * measurement.dt_s,
+        0.0,
+        tone_duration_s,
+    )
+    track_rpm = measurement.diagnostics.get("duration_derived_rpm")
+    track_revolutions = measurement.diagnostics.get("reference_track_revolutions")
+    if isinstance(track_rpm, (int, float)) and isinstance(track_revolutions, (int, float)) and track_rpm > 0.0 and track_revolutions > 0.0:
+        elapsed_revolutions = np.clip(tone_elapsed_s * float(track_rpm) / 60.0, 0.0, float(track_revolutions))
+        radius_all_mm = (
+            measurement.outer_radius_mm
+            + (measurement.inner_radius_mm - measurement.outer_radius_mm) * elapsed_revolutions / float(track_revolutions)
+        )
+        radius_mapping_method = "time_and_track_revolutions"
+    else:
+        radius_all_mm = (
+            measurement.outer_radius_mm
+            + (measurement.inner_radius_mm - measurement.outer_radius_mm) * tone_elapsed_s / tone_duration_s
+        )
+        radius_mapping_method = "time_derived_linear_track"
+    sample_angular_velocity_rad_per_s = (
+        float(track_rpm) * 2.0 * np.pi / 60.0
+        if isinstance(track_rpm, (int, float)) and track_rpm > 0.0
+        else float(measurement.angular_velocity_rad_per_s)
     )
     radius_valid_mm = radius_all_mm[valid_indices]
     lag_valid_s = lag_clean_s[valid_indices]
@@ -113,6 +137,18 @@ def compile_one_measurement(
     lag_fit = None
     play_yaw_sigma_deg = float("nan")
     play_yaw_reject_threshold_deg = None
+    lr_sanity_min_um = float(config.stylus_fit_lr_min_um)
+    lr_sanity_max_um = float(config.stylus_fit_lr_max_um)
+    if not np.isfinite(lr_sanity_min_um) or not np.isfinite(lr_sanity_max_um) or lr_sanity_min_um <= 0.0 or lr_sanity_min_um >= lr_sanity_max_um:
+        raise CompilePipelineError("L/R fit bounds must be finite, positive, and ordered")
+    overhang_fit_max_deviation_mm = float(config.overhang_fit_max_deviation_mm)
+    if not np.isfinite(overhang_fit_max_deviation_mm) or overhang_fit_max_deviation_mm < 0.0:
+        raise CompilePipelineError("Overhang fit deviation must be finite and non-negative")
+    overhang_fit_min_mm = max(0.0, effective_overhang_mm - overhang_fit_max_deviation_mm)
+    overhang_fit_max_mm = effective_overhang_mm + overhang_fit_max_deviation_mm
+    effective_lr_um = float(np.clip(float(cartridge.lr_um), lr_sanity_min_um, lr_sanity_max_um))
+    effective_stylus_yaw_deg = stylus_yaw_guess_deg
+    fitted_overhang_mm = effective_overhang_mm
     for _ in range(2):
         fit_mask = np.isfinite(lag_fit_s)
         if np.count_nonzero(fit_mask) < 3:
@@ -122,12 +158,17 @@ def compile_one_measurement(
             lag_s=lag_fit_s[fit_mask],
             effective_length_mm=effective_length_mm,
             offset_angle_deg=offset_angle_deg,
-            overhang_guess_mm=effective_overhang_mm,
+            overhang_guess_mm=fitted_overhang_mm,
             mount_yaw_deg=mount_yaw_deg,
-            stylus_yaw_guess_deg=stylus_yaw_guess_deg,
-            lr_guess_um=float(cartridge.lr_um),
+            stylus_yaw_guess_deg=effective_stylus_yaw_deg,
+            lr_guess_um=effective_lr_um,
             rotation_sign=rotation_sign,
+            angular_velocity_rad_per_s=sample_angular_velocity_rad_per_s,
             max_iter=config.stylus_fit_max_iter,
+            lr_min_um=lr_sanity_min_um,
+            lr_max_um=lr_sanity_max_um,
+            overhang_min_mm=overhang_fit_min_mm,
+            overhang_max_mm=overhang_fit_max_mm,
         )
         lag_fit_lr_um = float(lag_fit.x[0])
         lag_fit_stylus_yaw_deg = float(lag_fit.x[1])
@@ -136,6 +177,7 @@ def compile_one_measurement(
             radius_smooth_mm[fit_mask],
             lag_fit_s[fit_mask],
             lag_fit_lr_um,
+            sample_angular_velocity_rad_per_s,
         )
         play_yaw_fitted_deg = modeled_apparent_tracking_error_deg(
             radius_mm=radius_smooth_mm[fit_mask],
@@ -176,17 +218,29 @@ def compile_one_measurement(
         stylus_yaw_guess_deg=float(lag_fit.x[1]),
         lr_guess_um=float(lag_fit.x[0]),
         rotation_sign=rotation_sign,
+        angular_velocity_rad_per_s=sample_angular_velocity_rad_per_s,
         max_iter=config.stylus_fit_max_iter,
+        lr_min_um=lr_sanity_min_um,
+        lr_max_um=lr_sanity_max_um,
+        overhang_min_mm=overhang_fit_min_mm,
+        overhang_max_mm=overhang_fit_max_mm,
     )
     candidate_lr_um = float(stylus_fit.x[0])
     candidate_stylus_yaw_deg = float(stylus_fit.x[1])
     candidate_overhang_mm = float(stylus_fit.x[2])
-    stylus_fit_accepted = bool(np.isfinite(candidate_lr_um) and candidate_lr_um > 0.0 and np.isfinite(candidate_stylus_yaw_deg) and np.isfinite(candidate_overhang_mm) and candidate_overhang_mm >= 0.0)
-    effective_lr_um = candidate_lr_um if stylus_fit_accepted else float(cartridge.lr_um)
+    stylus_fit_accepted = bool(stylus_fit.success and np.isfinite(candidate_lr_um) and np.isfinite(candidate_stylus_yaw_deg) and np.isfinite(candidate_overhang_mm) and candidate_overhang_mm >= 0.0)
+    effective_lr_um = candidate_lr_um if stylus_fit_accepted else float(np.clip(float(cartridge.lr_um), lr_sanity_min_um, lr_sanity_max_um))
     effective_stylus_yaw_deg = candidate_stylus_yaw_deg if stylus_fit_accepted else stylus_yaw_guess_deg
     fitted_overhang_mm = candidate_overhang_mm if stylus_fit_accepted else effective_overhang_mm
+    lr_at_lower_bound = bool(np.isclose(effective_lr_um, lr_sanity_min_um, atol=0.01, rtol=0.0))
+    lr_at_upper_bound = bool(np.isclose(effective_lr_um, lr_sanity_max_um, atol=0.01, rtol=0.0))
+    lr_within_sanity_range = bool(lr_sanity_min_um <= effective_lr_um <= lr_sanity_max_um and not lr_at_lower_bound and not lr_at_upper_bound)
+    lr_sanity_warning = None if lr_within_sanity_range else f"L/R timing fit reached the {('minimum' if lr_at_lower_bound else 'maximum')} {effective_lr_um:.3g} µm bound; review cartridge data and geometry."
     t_stylus_fit = time.perf_counter() - t2
-    ate_measured_deg = apparent_tracking_error_from_lag_deg(radius_smooth_mm, lag_fit_s, effective_lr_um)
+    # Plot the complete smoothed measurement.  `lag_fit_s` is deliberately sparse
+    # after robust rejection and is reserved for fit quality statistics.
+    ate_measured_deg = apparent_tracking_error_from_lag_deg(radius_smooth_mm, lag_smooth_s, effective_lr_um, sample_angular_velocity_rad_per_s)
+    ate_fit_input_deg = apparent_tracking_error_from_lag_deg(radius_smooth_mm, lag_fit_s, effective_lr_um, sample_angular_velocity_rad_per_s)
     ate_fitted_deg = modeled_apparent_tracking_error_deg(
         radius_mm=radius_smooth_mm,
         effective_length_mm=effective_length_mm,
@@ -196,7 +250,13 @@ def compile_one_measurement(
         mount_yaw_deg=mount_yaw_deg,
         rotation_sign=rotation_sign,
     )
-    ate_raw_deg = apparent_tracking_error_from_lag_deg(radius_valid_mm, lag_valid_s, effective_lr_um)
+    ate_raw_deg = apparent_tracking_error_from_lag_deg(radius_valid_mm, lag_valid_s, effective_lr_um, sample_angular_velocity_rad_per_s)
+    stylus_fit_objective = float(rms(ate_fit_input_deg - ate_fitted_deg))
+    valid_lag_s = measurement.lag_s[np.isfinite(measurement.lag_s)]
+    lag_median_s = float(np.median(valid_lag_s)) if valid_lag_s.size else float("nan")
+    lag_mean_s = float(np.mean(valid_lag_s)) if valid_lag_s.size else float("nan")
+    lag_p05_s, lag_p95_s = (np.quantile(valid_lag_s, [0.05, 0.95]).astype(float) if valid_lag_s.size else (float("nan"), float("nan")))
+    lag_leading_channel = "right" if lag_median_s > 0.0 else "left" if lag_median_s < 0.0 else "neither"
 
     distortion_measured_ratio = harmonic_smooth[:, 1] / harmonic_smooth[:, 0]
     baerwald_distortion_deg = baerwald_tracking_error_deg(
@@ -230,7 +290,7 @@ def compile_one_measurement(
         apparent_tracking_error_peak_signed_deg=float(ate_fitted_deg[np.argmax(np.abs(ate_fitted_deg))]),
         apparent_tracking_error_range_deg=float(np.max(ate_fitted_deg) - np.min(ate_fitted_deg)),
         apparent_tracking_error_mean_deg=float(np.mean(ate_fitted_deg)),
-        apparent_tracking_fit_rms_deg=float(rms(ate_measured_deg - ate_fitted_deg)),
+        apparent_tracking_fit_rms_deg=float(rms(ate_fit_input_deg - ate_fitted_deg)),
         distortion_second_harmonic_peak_pct=float(np.max(distortion_measured_ratio) * 100.0),
         distortion_second_harmonic_rms_pct=float(rms(distortion_measured_ratio) * 100.0),
     )
@@ -239,17 +299,42 @@ def compile_one_measurement(
         "lag_bad_indices": lag_reject.bad_indices,
         "smoothing_window": int(smoothing_window),
         "rotation_sign": float(rotation_sign),
+        "radius_mapping": {
+            "method": radius_mapping_method,
+            "outer_radius_mm": float(measurement.outer_radius_mm),
+            "inner_radius_mm": float(measurement.inner_radius_mm),
+            "tone_duration_s": float(tone_duration_s),
+            "radial_rate_mm_per_s": float((measurement.inner_radius_mm - measurement.outer_radius_mm) / tone_duration_s),
+            "track_rpm": None if not isinstance(track_rpm, (int, float)) else float(track_rpm),
+            "angular_velocity_rad_per_s": sample_angular_velocity_rad_per_s,
+            "angular_velocity_source": "track_duration_rpm" if isinstance(track_rpm, (int, float)) and track_rpm > 0.0 else "measurement_nominal", 
+            "track_revolutions": None if not isinstance(track_revolutions, (int, float)) else float(track_revolutions),
+            "radial_pitch_mm_per_revolution": measurement.pitch_estimate,
+        },
         "fit_rejected_indices": np.asarray(sorted(set(rejected_fit_indices)), dtype=int).tolist(),
         "fit_rejected_point_count": int(len(set(rejected_fit_indices))),
         "fit_retained_point_count": int(np.count_nonzero(np.isfinite(lag_fit_s))),
         "fit_rejected_effective_windows": float(len(set(rejected_fit_indices)) / max(1, smoothing_window)),
         "lag_fit_params": np.asarray(lag_fit.x, dtype=float).tolist(),
         "lag_fit_objective": float(lag_fit.fun),
+        "lag_fit_iterations": int(lag_fit.nit),
+        "lag_fit_converged": bool(lag_fit.success),
         "stylus_fit_candidate_lr_um": candidate_lr_um,
         "stylus_fit_candidate_stylus_yaw_deg": candidate_stylus_yaw_deg,
-        "stylus_fit_candidate_overhang_mm": candidate_overhang_mm,
+        "stylus_fit_geometry_locked": False,
+        "stylus_fit_input_overhang_mm": effective_overhang_mm,
+        "stylus_fit_overhang_bounds_mm": [overhang_fit_min_mm, overhang_fit_max_mm],
+        "stylus_fit_effective_overhang_mm": fitted_overhang_mm,
+        "stylus_fit_overhang_delta_mm": fitted_overhang_mm - effective_overhang_mm,
         "stylus_fit_accepted": stylus_fit_accepted,
-        "stylus_fit_fallback": None if stylus_fit_accepted else {"lr_um": float(cartridge.lr_um), "stylus_yaw_deg": stylus_yaw_guess_deg, "overhang_mm": effective_overhang_mm},
+        "stylus_fit_iterations": int(stylus_fit.nit),
+        "stylus_fit_converged": bool(stylus_fit.success),
+        "stylus_fit_fallback": None if stylus_fit_accepted else {"lr_um": effective_lr_um, "stylus_yaw_deg": effective_stylus_yaw_deg},
+        "stylus_fit_mode": "bounded_timing_fit_with_floating_overhang", 
+        "lr_sanity_min_um": lr_sanity_min_um,
+        "lr_sanity_max_um": lr_sanity_max_um,
+        "lr_within_sanity_range": lr_within_sanity_range,
+        "lr_sanity_warning": lr_sanity_warning,
         "ate_fit_selected_start": "metadata",
         "play_yaw_sigma_deg": None if not np.isfinite(play_yaw_sigma_deg) else float(play_yaw_sigma_deg),
         "play_yaw_reject_sigma_multiplier": float(config.lag_fit_reject_sigma_multiplier),
@@ -258,6 +343,12 @@ def compile_one_measurement(
         "play_yaw_noise_deg": None
         if not np.any(np.isfinite(ate_raw_deg)) or not np.any(np.isfinite(ate_measured_deg))
         else float(3.0 * np.nanstd(ate_raw_deg[(smoothing_window // 2): (ate_measured_deg.shape[0] + smoothing_window // 2)] - ate_measured_deg)),
+        "stereo_lag_sign_convention": "positive lag means right channel leads left channel",
+        "stereo_lag_leading_channel": lag_leading_channel,
+        "stereo_lag_median_us": None if not np.isfinite(lag_median_s) else lag_median_s * 1_000_000.0,
+        "stereo_lag_mean_us": None if not np.isfinite(lag_mean_s) else lag_mean_s * 1_000_000.0,
+        "stereo_lag_p05_us": None if not np.isfinite(lag_p05_s) else float(lag_p05_s) * 1_000_000.0,
+        "stereo_lag_p95_us": None if not np.isfinite(lag_p95_s) else float(lag_p95_s) * 1_000_000.0,
         "pivot_spindle_consistency_error_mm": None
         if actual_pivot_to_spindle_mm is None
         else float(abs(effective_length_mm - fitted_overhang_mm - float(actual_pivot_to_spindle_mm))),

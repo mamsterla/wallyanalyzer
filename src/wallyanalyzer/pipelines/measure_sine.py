@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 import time
 
@@ -9,8 +10,10 @@ from wallyanalyzer.audio import infer_decimation_factor, load_wav
 from wallyanalyzer.metadata import MetadataProvider
 from wallyanalyzer.schemas import MeasureSineConfig, MeasurementResult
 from wallyanalyzer.signal import (
+    EnvelopeDetectionError,
     analyze_period_envelope,
     build_snippet_geometry,
+    detect_tone_region,
     fftlag,
     nuttall_window,
 )
@@ -61,6 +64,22 @@ def measure_sine_file(
         threshold_fraction=config.envelope_threshold_fraction,
         end_threshold_fraction=config.envelope_end_threshold_fraction,
     )
+    try:
+        tone_region = detect_tone_region(audio.samples, effective_sample_rate_hz)
+        envelope_result = replace(
+            envelope_result,
+            start_sample=tone_region.start_sample,
+            end_sample=tone_region.end_sample,
+        )
+        tone_boundary_method = "1khz_spectral"
+        tone_boundary_snr_db = {
+            "start": tone_region.first_tone_snr_db,
+            "end": tone_region.last_tone_snr_db,
+        }
+    except EnvelopeDetectionError:
+        # Preserve compatibility for non-1 kHz or very short captures.
+        tone_boundary_method = "amplitude_envelope_fallback"
+        tone_boundary_snr_db = None
     t_envelope = time.perf_counter() - t1
 
     t2 = time.perf_counter()
@@ -182,12 +201,16 @@ def measure_sine_file(
         (envelope_result.end_sample - envelope_result.start_sample + 1) * dt_s
     )
     pitch_estimate = None
+    duration_derived_rpm = None
     if modulation_duration_s > 0:
-        pitch_estimate = (
-            (test_track.outer_radius_mm - test_track.inner_radius_mm)
-            * config.rotation_period_s
-            / modulation_duration_s
-        )
+        if config.reference_track_revolutions > 0.0:
+            pitch_estimate = (
+                (test_track.outer_radius_mm - test_track.inner_radius_mm)
+                / config.reference_track_revolutions
+            )
+            duration_derived_rpm = (
+                60.0 * config.reference_track_revolutions / modulation_duration_s
+            )
 
     segment_midpoint_samples = (
         snippet_geometry.start_indices + snippet_geometry.snippet_length_samples // 2
@@ -200,6 +223,10 @@ def measure_sine_file(
         "n_fft_failures": int(fft_failure_count),
         "highpass_filter_length": int(highpass_filter_length),
         "large_lag_rejections": int(np.count_nonzero(large_lag_mask)),
+        "tone_boundary_method": tone_boundary_method,
+        "tone_boundary_snr_db": tone_boundary_snr_db,
+        "reference_track_revolutions": float(config.reference_track_revolutions),
+        "duration_derived_rpm": duration_derived_rpm,
         "timings_s": {
             "audio_load": float(t_audio_load),
             "envelope": float(t_envelope),

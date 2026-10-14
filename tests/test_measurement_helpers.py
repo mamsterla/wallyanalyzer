@@ -11,6 +11,7 @@ from wallyanalyzer.signal import (
     analyze_period_envelope,
     build_snippet_geometry,
     detrend_and_window,
+    detect_tone_region,
     extract_padded_snippet,
     fftlag,
     snippet_is_valid,
@@ -70,6 +71,24 @@ class MeasurementHelperTests(unittest.TestCase):
         self.assertEqual(result.start_sample, 4 * block + block // 2)
         self.assertEqual(result.end_sample, (4 + tone_blocks - 1) * block + block // 2)
         self.assertGreater(result.level, 0.0)
+
+    def test_detect_tone_region_excludes_broadband_lead_in_and_out(self):
+        sample_rate = 8_000
+        lead_seconds = 1.25
+        tone_seconds = 4.0
+        tail_seconds = 1.0
+        rng = np.random.default_rng(7)
+        lead = rng.normal(0.0, 0.02, (int(lead_seconds * sample_rate), 2))
+        time = np.arange(int(tone_seconds * sample_rate)) / sample_rate
+        tone = np.column_stack([0.1 * np.sin(2.0 * np.pi * 1_000.0 * time)] * 2)
+        tail = rng.normal(0.0, 0.02, (int(tail_seconds * sample_rate), 2))
+
+        region = detect_tone_region(np.vstack([lead, tone, tail]), sample_rate)
+
+        self.assertEqual(region.start_sample, int(lead_seconds * sample_rate))
+        self.assertEqual(region.end_sample, int((lead_seconds + tone_seconds) * sample_rate) - 1)
+        self.assertGreater(region.first_tone_snr_db, 30.0)
+        self.assertGreater(region.last_tone_snr_db, 30.0)
 
     def test_build_extract_validate_and_detrend_snippet(self):
         geometry = build_snippet_geometry(

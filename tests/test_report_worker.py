@@ -37,8 +37,15 @@ class TrackingErrorWorkerGeometryTests(unittest.TestCase):
                 Path(tmpdir),
                 "Hosted worker test",
                 {"effectiveLengthMm": 250.0, "offsetAngleDeg": 23.0, "overhangMm": 17.5, "mountYawDeg": -0.4},
+                report_title="Shared alignment review",
             )
             self.assertIn("report_pdf", {artifact["kind"] for artifact in artifacts})
+            svg = (Path(tmpdir) / "tracking-error-1.svg").read_text(encoding="utf-8")
+            self.assertIn("Shared alignment review", svg)
+            self.assertIn("Generated:", svg)
+            self.assertIn("Input: L 250.000 mm", svg)
+            self.assertIn("Calculated: OH", svg)
+            self.assertIn("pivot/spindle", svg)
             self.assertTrue((Path(tmpdir) / "tracking-error.pdf").is_file())
             metrics = json.loads((Path(tmpdir) / "metrics.json").read_text(encoding="utf-8"))
             self.assertEqual(metrics["reportType"], "Yaw Angle Report")

@@ -15,7 +15,12 @@ class CompileConfig:
     lag_outlier_sigma: float = 4.0
     lag_fit_reject_sigma_multiplier: float = 1.0
     lag_fit_reject_max_fraction: float = 1.0
-    stylus_fit_max_iter: int = 300
+    # Three-parameter bounded fits require more iterations than the legacy
+    # two-parameter solve to converge at an active L/R boundary.
+    stylus_fit_max_iter: int = 1500
+    stylus_fit_lr_min_um: float = 10.0
+    stylus_fit_lr_max_um: float = 35.0
+    overhang_fit_max_deviation_mm: float = 1.0
     distortion_fit_max_iter: int = 300
 
 

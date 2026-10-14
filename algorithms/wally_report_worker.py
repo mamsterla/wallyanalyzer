@@ -7,6 +7,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Mapping
 from wallyanalyzer.metadata.provider import InMemoryMetadataProvider
@@ -32,6 +33,7 @@ def build_tracking_error_artifacts(
     output_dir: Path,
     system_name: str,
     effective_algorithm_values: Mapping[str, Any] | None = None,
+    report_title: str | None = None,
 ) -> list[dict[str, Any]]:
     """Build deterministic-named artifacts for ordered WAV inputs.
 
@@ -45,10 +47,12 @@ def build_tracking_error_artifacts(
     provider = _provider(inputs, preset)
     measurements = [measure_sine_file(path, provider) for path in inputs]
     compiled = compile_sine_results(measurements, provider)
+    generated_at = datetime.now().astimezone().strftime("%Y-%m-%d %H:%M %Z")
+    display_title = report_title or f"{REPORT_TITLE} — {system_name}"
     artifacts: list[dict[str, Any]] = []
     for index, result in enumerate(compiled.single_results):
         svg = output_dir / f"tracking-error-{index + 1}.svg"
-        render_compile_validation_svg(result, svg, title=f"{REPORT_TITLE} — {system_name}")
+        render_compile_validation_svg(result, svg, title=display_title, generated_at=generated_at)
         artifacts.append(_artifact(svg, "graph_svg", "image/svg+xml"))
         if index == 0:
             pdf = output_dir / "tracking-error.pdf"

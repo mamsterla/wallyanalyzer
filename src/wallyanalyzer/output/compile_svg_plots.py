@@ -21,6 +21,7 @@ def render_compile_validation_svg(
     result: SingleCompileResult,
     output_path: str | Path,
     title: str | None = None,
+    generated_at: str | None = None,
 ) -> Path:
     output = Path(output_path)
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -29,7 +30,7 @@ def render_compile_validation_svg(
     # Keep these local: sweep reports use the legacy shared geometry below.
     validation_svg_height = 1_160
     validation_top = 118
-    validation_gap = 155
+    validation_gap = 180
     top_panel_height = 280
     harmonic_panel_height = 210
     diagnostic_panel_height = 190
@@ -60,8 +61,38 @@ def render_compile_validation_svg(
     peak_idx = int(np.argmax(np.abs(result.ate_fitted_deg)))
     avg_rotations = max(1, int(round(result.diagnostics.get("smoothing_window", 1) / max(1, round(360.0 / result.measurement.skip_deg)))))
     piv_spin_adj = 0.0 if acquisition.pivot_spindle_adjustment_mm is None else float(acquisition.pivot_spindle_adjustment_mm)
+    lag_leader = result.diagnostics.get("stereo_lag_leading_channel")
+    lag_median_us = result.diagnostics.get("stereo_lag_median_us")
+    lag_summary = "Stereo lag unavailable"
+    if lag_leader in {"left", "right"} and isinstance(lag_median_us, (int, float)) and np.isfinite(lag_median_us):
+        lag_summary = f"{str(lag_leader).title()} leads by {abs(float(lag_median_us)):.3g} µs (median)"
+    elif lag_leader == "neither":
+        lag_summary = "No median stereo lead"
+    lr_warning = result.diagnostics.get("lr_sanity_warning")
+    lr_summary = str(lr_warning) if lr_warning else f"L/R contact distance {summary.effective_lr_um:.3g} µm"
+    duration_derived_rpm = result.measurement.diagnostics.get("duration_derived_rpm")
+    rpm_summary = (
+        f"   ·   track-duration RPM {float(duration_derived_rpm):.4f}"
+        if isinstance(duration_derived_rpm, (int, float)) and np.isfinite(duration_derived_rpm)
+        else ""
+    )
+    lag_report_summary = f"Stereo timing  ·  {lag_summary}{rpm_summary}"
+    input_geometry = (
+        f'<tspan font-weight="bold">Input: L {float(acquisition.effective_length_mm):.3f} mm   '
+        f'Offset {float(acquisition.offset_angle_deg):.3g}°   OH {float(acquisition.overhang_mm):.3f} mm   '
+        f'Mount yaw {float(acquisition.cantilever_yaw_deg or 0.0):.3g}°</tspan>'
+    )
+    fitted_overhang_mm = float(summary.effective_overhang_mm)
+    overhang_delta_mm = fitted_overhang_mm - float(acquisition.overhang_mm)
+    calculated_pivot_mm = float(acquisition.effective_length_mm) - fitted_overhang_mm
+    geometry_summary = (
+        f'Geometry  ·  {input_geometry}   '
+        f'<tspan>Calculated: OH {fitted_overhang_mm:.3f} mm (Δ {overhang_delta_mm:+.3f} mm)   '
+        f'pivot/spindle {calculated_pivot_mm:.3f} mm</tspan>'
+    )
     title_line_1 = title or f"Wally Analysis, {Path(result.measurement.source_file).name}"
     title_line_2 = system_line
+    generated_line = f"Generated: {generated_at}" if generated_at else ""
     source_algorithm = str(result.diagnostics.get("source_algorithm", "Python port"))
     provenance_line = f"Analysis: {source_algorithm} · 1 kHz tracking test · diagnostic report"
 
@@ -74,14 +105,21 @@ def render_compile_validation_svg(
         f'<text x="80" y="53" class="title">{_escape(title_line_1)}</text>',
         f'<text x="80" y="75" class="small">{_escape(title_line_2)}</text>',
         f'<text x="{SVG_WIDTH - 80}" y="53" text-anchor="end" class="small">{_escape(provenance_line)}</text>',
+        f'<text x="{SVG_WIDTH - 80}" y="75" text-anchor="end" class="small">{_escape(generated_line)}</text>',
     ]
 
     ate_xmin, ate_xmax = _x_bounds([radius_valid, radius_smooth])
-    ate_ymin, ate_ymax = _series_bounds(
-        [result.ate_raw_deg, result.ate_measured_deg, result.ate_fitted_deg],
-        None,
-        None,
+    play_yaw_values = np.concatenate(
+        [
+            np.asarray(result.ate_raw_deg, dtype=float)[np.isfinite(result.ate_raw_deg)],
+            np.asarray(result.ate_measured_deg, dtype=float)[np.isfinite(result.ate_measured_deg)],
+            np.asarray(result.ate_fitted_deg, dtype=float)[np.isfinite(result.ate_fitted_deg)],
+        ]
     )
+    # A symmetric ±10° scale is the normal alignment envelope.  Expand it only
+    # when measured or modelled values genuinely exceed that envelope.
+    play_yaw_limit_deg = max(10.0, float(np.ceil(np.max(np.abs(play_yaw_values)))))
+    ate_ymin, ate_ymax = -play_yaw_limit_deg, play_yaw_limit_deg
     svg.extend(
         _panel_svg(
             x_series=[radius_valid, radius_smooth, radius_smooth],
@@ -122,7 +160,7 @@ def render_compile_validation_svg(
             top=validation_top + 12,
             entries=[
                 ("raw", f"Raw play-yaw estimates (±{float(raw_noise_deg):.3g}°)"),
-                ("fit1", f"{avg_rotations}-rotation average"),
+                ("fit1", f"{avg_rotations}-rotation average (all smoothed points)"),
                 ("fit4", f"Fitted play-yaw curve (±{3.0 * summary.apparent_tracking_fit_rms_deg:.3g}°)"),
             ],
         )
@@ -130,11 +168,12 @@ def render_compile_validation_svg(
 
     summary_top = validation_top + top_panel_height + 20
     svg.extend([
-        f'<rect x="{MARGIN_LEFT}" y="{summary_top:.1f}" width="{panel_width}" height="112" rx="5" fill="#f6f8fa" stroke="#d5dde5"/>',
+        f'<rect x="{MARGIN_LEFT}" y="{summary_top:.1f}" width="{panel_width}" height="136" rx="5" fill="#f6f8fa" stroke="#d5dde5"/>',
         f'<text x="{MARGIN_LEFT + 20}" y="{summary_top + 24:.1f}" class="small" style="font-weight:bold;fill:#36536b">MEASUREMENT SUMMARY</text>',
-        f'<text x="{MARGIN_LEFT + 20}" y="{summary_top + 50:.1f}" class="mid">{_escape(f"Geometry  ·  L {float(acquisition.effective_length_mm):.3f} mm   OH {summary.effective_overhang_mm:.3f} mm   Mount yaw {summary.effective_mount_yaw_deg:.3g}°")}</text>',
-        f'<text x="{MARGIN_LEFT + 20}" y="{summary_top + 78:.1f}" class="mid">{_escape(f"Play Yaw  ·  peak {summary.apparent_tracking_error_peak_abs_deg:.3g}°   mean {summary.apparent_tracking_error_mean_deg:.3g}°   fit RMS {summary.apparent_tracking_fit_rms_deg:.4f}°")}</text>',
-        f'<text x="{MARGIN_LEFT + 20}" y="{summary_top + 101:.1f}" class="small">{_escape(f"Sampling  ·  {result.measurement.periods_per_segment} cycles of 1 kHz every {result.measurement.skip_deg:.0f}°   ·   LR {summary.effective_lr_um:.3g} µm   ·   pivot/spindle adjustment {piv_spin_adj:.3f} mm")}</text>',
+        f'<text x="{MARGIN_LEFT + 20}" y="{summary_top + 50:.1f}" class="mid">{geometry_summary}</text>',
+        f'<text x="{MARGIN_LEFT + 20}" y="{summary_top + 75:.1f}" class="mid">{_escape(f"Play Yaw  ·  mean {summary.apparent_tracking_error_mean_deg:+.3g}°   fit RMS {summary.apparent_tracking_fit_rms_deg:.4f}°   display ±{play_yaw_limit_deg:.0f}°")}</text>',
+        f'<text x="{MARGIN_LEFT + 20}" y="{summary_top + 99:.1f}" class="small">{_escape(lag_report_summary)}</text>',
+        f'<text x="{MARGIN_LEFT + 20}" y="{summary_top + 122:.1f}" class="small">{_escape(f"Sampling  ·  {result.measurement.periods_per_segment} cycles of 1 kHz every {result.measurement.skip_deg:.0f}°   ·   {lr_summary}")}</text>',
     ])
 
     lower_top = validation_top + top_panel_height + validation_gap
@@ -519,6 +558,7 @@ def _legend_svg(left: float, top: float, entries: list[tuple[str, str]], width: 
 
 
 def _series_bounds(y_series, ymin, ymax):
+    explicit_bounds = ymin is not None and ymax is not None
     if ymin is None or ymax is None:
         all_y = np.concatenate([np.asarray(y, dtype=float)[np.isfinite(y)] for y in y_series if np.any(np.isfinite(y))])
         if ymin is None:
@@ -528,7 +568,7 @@ def _series_bounds(y_series, ymin, ymax):
     if ymin == ymax:
         pad = 1.0 if ymin == 0 else abs(ymin) * 0.1
         return float(ymin - pad), float(ymax + pad)
-    if ymin == 0.0:
+    if explicit_bounds or ymin == 0.0:
         return float(ymin), float(ymax)
     pad = 0.05 * (ymax - ymin)
     return float(ymin - pad), float(ymax + pad)
