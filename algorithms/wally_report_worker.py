@@ -26,6 +26,7 @@ PRESET = {
     "system_id": 1,
     "cartridge_name": "Yaw Angle Report reference cartridge",
     "cartridge_lr_um": 10.0,
+    "channel_polarity": "normal",
 }
 
 def build_tracking_error_artifacts(
@@ -63,10 +64,10 @@ def build_tracking_error_artifacts(
         render_compile_sweep_svg(compiled, sweep, title=f"{REPORT_TITLE} sweep — {system_name}")
         artifacts.append(_artifact(sweep, "graph_svg", "image/svg+xml"))
     metrics = output_dir / "metrics.json"
-    metrics.write_text(json.dumps({"reportType":REPORT_TITLE,"algorithmVersion":"1.0.0","preset":"RTI Test 1 Track 1 Side A","effectiveAlgorithmValues":_geometry_provenance(preset),"inputCount":len(inputs),"systemName":system_name,"measurements":[{"file":m.file_stem,"validSegments":m.diagnostics["n_valid_segments"],"processingSeconds":m.processing_time_s} for m in measurements]}, indent=2), encoding="utf-8")
+    metrics.write_text(json.dumps({"reportType":REPORT_TITLE,"algorithmVersion":"1.1.0","preset":"RTI Test 1 Track 1 Side A","effectiveAlgorithmValues":_geometry_provenance(preset),"inputCount":len(inputs),"systemName":system_name,"measurements":[{"file":m.file_stem,"validSegments":m.diagnostics["n_valid_segments"],"processingSeconds":m.processing_time_s} for m in measurements]}, indent=2), encoding="utf-8")
     artifacts.append(_artifact(metrics, "metrics_json", "application/json"))
     manifest = output_dir / "manifest.json"
-    manifest.write_text(json.dumps({"algorithm":"tracking-error","algorithmVersion":"1.0.0","presetSnapshot":PRESET,"effectiveAlgorithmValues":_geometry_provenance(preset),"artifacts":artifacts}, indent=2), encoding="utf-8")
+    manifest.write_text(json.dumps({"algorithm":"tracking-error","algorithmVersion":"1.1.0","presetSnapshot":PRESET,"effectiveAlgorithmValues":_geometry_provenance(preset),"artifacts":artifacts}, indent=2), encoding="utf-8")
     artifacts.append(_artifact(manifest, "manifest", "application/json"))
     return artifacts
 
@@ -90,6 +91,10 @@ def _resolve_preset(values: Mapping[str, Any] | None) -> dict[str, Any]:
         if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or not valid(float(value)):
             raise ValueError("Yaw Angle Report geometry is invalid.")
         preset[target] = float(value)
+    channel_polarity = values.get("channelPolarity", preset["channel_polarity"])
+    if channel_polarity not in ("normal", "inverted"):
+        raise ValueError("Yaw Angle Report channel polarity is invalid.")
+    preset["channel_polarity"] = channel_polarity
     if "effectiveLengthMm" in values or "overhangMm" in values:
         preset["actual_pivot_to_spindle_mm"] = float(preset["effective_length_mm"] - preset["overhang_mm"])
     return preset
@@ -101,12 +106,13 @@ def _geometry_provenance(preset: Mapping[str, Any]) -> dict[str, float]:
         "offsetAngleDeg": float(preset["offset_angle_deg"]),
         "overhangMm": float(preset["overhang_mm"]),
         "mountYawDeg": float(preset["cantilever_yaw_deg"]),
+        "channelPolarity": str(preset["channel_polarity"]),
     }
 
 
 def _provider(inputs: list[Path], preset: Mapping[str, Any]) -> InMemoryMetadataProvider:
     track = TestTrackRecord(name=preset["name"], outer_radius_mm=preset["outer_radius_mm"], inner_radius_mm=preset["inner_radius_mm"])
-    acquisitions = {path.stem: AcquisitionRecord(file_stem=path.stem, digitizer=preset["digitizer"], test_track_name=preset["name"], system_id=preset["system_id"], cartridge_name=preset["cartridge_name"], cantilever_yaw_deg=preset["cantilever_yaw_deg"], stylus_yaw_deg=preset["stylus_yaw_deg"], effective_length_mm=preset["effective_length_mm"], offset_angle_deg=preset["offset_angle_deg"], overhang_mm=preset["overhang_mm"], actual_pivot_to_spindle_mm=preset["actual_pivot_to_spindle_mm"]) for path in inputs}
+    acquisitions = {path.stem: AcquisitionRecord(file_stem=path.stem, digitizer=preset["digitizer"], test_track_name=preset["name"], system_id=preset["system_id"], cartridge_name=preset["cartridge_name"], cantilever_yaw_deg=preset["cantilever_yaw_deg"], stylus_yaw_deg=preset["stylus_yaw_deg"], effective_length_mm=preset["effective_length_mm"], offset_angle_deg=preset["offset_angle_deg"], overhang_mm=preset["overhang_mm"], actual_pivot_to_spindle_mm=preset["actual_pivot_to_spindle_mm"], lag_polarity=-1 if preset["channel_polarity"] == "inverted" else 1) for path in inputs}
     cartridge = CartridgeRecord(cartridge_name=preset["cartridge_name"], lr_um=preset["cartridge_lr_um"])
     return InMemoryMetadataProvider(acquisitions=acquisitions, test_tracks={track.name: track}, cartridges={cartridge.cartridge_name: cartridge}, systems={preset["system_id"]: SystemRecord(system_id=preset["system_id"])})
 

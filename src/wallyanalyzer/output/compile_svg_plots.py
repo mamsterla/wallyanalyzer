@@ -28,9 +28,9 @@ def render_compile_validation_svg(
 
     # Validation reports reserve a compact header and a dedicated summary card.
     # Keep these local: sweep reports use the legacy shared geometry below.
-    validation_svg_height = 1_160
+    validation_svg_height = 1_190
     validation_top = 118
-    validation_gap = 180
+    validation_gap = 210
     top_panel_height = 280
     harmonic_panel_height = 210
     diagnostic_panel_height = 190
@@ -68,15 +68,22 @@ def render_compile_validation_svg(
         lag_summary = f"{str(lag_leader).title()} leads by {abs(float(lag_median_us)):.3g} µs (median)"
     elif lag_leader == "neither":
         lag_summary = "No median stereo lead"
-    lr_warning = result.diagnostics.get("lr_sanity_warning")
-    lr_summary = str(lr_warning) if lr_warning else f"L/R contact distance {summary.effective_lr_um:.3g} µm"
-    duration_derived_rpm = result.measurement.diagnostics.get("duration_derived_rpm")
-    rpm_summary = (
-        f"   ·   track-duration RPM {float(duration_derived_rpm):.4f}"
-        if isinstance(duration_derived_rpm, (int, float)) and np.isfinite(duration_derived_rpm)
-        else ""
-    )
-    lag_report_summary = f"Stereo timing  ·  {lag_summary}{rpm_summary}"
+    lr_estimation = result.diagnostics.get("lr_estimation", {})
+    lr_interval = lr_estimation.get("interval_10_90_um") if isinstance(lr_estimation, dict) else None
+    null_mismatch = lr_estimation.get("null_mismatch_percent") if isinstance(lr_estimation, dict) else None
+    channel_baseline_ns = lr_estimation.get("channel_baseline_lag_ns") if isinstance(lr_estimation, dict) else None
+    lr_summary = f"Null-anchored L/R {summary.effective_lr_um:.3g} µm"
+    if isinstance(lr_interval, list) and len(lr_interval) == 2:
+        lr_summary += f" (10–90% {float(lr_interval[0]):.3g}–{float(lr_interval[1]):.3g} µm)"
+    carrier_error_hz = result.measurement.diagnostics.get("carrier_frequency_error_hz")
+    carrier_summary = f"   ·   1 kHz error {float(carrier_error_hz):+.3f} Hz" if isinstance(carrier_error_hz, (int, float)) and np.isfinite(carrier_error_hz) else ""
+    polarity = "inverted" if acquisition.lag_polarity == -1 else "normal"
+    lag_report_summary = f"Stereo timing  ·  {lag_summary}{carrier_summary}   ·   polarity {polarity}"
+    confidence_ok = isinstance(null_mismatch, (int, float)) and abs(float(null_mismatch)) <= 5.0 and isinstance(lr_interval, list) and len(lr_interval) == 2 and float(lr_interval[1]) - float(lr_interval[0]) <= summary.effective_lr_um
+    recommendation = (f"Yaw correction  ·  apply mount-yaw adjustment {-summary.effective_stylus_yaw_deg:+.3g}° (signed convention)" if confidence_ok else "Yaw correction  ·  withheld: null consistency or L/R interval requires review")
+    projection_diagnostics = result.diagnostics.get("projection", {})
+    projection_visible = isinstance(projection_diagnostics, dict) and int(projection_diagnostics.get("retained_point_count", 0)) >= 2
+    lr_quality_summary = f"L/R quality  ·  null mismatch {float(null_mismatch):+.3g}%" if isinstance(null_mismatch, (int, float)) else "L/R quality  ·  legacy estimator fallback"
     input_geometry = (
         f'<tspan font-weight="bold">Input: L {float(acquisition.effective_length_mm):.3f} mm   '
         f'Offset {float(acquisition.offset_angle_deg):.3g}°   OH {float(acquisition.overhang_mm):.3f} mm   '
@@ -98,7 +105,7 @@ def render_compile_validation_svg(
 
     svg = [
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{SVG_WIDTH}" height="{validation_svg_height}" viewBox="0 0 {SVG_WIDTH} {validation_svg_height}">',
-        '<style>text{font-family:Arial,sans-serif;fill:#000} .title{font-size:22px;font-weight:bold} .subtitle{font-size:20px;font-weight:bold} .label{font-size:14px} .small{font-size:12px;fill:#000} .mid{font-size:13px} .axis{stroke:#444;stroke-width:1} .grid{stroke:#ddd;stroke-width:1} .raw{fill:none;stroke:#e6a400;stroke-width:1.1;opacity:0.95;stroke-dasharray:2 2} .fit1{fill:none;stroke:#0057ff;stroke-width:2} .fit2{fill:none;stroke:#111;stroke-width:2;stroke-dasharray:10 6} .fit3{fill:none;stroke:#d95f02;stroke-width:2} .fit4{fill:none;stroke:#1b9e77;stroke-width:2;stroke-dasharray:8 5} .fit5{fill:none;stroke:#7f3fbf;stroke-width:2;stroke-dasharray:5 4} .legend-bg{fill:#fff;fill-opacity:1;stroke:#555;stroke-width:1} .marker-blue{fill:white;stroke:#0057ff;stroke-width:2} .marker-black{fill:#111;stroke:#111} .marker-red{fill:#d62728;stroke:#d62728} .marker-green{fill:#2ca02c;stroke:#2ca02c} .marker-open{fill:white;stroke-width:2}</style>',
+        '<style>text{font-family:Arial,sans-serif;fill:#000} .title{font-size:22px;font-weight:bold} .subtitle{font-size:20px;font-weight:bold} .label{font-size:14px} .small{font-size:12px;fill:#000} .mid{font-size:13px} .axis{stroke:#444;stroke-width:1} .grid{stroke:#ddd;stroke-width:1} .raw{fill:none;stroke:#e6a400;stroke-width:1.1;opacity:0.95;stroke-dasharray:2 2} .fit1{fill:none;stroke:#0057ff;stroke-width:2;stroke-dasharray:8 5} .fit2{fill:none;stroke:#111;stroke-width:2;stroke-dasharray:10 6} .fit3{fill:none;stroke:#d95f02;stroke-width:2} .fit4{fill:none;stroke:#1b9e77;stroke-width:2} .fit5{fill:none;stroke:#7f3fbf;stroke-width:2;stroke-dasharray:5 4} .legend-bg{fill:#fff;fill-opacity:1;stroke:#555;stroke-width:1} .marker-blue{fill:white;stroke:#0057ff;stroke-width:2} .marker-black{fill:#111;stroke:#111} .marker-red{fill:#d62728;stroke:#d62728} .marker-green{fill:#2ca02c;stroke:#2ca02c} .marker-open{fill:white;stroke-width:2}</style>',
         f'<rect x="0" y="0" width="{SVG_WIDTH}" height="{SVG_HEIGHT}" fill="#fff"/>',
         f'<rect x="0" y="0" width="{SVG_WIDTH}" height="82" fill="#f6f8fa"/>',
         '<text x="80" y="25" class="small" style="font-weight:bold;letter-spacing:1.5px;fill:#36536b">WALLY ANALYZER</text>',
@@ -109,22 +116,34 @@ def render_compile_validation_svg(
     ]
 
     ate_xmin, ate_xmax = _x_bounds([radius_valid, radius_smooth])
-    play_yaw_values = np.concatenate(
-        [
-            np.asarray(result.ate_raw_deg, dtype=float)[np.isfinite(result.ate_raw_deg)],
-            np.asarray(result.ate_measured_deg, dtype=float)[np.isfinite(result.ate_measured_deg)],
-            np.asarray(result.ate_fitted_deg, dtype=float)[np.isfinite(result.ate_fitted_deg)],
-        ]
-    )
-    # A symmetric ±10° scale is the normal alignment envelope.  Expand it only
-    # when measured or modelled values genuinely exceed that envelope.
-    play_yaw_limit_deg = max(10.0, float(np.ceil(np.max(np.abs(play_yaw_values)))))
-    ate_ymin, ate_ymax = -play_yaw_limit_deg, play_yaw_limit_deg
+    raw_play_yaw = np.asarray(result.ate_raw_deg, dtype=float)
+    finite_raw_play_yaw = raw_play_yaw[np.isfinite(raw_play_yaw)]
+    raw_median = float(np.median(finite_raw_play_yaw))
+    raw_mad = float(np.median(np.abs(finite_raw_play_yaw - raw_median)))
+    # Exclude isolated raw spikes from chart scaling; retain all values in the plot.
+    raw_scale_values = finite_raw_play_yaw[np.abs(finite_raw_play_yaw - raw_median) <= max(0.25, 6.0 * raw_mad)]
+    play_yaw_scale_series = [
+        raw_scale_values,
+        np.asarray(result.ate_measured_deg, dtype=float)[np.isfinite(result.ate_measured_deg)],
+    ]
+    if projection_visible:
+        play_yaw_scale_series.append(np.asarray(result.ate_fitted_deg, dtype=float)[np.isfinite(result.ate_fitted_deg)])
+    play_yaw_values = np.concatenate(play_yaw_scale_series)
+    ate_ymin = float(np.min(play_yaw_values) - 1.5)
+    ate_ymax = float(np.max(play_yaw_values) + 1.5)
+    projection_summary = "validated measured sections" if projection_visible else "validated sections unavailable"
+    upper_x_series = [radius_valid, radius_smooth]
+    upper_y_series = [result.ate_raw_deg, result.ate_measured_deg]
+    upper_classes = ["raw", "fit1"]
+    if projection_visible:
+        upper_x_series.append(radius_smooth)
+        upper_y_series.append(result.ate_fitted_deg)
+        upper_classes.append("fit4")
     svg.extend(
         _panel_svg(
-            x_series=[radius_valid, radius_smooth, radius_smooth],
-            y_series=[result.ate_raw_deg, result.ate_measured_deg, result.ate_fitted_deg],
-            classes=["raw", "fit1", "fit4"],
+            x_series=upper_x_series,
+            y_series=upper_y_series,
+            classes=upper_classes,
             label="Play Yaw (°)",
             xlabel="Radius (mm)",
             left=MARGIN_LEFT,
@@ -135,22 +154,23 @@ def render_compile_validation_svg(
             ymax=ate_ymax,
         )
     )
-    svg.extend(
-        _marker_svg(
-            left=MARGIN_LEFT,
-            top=validation_top,
-            width=panel_width,
-            height=top_panel_height,
-            xmin=ate_xmin,
-            xmax=ate_xmax,
-            ymin=ate_ymin,
-            ymax=ate_ymax,
-            x=float(radius_smooth[peak_idx]),
-            y=float(result.ate_fitted_deg[peak_idx]),
-            klass="marker-blue",
-            kind="circle",
+    if projection_visible:
+        svg.extend(
+            _marker_svg(
+                left=MARGIN_LEFT,
+                top=validation_top,
+                width=panel_width,
+                height=top_panel_height,
+                xmin=ate_xmin,
+                xmax=ate_xmax,
+                ymin=ate_ymin,
+                ymax=ate_ymax,
+                x=float(radius_smooth[peak_idx]),
+                y=float(result.ate_fitted_deg[peak_idx]),
+                klass="marker-blue",
+                kind="circle",
+            )
         )
-    )
     raw_noise_deg = result.diagnostics.get("play_yaw_noise_deg")
     if raw_noise_deg is None or not np.isfinite(raw_noise_deg):
         raw_noise_deg = float(np.nanstd(result.ate_raw_deg[np.isfinite(result.ate_raw_deg)] - np.nanmean(result.ate_raw_deg[np.isfinite(result.ate_raw_deg)])))
@@ -160,20 +180,22 @@ def render_compile_validation_svg(
             top=validation_top + 12,
             entries=[
                 ("raw", f"Raw play-yaw estimates (±{float(raw_noise_deg):.3g}°)"),
-                ("fit1", f"{avg_rotations}-rotation average (all smoothed points)"),
-                ("fit4", f"Fitted play-yaw curve (±{3.0 * summary.apparent_tracking_fit_rms_deg:.3g}°)"),
+                ("fit1", f"{avg_rotations}-rotation average (all smoothed points, dashed)"),
+                *(([("fit4", "Validated 16-rotation average sections")] if projection_visible else [])),
+                *(([("raw", "Validated sections unavailable")] if not projection_visible else [])),
             ],
         )
     )
 
     summary_top = validation_top + top_panel_height + 20
     svg.extend([
-        f'<rect x="{MARGIN_LEFT}" y="{summary_top:.1f}" width="{panel_width}" height="136" rx="5" fill="#f6f8fa" stroke="#d5dde5"/>',
+        f'<rect x="{MARGIN_LEFT}" y="{summary_top:.1f}" width="{panel_width}" height="160" rx="5" fill="#f6f8fa" stroke="#d5dde5"/>',
         f'<text x="{MARGIN_LEFT + 20}" y="{summary_top + 24:.1f}" class="small" style="font-weight:bold;fill:#36536b">MEASUREMENT SUMMARY</text>',
         f'<text x="{MARGIN_LEFT + 20}" y="{summary_top + 50:.1f}" class="mid">{geometry_summary}</text>',
-        f'<text x="{MARGIN_LEFT + 20}" y="{summary_top + 75:.1f}" class="mid">{_escape(f"Play Yaw  ·  mean {summary.apparent_tracking_error_mean_deg:+.3g}°   fit RMS {summary.apparent_tracking_fit_rms_deg:.4f}°   display ±{play_yaw_limit_deg:.0f}°")}</text>',
+        f'<text x="{MARGIN_LEFT + 20}" y="{summary_top + 75:.1f}" class="mid">{_escape(f"Play Yaw  ·  mean {summary.apparent_tracking_error_mean_deg:+.3g}°   {projection_summary}   scale {ate_ymin:.2f}° to {ate_ymax:.2f}°")}</text>',
         f'<text x="{MARGIN_LEFT + 20}" y="{summary_top + 99:.1f}" class="small">{_escape(lag_report_summary)}</text>',
-        f'<text x="{MARGIN_LEFT + 20}" y="{summary_top + 122:.1f}" class="small">{_escape(f"Sampling  ·  {result.measurement.periods_per_segment} cycles of 1 kHz every {result.measurement.skip_deg:.0f}°   ·   {lr_summary}")}</text>',
+        f'<text x="{MARGIN_LEFT + 20}" y="{summary_top + 122:.1f}" class="small">{_escape(lr_summary + "   ·   " + lr_quality_summary)}</text>',
+        f'<text x="{MARGIN_LEFT + 20}" y="{summary_top + 145:.1f}" class="small">{_escape(recommendation)}</text>',
     ])
 
     lower_top = validation_top + top_panel_height + validation_gap
@@ -207,6 +229,8 @@ def render_compile_validation_svg(
             height=harmonic_panel_height,
             ymin=0.0,
             ymax=lower_ymax,
+            xmin=float(result.measurement.inner_radius_mm),
+            xmax=float(result.measurement.outer_radius_mm),
         )
     )
     svg.extend(
@@ -233,6 +257,8 @@ def render_compile_validation_svg(
             height=diagnostic_panel_height,
             ymin=0.0,
             ymax=diagnostic_ymax,
+            xmin=float(result.measurement.inner_radius_mm),
+            xmax=float(result.measurement.outer_radius_mm),
         )
     )
     svg.extend(
@@ -446,10 +472,10 @@ def _extend_d2_branch_fits(svg, branches, cy, d2pk, left, top, width, height):
         svg.extend(_marker_svg(left, top, width, height, xmin, xmax, ymin, ymax, float(crossing["mount_yaw_deg"]), float(crossing["d2_peak_pct"]), "marker-black", kind="star"))
 
 
-def _panel_svg(x_series, y_series, classes, label, xlabel, left, top, width, height, ymin=None, ymax=None):
+def _panel_svg(x_series, y_series, classes, label, xlabel, left, top, width, height, ymin=None, ymax=None, xmin=None, xmax=None):
     all_x = np.concatenate([np.asarray(x, dtype=float) for x in x_series if len(x)])
-    xmin = float(np.min(all_x))
-    xmax = float(np.max(all_x))
+    xmin = float(np.min(all_x)) if xmin is None else float(xmin)
+    xmax = float(np.max(all_x)) if xmax is None else float(xmax)
     if xmin == xmax:
         xmax = xmin + 1.0
     ymin_auto, ymax_auto = _series_bounds(y_series, ymin, ymax)
@@ -476,7 +502,7 @@ def _panel_svg(x_series, y_series, classes, label, xlabel, left, top, width, hei
     svg.append(f'<text x="{left + width / 2:.1f}" y="{bottom + 34:.1f}" text-anchor="middle" class="small">{_escape(xlabel)}</text>')
 
     for x, y, klass in zip(x_series, y_series, classes):
-        svg.extend(_polyline_svg(x, y, left, top, width, height, all_x, np.array([ymin_auto, ymax_auto]), klass=klass, ymin=ymin_auto, ymax=ymax_auto))
+        svg.extend(_polyline_svg(x, y, left, top, width, height, np.array([xmin, xmax]), np.array([ymin_auto, ymax_auto]), klass=klass, ymin=ymin_auto, ymax=ymax_auto))
     return svg
 
 

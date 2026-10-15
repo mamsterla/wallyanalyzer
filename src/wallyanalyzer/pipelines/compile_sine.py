@@ -6,6 +6,7 @@ import numpy as np
 
 from wallyanalyzer.fitting import (
     apparent_tracking_error_from_lag_deg,
+    estimate_lr_from_nulls,
     fit_stylus_width_yaw_and_overhang,
     fit_stylus_width_yaw_and_overhang_from_lag,
     modeled_apparent_tracking_error_deg,
@@ -77,7 +78,9 @@ def compile_one_measurement(
 
     t1 = time.perf_counter()
     lag_reject = sigma_reject_1d(measurement.lag_s, nsig=config.lag_outlier_sigma)
-    lag_clean_s = lag_reject.cleaned.copy()
+    if acquisition.lag_polarity not in (-1, 1):
+        raise CompilePipelineError("Lag polarity must be either -1 or 1")
+    lag_clean_s = lag_reject.cleaned.copy() * float(acquisition.lag_polarity)
     valid_indices = np.flatnonzero(~np.isnan(lag_clean_s))
     if valid_indices.size < 3:
         raise CompilePipelineError(f"Measurement {measurement.file_stem!r} has too few valid lag points")
@@ -91,24 +94,15 @@ def compile_one_measurement(
         0.0,
         tone_duration_s,
     )
-    track_rpm = measurement.diagnostics.get("duration_derived_rpm")
-    track_revolutions = measurement.diagnostics.get("reference_track_revolutions")
-    if isinstance(track_rpm, (int, float)) and isinstance(track_revolutions, (int, float)) and track_rpm > 0.0 and track_revolutions > 0.0:
-        elapsed_revolutions = np.clip(tone_elapsed_s * float(track_rpm) / 60.0, 0.0, float(track_revolutions))
-        radius_all_mm = (
-            measurement.outer_radius_mm
-            + (measurement.inner_radius_mm - measurement.outer_radius_mm) * elapsed_revolutions / float(track_revolutions)
-        )
-        radius_mapping_method = "time_and_track_revolutions"
-    else:
-        radius_all_mm = (
-            measurement.outer_radius_mm
-            + (measurement.inner_radius_mm - measurement.outer_radius_mm) * tone_elapsed_s / tone_duration_s
-        )
-        radius_mapping_method = "time_derived_linear_track"
+    carrier_derived_rpm = measurement.diagnostics.get("carrier_derived_rpm")
+    radius_all_mm = (
+        measurement.outer_radius_mm
+        + (measurement.inner_radius_mm - measurement.outer_radius_mm) * tone_elapsed_s / tone_duration_s
+    )
+    radius_mapping_method = "tone_duration_linear_track"
     sample_angular_velocity_rad_per_s = (
-        float(track_rpm) * 2.0 * np.pi / 60.0
-        if isinstance(track_rpm, (int, float)) and track_rpm > 0.0
+        float(carrier_derived_rpm) * 2.0 * np.pi / 60.0
+        if isinstance(carrier_derived_rpm, (int, float)) and carrier_derived_rpm > 0.0
         else float(measurement.angular_velocity_rad_per_s)
     )
     radius_valid_mm = radius_all_mm[valid_indices]
@@ -229,9 +223,26 @@ def compile_one_measurement(
     candidate_stylus_yaw_deg = float(stylus_fit.x[1])
     candidate_overhang_mm = float(stylus_fit.x[2])
     stylus_fit_accepted = bool(stylus_fit.success and np.isfinite(candidate_lr_um) and np.isfinite(candidate_stylus_yaw_deg) and np.isfinite(candidate_overhang_mm) and candidate_overhang_mm >= 0.0)
-    effective_lr_um = candidate_lr_um if stylus_fit_accepted else float(np.clip(float(cartridge.lr_um), lr_sanity_min_um, lr_sanity_max_um))
-    effective_stylus_yaw_deg = candidate_stylus_yaw_deg if stylus_fit_accepted else stylus_yaw_guess_deg
-    fitted_overhang_mm = candidate_overhang_mm if stylus_fit_accepted else effective_overhang_mm
+    # The bounded optimizer remains diagnostic-only. Primary L/R uses fixed
+    # physical geometry, local null regressions, and off-null spot estimates.
+    try:
+        null_lr = estimate_lr_from_nulls(
+            radius_smooth_mm,
+            lag_smooth_s,
+            effective_length_mm,
+            offset_angle_deg,
+            effective_overhang_mm,
+            sample_angular_velocity_rad_per_s,
+            rotation_sign,
+        )
+    except ValueError as error:
+        null_lr = None
+        null_lr_error = str(error)
+    else:
+        null_lr_error = None
+    effective_lr_um = null_lr.lr_um if null_lr is not None else (candidate_lr_um if stylus_fit_accepted else float(np.clip(float(cartridge.lr_um), lr_sanity_min_um, lr_sanity_max_um)))
+    effective_stylus_yaw_deg = (null_lr.total_yaw_deg - mount_yaw_deg) if null_lr is not None else (candidate_stylus_yaw_deg if stylus_fit_accepted else stylus_yaw_guess_deg)
+    fitted_overhang_mm = effective_overhang_mm if null_lr is not None else (candidate_overhang_mm if stylus_fit_accepted else effective_overhang_mm)
     lr_at_lower_bound = bool(np.isclose(effective_lr_um, lr_sanity_min_um, atol=0.01, rtol=0.0))
     lr_at_upper_bound = bool(np.isclose(effective_lr_um, lr_sanity_max_um, atol=0.01, rtol=0.0))
     lr_within_sanity_range = bool(lr_sanity_min_um <= effective_lr_um <= lr_sanity_max_um and not lr_at_lower_bound and not lr_at_upper_bound)
@@ -241,7 +252,7 @@ def compile_one_measurement(
     # after robust rejection and is reserved for fit quality statistics.
     ate_measured_deg = apparent_tracking_error_from_lag_deg(radius_smooth_mm, lag_smooth_s, effective_lr_um, sample_angular_velocity_rad_per_s)
     ate_fit_input_deg = apparent_tracking_error_from_lag_deg(radius_smooth_mm, lag_fit_s, effective_lr_um, sample_angular_velocity_rad_per_s)
-    ate_fitted_deg = modeled_apparent_tracking_error_deg(
+    ate_projection_full_deg = modeled_apparent_tracking_error_deg(
         radius_mm=radius_smooth_mm,
         effective_length_mm=effective_length_mm,
         offset_angle_deg=offset_angle_deg,
@@ -250,6 +261,22 @@ def compile_one_measurement(
         mount_yaw_deg=mount_yaw_deg,
         rotation_sign=rotation_sign,
     )
+    if null_lr is not None:
+        spot_lr_um = np.interp(radius_smooth_mm, null_lr.spot_radius_mm, null_lr.spot_lr_um, left=np.nan, right=np.nan)
+        lower_lr_um, upper_lr_um = null_lr.interval_10_90_um
+        residual_deg = ate_measured_deg - ate_projection_full_deg
+        residual_median_deg = float(np.nanmedian(residual_deg))
+        residual_mad_deg = float(np.nanmedian(np.abs(residual_deg - residual_median_deg)))
+        residual_limit_deg = max(0.25, 3.0 * 1.4826 * residual_mad_deg)
+        projection_mask = np.isfinite(spot_lr_um) & (spot_lr_um >= lower_lr_um) & (spot_lr_um <= upper_lr_um) & (np.abs(residual_deg - residual_median_deg) <= residual_limit_deg)
+    else:
+        spot_lr_um = np.full(radius_smooth_mm.shape, np.nan)
+        residual_limit_deg = float("nan")
+        projection_mask = np.isfinite(lag_fit_s)
+    # The displayed fit is the accepted measured 16-rotation average.  The
+    # physical projection is used only to select coherent sections and remains
+    # diagnostic data; it must not be displayed as if it were measured yaw.
+    ate_fitted_deg = np.where(projection_mask, ate_measured_deg, np.nan)
     ate_raw_deg = apparent_tracking_error_from_lag_deg(radius_valid_mm, lag_valid_s, effective_lr_um, sample_angular_velocity_rad_per_s)
     stylus_fit_objective = float(rms(ate_fit_input_deg - ate_fitted_deg))
     valid_lag_s = measurement.lag_s[np.isfinite(measurement.lag_s)]
@@ -280,16 +307,19 @@ def compile_one_measurement(
     t_distortion_fit = time.perf_counter() - t3
     distortion_fit_trace = distortion_model_trace.copy()
 
+    displayed_yaw_deg = ate_fitted_deg[np.isfinite(ate_fitted_deg)]
+    if displayed_yaw_deg.size == 0:
+        displayed_yaw_deg = ate_measured_deg[np.isfinite(ate_measured_deg)]
     summary = SingleCompileSummary(
         file_stem=measurement.file_stem,
         effective_lr_um=effective_lr_um,
         effective_stylus_yaw_deg=effective_stylus_yaw_deg,
         effective_mount_yaw_deg=fitted_mount_yaw_deg,
         effective_overhang_mm=fitted_overhang_mm,
-        apparent_tracking_error_peak_abs_deg=float(np.max(np.abs(ate_fitted_deg))),
-        apparent_tracking_error_peak_signed_deg=float(ate_fitted_deg[np.argmax(np.abs(ate_fitted_deg))]),
-        apparent_tracking_error_range_deg=float(np.max(ate_fitted_deg) - np.min(ate_fitted_deg)),
-        apparent_tracking_error_mean_deg=float(np.mean(ate_fitted_deg)),
+        apparent_tracking_error_peak_abs_deg=float(np.max(np.abs(displayed_yaw_deg))),
+        apparent_tracking_error_peak_signed_deg=float(displayed_yaw_deg[np.argmax(np.abs(displayed_yaw_deg))]),
+        apparent_tracking_error_range_deg=float(np.max(displayed_yaw_deg) - np.min(displayed_yaw_deg)),
+        apparent_tracking_error_mean_deg=float(np.mean(displayed_yaw_deg)),
         apparent_tracking_fit_rms_deg=float(rms(ate_fit_input_deg - ate_fitted_deg)),
         distortion_second_harmonic_peak_pct=float(np.max(distortion_measured_ratio) * 100.0),
         distortion_second_harmonic_rms_pct=float(rms(distortion_measured_ratio) * 100.0),
@@ -299,17 +329,25 @@ def compile_one_measurement(
         "lag_bad_indices": lag_reject.bad_indices,
         "smoothing_window": int(smoothing_window),
         "rotation_sign": float(rotation_sign),
+        "lag_polarity": int(acquisition.lag_polarity),
         "radius_mapping": {
             "method": radius_mapping_method,
             "outer_radius_mm": float(measurement.outer_radius_mm),
             "inner_radius_mm": float(measurement.inner_radius_mm),
             "tone_duration_s": float(tone_duration_s),
             "radial_rate_mm_per_s": float((measurement.inner_radius_mm - measurement.outer_radius_mm) / tone_duration_s),
-            "track_rpm": None if not isinstance(track_rpm, (int, float)) else float(track_rpm),
+            "carrier_derived_rpm": None if not isinstance(carrier_derived_rpm, (int, float)) else float(carrier_derived_rpm),
             "angular_velocity_rad_per_s": sample_angular_velocity_rad_per_s,
-            "angular_velocity_source": "track_duration_rpm" if isinstance(track_rpm, (int, float)) and track_rpm > 0.0 else "measurement_nominal", 
-            "track_revolutions": None if not isinstance(track_revolutions, (int, float)) else float(track_revolutions),
+            "angular_velocity_source": "carrier_frequency" if isinstance(carrier_derived_rpm, (int, float)) and carrier_derived_rpm > 0.0 else "measurement_nominal",
             "radial_pitch_mm_per_revolution": measurement.pitch_estimate,
+        },
+        "projection": {
+            "method": "local_lr_and_residual_sections",
+            "displayed_trace": "accepted_16_rotation_average",
+            "retained_point_count": int(np.count_nonzero(projection_mask)),
+            "retained_fraction": float(np.mean(projection_mask)),
+            "residual_limit_deg": residual_limit_deg,
+            "local_lr_um": spot_lr_um.tolist(),
         },
         "fit_rejected_indices": np.asarray(sorted(set(rejected_fit_indices)), dtype=int).tolist(),
         "fit_rejected_point_count": int(len(set(rejected_fit_indices))),
@@ -327,6 +365,18 @@ def compile_one_measurement(
         "stylus_fit_effective_overhang_mm": fitted_overhang_mm,
         "stylus_fit_overhang_delta_mm": fitted_overhang_mm - effective_overhang_mm,
         "stylus_fit_accepted": stylus_fit_accepted,
+        "lr_estimation": {
+            "method": "null_anchored_weighted_spots" if null_lr is not None else "legacy_optimizer_fallback",
+            "lr_um": effective_lr_um,
+            "interval_10_90_um": None if null_lr is None else list(null_lr.interval_10_90_um),
+            "total_yaw_deg": None if null_lr is None else null_lr.total_yaw_deg,
+            "channel_baseline_lag_ns": None if null_lr is None else null_lr.channel_baseline_lag_s * 1e9,
+            "null_radii_mm": None if null_lr is None else list(null_lr.null_radii_mm),
+            "null_mismatch_percent": None if null_lr is None else null_lr.null_mismatch_percent,
+            "spot_count": None if null_lr is None else null_lr.spot_count,
+            "fallback_reason": null_lr_error,
+            "legacy_optimizer_lr_um": candidate_lr_um if stylus_fit_accepted else None,
+        },
         "stylus_fit_iterations": int(stylus_fit.nit),
         "stylus_fit_converged": bool(stylus_fit.success),
         "stylus_fit_fallback": None if stylus_fit_accepted else {"lr_um": effective_lr_um, "stylus_yaw_deg": effective_stylus_yaw_deg},

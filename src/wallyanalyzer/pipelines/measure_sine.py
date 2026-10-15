@@ -201,16 +201,18 @@ def measure_sine_file(
         (envelope_result.end_sample - envelope_result.start_sample + 1) * dt_s
     )
     pitch_estimate = None
-    duration_derived_rpm = None
-    if modulation_duration_s > 0:
-        if config.reference_track_revolutions > 0.0:
-            pitch_estimate = (
-                (test_track.outer_radius_mm - test_track.inner_radius_mm)
-                / config.reference_track_revolutions
-            )
-            duration_derived_rpm = (
-                60.0 * config.reference_track_revolutions / modulation_duration_s
-            )
+    if config.reference_track_revolutions > 0.0:
+        pitch_estimate = (
+            (test_track.outer_radius_mm - test_track.inner_radius_mm)
+            / config.reference_track_revolutions
+        )
+    carrier_frequency_hz = float(np.nanmedian(fundamental_freq_hz))
+    carrier_derived_rpm = None
+    if np.isfinite(carrier_frequency_hz) and config.reference_fundamental_frequency_hz > 0.0:
+        carrier_derived_rpm = (
+            60.0 * config.angular_velocity_rad_per_s / (2.0 * np.pi)
+            * carrier_frequency_hz / config.reference_fundamental_frequency_hz
+        )
 
     segment_midpoint_samples = (
         snippet_geometry.start_indices + snippet_geometry.snippet_length_samples // 2
@@ -226,7 +228,10 @@ def measure_sine_file(
         "tone_boundary_method": tone_boundary_method,
         "tone_boundary_snr_db": tone_boundary_snr_db,
         "reference_track_revolutions": float(config.reference_track_revolutions),
-        "duration_derived_rpm": duration_derived_rpm,
+        "reference_fundamental_frequency_hz": float(config.reference_fundamental_frequency_hz),
+        "carrier_frequency_hz": carrier_frequency_hz,
+        "carrier_frequency_error_hz": carrier_frequency_hz - float(config.reference_fundamental_frequency_hz),
+        "carrier_derived_rpm": carrier_derived_rpm,
         "timings_s": {
             "audio_load": float(t_audio_load),
             "envelope": float(t_envelope),

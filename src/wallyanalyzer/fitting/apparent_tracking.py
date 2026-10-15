@@ -1,10 +1,136 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import numpy as np
 
 from wallyanalyzer.geometry import baerwald_tracking_error_deg
 from wallyanalyzer.math_utils import rms
 from wallyanalyzer.optimization import OptimizeResult, nelder_mead
+
+
+@dataclass(frozen=True)
+class LocalLagEstimate:
+    radius_mm: float
+    lag_s: float
+    lag_standard_error_s: float
+    residual_standard_deviation_s: float
+    slope_s_per_mm: float
+    point_count: int
+    bandwidth_mm: float
+
+
+def estimate_local_lag_at_radius(
+    radius_mm: np.ndarray,
+    lag_s: np.ndarray,
+    target_radius_mm: float,
+    bandwidth_mm: float = 2.0,
+) -> LocalLagEstimate:
+    """Estimate lag at one radius with locally weighted quadratic regression."""
+    if not np.isfinite(target_radius_mm) or not np.isfinite(bandwidth_mm) or bandwidth_mm <= 0.0:
+        raise ValueError("Target radius and bandwidth must be finite; bandwidth must be positive")
+    offset_mm = np.asarray(radius_mm, dtype=float) - target_radius_mm
+    values_s = np.asarray(lag_s, dtype=float)
+    mask = np.isfinite(offset_mm) & np.isfinite(values_s) & (np.abs(offset_mm) <= bandwidth_mm)
+    if np.count_nonzero(mask) < 4:
+        raise ValueError("At least four finite lag points are required for local regression")
+    x = offset_mm[mask]
+    y = values_s[mask]
+    scaled_distance = np.abs(x) / bandwidth_mm
+    weights = (1.0 - scaled_distance**3) ** 3
+    design = np.column_stack((np.ones_like(x), x, x**2))
+    weighted_design = design * np.sqrt(weights)[:, None]
+    weighted_values = y * np.sqrt(weights)
+    coefficients, _, _, _ = np.linalg.lstsq(weighted_design, weighted_values, rcond=None)
+    residuals = y - design @ coefficients
+    degrees_of_freedom = max(1, x.size - design.shape[1])
+    weighted_residual_variance = float(np.sum(weights * residuals**2) / degrees_of_freedom)
+    covariance = weighted_residual_variance * np.linalg.pinv(weighted_design.T @ weighted_design)
+    return LocalLagEstimate(
+        radius_mm=float(target_radius_mm),
+        lag_s=float(coefficients[0]),
+        lag_standard_error_s=float(np.sqrt(max(0.0, covariance[0, 0]))),
+        residual_standard_deviation_s=float(np.sqrt(weighted_residual_variance)),
+        slope_s_per_mm=float(coefficients[1]),
+        point_count=int(x.size),
+        bandwidth_mm=float(bandwidth_mm),
+    )
+
+
+@dataclass(frozen=True)
+class NullAnchoredLrEstimate:
+    lr_um: float
+    total_yaw_deg: float
+    channel_baseline_lag_s: float
+    null_mismatch_percent: float
+    null_radii_mm: tuple[float, float]
+    interval_10_90_um: tuple[float, float]
+    spot_count: int
+    spot_radius_mm: np.ndarray
+    spot_lr_um: np.ndarray
+    spot_weight: np.ndarray
+
+
+def _weighted_quantile(values: np.ndarray, weights: np.ndarray, quantile: float) -> float:
+    order = np.argsort(values)
+    cumulative = np.cumsum(weights[order])
+    return float(values[order][np.searchsorted(cumulative, quantile * cumulative[-1])])
+
+
+def estimate_lr_from_nulls(
+    radius_mm: np.ndarray,
+    lag_s: np.ndarray,
+    effective_length_mm: float,
+    offset_angle_deg: float,
+    overhang_mm: float,
+    angular_velocity_rad_per_s: float,
+    rotation_sign: float,
+    bandwidth_mm: float = 2.0,
+    spot_step_mm: float = 0.5,
+    minimum_geometry_deg: float = 0.25,
+) -> NullAnchoredLrEstimate:
+    """Estimate signed yaw and L/R from local null fits plus off-null spot values."""
+    radii = np.asarray(radius_mm, dtype=float)
+    values = np.asarray(lag_s, dtype=float)
+    lower, upper = float(np.nanmin(radii)), float(np.nanmax(radii))
+    grid = np.linspace(lower, upper, 20_001)
+    geometry = baerwald_tracking_error_deg(grid, effective_length_mm, offset_angle_deg, overhang_mm)
+    crossings = np.flatnonzero(np.signbit(geometry[:-1]) != np.signbit(geometry[1:]))
+    if crossings.size != 2:
+        raise ValueError("Physical geometry must produce exactly two nulls within the measured track")
+    nulls = tuple(float(grid[i] - geometry[i] * (grid[i + 1] - grid[i]) / (geometry[i + 1] - geometry[i])) for i in crossings)
+    first, second = (estimate_local_lag_at_radius(radii, values, target, bandwidth_mm) for target in nulls)
+    null_product = (first.lag_s - second.lag_s) / (1.0 / nulls[0] - 1.0 / nulls[1])
+    baseline = first.lag_s - null_product / nulls[0]
+    normalized_first = nulls[0] * first.lag_s
+    normalized_second = nulls[1] * second.lag_s
+    mismatch = 100.0 * (normalized_first - normalized_second) / ((normalized_first + normalized_second) / 2.0)
+    spot_radii: list[float] = []
+    candidates: list[float] = []
+    weights: list[float] = []
+    for target in np.arange(lower + bandwidth_mm, upper - bandwidth_mm + spot_step_mm / 2.0, spot_step_mm):
+        geometric_yaw_rad = np.radians(rotation_sign * baerwald_tracking_error_deg(np.array([target]), effective_length_mm, offset_angle_deg, overhang_mm)[0])
+        if abs(np.degrees(geometric_yaw_rad)) < minimum_geometry_deg:
+            continue
+        local = estimate_local_lag_at_radius(radii, values, float(target), bandwidth_mm)
+        sine_geometry = np.sin(geometric_yaw_rad)
+        quadrature = (target * (local.lag_s - baseline) - null_product * np.cos(geometric_yaw_rad)) / sine_geometry
+        contact_scale = float(np.hypot(null_product, quadrature))
+        candidate = 1000.0 * angular_velocity_rad_per_s * contact_scale
+        if np.isfinite(candidate) and candidate > 0.0:
+            spot_radii.append(float(target))
+            candidates.append(candidate)
+            weights.append(sine_geometry**2 / max(local.residual_standard_deviation_s**2, 1e-24))
+    if len(candidates) < 3:
+        raise ValueError("Insufficient off-null spots for L/R estimation")
+    candidate_array, weight_array = np.asarray(candidates), np.asarray(weights)
+    lr_um = _weighted_quantile(candidate_array, weight_array, 0.5)
+    total_yaw_deg = float(np.degrees(np.arcsin(np.clip(null_product / (lr_um / (1000.0 * angular_velocity_rad_per_s)), -1.0, 1.0))))
+    return NullAnchoredLrEstimate(
+        lr_um, total_yaw_deg, float(baseline), float(mismatch), nulls,
+        (_weighted_quantile(candidate_array, weight_array, .1), _weighted_quantile(candidate_array, weight_array, .9)),
+        len(candidates), np.asarray(spot_radii), candidate_array, weight_array,
+    )
 
 
 def apparent_tracking_error_from_lag_deg(

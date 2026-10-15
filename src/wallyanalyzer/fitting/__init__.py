@@ -1,5 +1,7 @@
 from .apparent_tracking import (
     apparent_tracking_error_from_lag_deg,
+    estimate_local_lag_at_radius,
+    estimate_lr_from_nulls,
     fit_stylus_width_and_yaw,
     fit_stylus_width_yaw_and_overhang,
     fit_stylus_width_yaw_and_overhang_from_lag,
@@ -15,6 +17,8 @@ __all__ = [
     "SigmaRejectResult",
     "apparent_tracking_error_from_lag_deg",
     "distortion_parameter",
+    "estimate_local_lag_at_radius",
+    "estimate_lr_from_nulls",
     "fit_distortion_geometry",
     "fit_stylus_width_and_yaw",
     "fit_stylus_width_yaw_and_overhang",

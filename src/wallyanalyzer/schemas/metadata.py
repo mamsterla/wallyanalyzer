@@ -22,6 +22,8 @@ class AcquisitionRecord:
     overhang_adjustment_mm: Optional[float] = None
     pivot_spindle_adjustment_mm: Optional[float] = None
     actual_pivot_to_spindle_mm: Optional[float] = None
+    # Multiplies extracted left/right lag before signed yaw calculations.
+    lag_polarity: int = 1
     comments: Optional[str] = None
     raw_source_ref: Optional[str] = None
 
@@ -63,6 +65,7 @@ class MeasureSineConfig:
     spectral_half_width_bins: int = 5
     rotation_period_s: float = 1.8
     reference_track_revolutions: float = 194.0
+    reference_fundamental_frequency_hz: float = 1000.0
     cut_velocity_m_per_s: float = 0.06
     envelope_threshold_fraction: float = 0.3
     envelope_end_threshold_fraction: float = 0.5

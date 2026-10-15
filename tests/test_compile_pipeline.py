@@ -2,7 +2,7 @@ import unittest
 
 import numpy as np
 
-from wallyanalyzer.fitting import modeled_apparent_tracking_error_deg
+from wallyanalyzer.fitting import estimate_local_lag_at_radius, modeled_apparent_tracking_error_deg
 from wallyanalyzer.geometry import baerwald_tracking_error_deg
 from wallyanalyzer.metadata import InMemoryMetadataProvider
 from wallyanalyzer.pipelines import compile_one_measurement, compile_sine_results
@@ -17,6 +17,18 @@ from wallyanalyzer.schemas import (
 
 
 class CompilePipelineTests(unittest.TestCase):
+    def test_local_lag_regression_recovers_exact_target_intercept(self):
+        target_radius_mm = 100.0
+        radii = np.linspace(97.0, 103.0, 121)
+        offsets = radii - target_radius_mm
+        lag_s = 2.5e-6 + 4.0e-8 * offsets - 3.0e-9 * offsets**2
+
+        estimate = estimate_local_lag_at_radius(radii, lag_s, target_radius_mm, bandwidth_mm=2.0)
+
+        self.assertAlmostEqual(estimate.lag_s, 2.5e-6, places=14)
+        self.assertAlmostEqual(estimate.slope_s_per_mm, 4.0e-8, places=14)
+        self.assertEqual(estimate.point_count, 81)
+
     def test_compile_one_measurement_fits_lr_yaw_and_overhang_with_bounds(self):
         n = 24
         radii = np.linspace(146.0, 60.0, n)
