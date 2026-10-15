@@ -80,12 +80,15 @@ def compile_one_measurement(
     lag_reject = sigma_reject_1d(measurement.lag_s, nsig=config.lag_outlier_sigma)
     if acquisition.lag_polarity not in (-1, 1):
         raise CompilePipelineError("Lag polarity must be either -1 or 1")
-    # Signed Play Yaw follows recorded electrical L/R order. The 80 Hz preamble
-    # remains durable channel-identity evidence, but does not normalize a swapped
-    # recording into the same signed yaw direction.
-    applied_lag_polarity = 1
-    lag_polarity_source = "recorded_electrical_channel_order"
-    lag_clean_s = lag_reject.cleaned.copy()
+    raw_lag_clean_s = lag_reject.cleaned.copy()
+    preamble = measurement.diagnostics.get("orientation_preamble")
+    preamble_polarity = preamble.get("lag_polarity") if isinstance(preamble, dict) else None
+    # Fit the physical model in fixed channel orientation. The display then uses
+    # the recorded stereo lead: right-leading is negative; left-leading positive.
+    applied_lag_polarity = int(preamble_polarity) if preamble_polarity in (-1, 1) else int(acquisition.lag_polarity)
+    lag_polarity_source = "80hz_orientation_preamble" if preamble_polarity in (-1, 1) else "acquisition_fallback"
+    display_yaw_polarity = -float(applied_lag_polarity)
+    lag_clean_s = raw_lag_clean_s * float(applied_lag_polarity)
     valid_indices = np.flatnonzero(~np.isnan(lag_clean_s))
     if valid_indices.size < 3:
         raise CompilePipelineError(f"Measurement {measurement.file_stem!r} has too few valid lag points")
@@ -341,7 +344,15 @@ def compile_one_measurement(
     ate_fitted_deg = np.where(projection_mask, ate_projection_full_deg, np.nan)
     ate_raw_deg = apparent_tracking_error_from_lag_deg(radius_valid_mm, lag_valid_s, effective_lr_um, sample_angular_velocity_rad_per_s)
     stylus_fit_objective = float(rms(ate_fit_input_deg - ate_fitted_deg))
-    valid_lag_s = lag_clean_s[np.isfinite(lag_clean_s)]
+    # Keep all fitting and section acceptance above in physical orientation.
+    # Transform only report-facing signed values after the model is final.
+    ate_measured_deg *= display_yaw_polarity
+    ate_fit_input_deg *= display_yaw_polarity
+    ate_projection_full_deg *= display_yaw_polarity
+    ate_fitted_deg *= display_yaw_polarity
+    ate_raw_deg *= display_yaw_polarity
+    displayed_stylus_yaw_deg = effective_stylus_yaw_deg * display_yaw_polarity
+    valid_lag_s = raw_lag_clean_s[np.isfinite(raw_lag_clean_s)]
     lag_median_s = float(np.median(valid_lag_s)) if valid_lag_s.size else float("nan")
     lag_mean_s = float(np.mean(valid_lag_s)) if valid_lag_s.size else float("nan")
     lag_p05_s, lag_p95_s = (np.quantile(valid_lag_s, [0.05, 0.95]).astype(float) if valid_lag_s.size else (float("nan"), float("nan")))
@@ -375,7 +386,7 @@ def compile_one_measurement(
     summary = SingleCompileSummary(
         file_stem=measurement.file_stem,
         effective_lr_um=effective_lr_um,
-        effective_stylus_yaw_deg=effective_stylus_yaw_deg,
+        effective_stylus_yaw_deg=displayed_stylus_yaw_deg,
         effective_mount_yaw_deg=fitted_mount_yaw_deg,
         effective_overhang_mm=fitted_overhang_mm,
         apparent_tracking_error_peak_abs_deg=float(np.max(np.abs(displayed_yaw_deg))),
@@ -393,6 +404,8 @@ def compile_one_measurement(
         "rotation_sign": float(rotation_sign),
         "lag_polarity": applied_lag_polarity,
         "lag_polarity_source": lag_polarity_source,
+        "display_yaw_polarity": display_yaw_polarity,
+        "display_yaw_sign_convention": "right_leads_negative_left_leads_positive",
         "alignment": acquisition.alignment,
         "radius_mapping": {
             "method": radius_mapping_method,
@@ -467,7 +480,7 @@ def compile_one_measurement(
         "play_yaw_noise_deg": None
         if not np.any(np.isfinite(ate_raw_deg)) or not np.any(np.isfinite(ate_measured_deg))
         else float(3.0 * np.nanstd(ate_raw_deg[(smoothing_window // 2): (ate_measured_deg.shape[0] + smoothing_window // 2)] - ate_measured_deg)),
-        "stereo_lag_sign_convention": "positive lag means right channel leads left channel",
+        "stereo_lag_sign_convention": "positive lag means right channel leads left channel; displayed yaw uses right-leading negative",
         "stereo_lag_leading_channel": lag_leading_channel,
         "stereo_lag_median_us": None if not np.isfinite(lag_median_s) else lag_median_s * 1_000_000.0,
         "stereo_lag_mean_us": None if not np.isfinite(lag_mean_s) else lag_mean_s * 1_000_000.0,
