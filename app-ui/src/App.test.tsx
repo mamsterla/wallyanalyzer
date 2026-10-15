@@ -31,9 +31,9 @@ describe('Privacy policy', () => {
 });
 
 describe('Home', () => {
-  it('routes Chrome and Edge users to their respective extension stores', () => {
-    expect(psiuBridgeStoreUrl('Mozilla/5.0 Chrome/140.0.0.0 Safari/537.36')).toContain('chromewebstore.google.com');
-    expect(psiuBridgeStoreUrl('Mozilla/5.0 Chrome/140.0.0.0 Safari/537.36 Edg/140.0.0.0')).toContain('microsoftedge.microsoft.com');
+  it('uses the official Chrome Store listing and does not claim support for other browsers', () => {
+    expect(psiuBridgeStoreUrl('Mozilla/5.0 Chrome/140.0.0.0 Safari/537.36')).toBe('https://chromewebstore.google.com/detail/wally-psiu-bridge/finhaggoihbejjpmhpgkicnifllfaiop');
+    expect(psiuBridgeStoreUrl('Mozilla/5.0 Chrome/140.0.0.0 Safari/537.36 Edg/140.0.0.0')).toBeUndefined();
     expect(psiuBridgeStoreUrl('Mozilla/5.0 Firefox/140.0')).toBeUndefined();
   });
 

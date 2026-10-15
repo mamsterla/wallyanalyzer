@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createPsuClient, PsiuUnavailableError } from './psiuClient.js';
+import { createPsuClient, isPsiuBridgeSupportedBrowser, psiuBridgeStoreUrl, PsiuUnavailableError } from './psiuClient.js';
 
 const status = {
   uid: 'PSIU-001',
@@ -23,6 +23,12 @@ const status = {
 };
 
 describe('PSIU client', () => {
+  it('supports the published bridge only in Chrome', () => {
+    expect(psiuBridgeStoreUrl('Mozilla/5.0 Chrome/140.0.0.0 Safari/537.36')).toBe('https://chromewebstore.google.com/detail/wally-psiu-bridge/finhaggoihbejjpmhpgkicnifllfaiop');
+    expect(isPsiuBridgeSupportedBrowser('Mozilla/5.0 Chrome/140.0.0.0 Safari/537.36 Edg/140.0.0.0')).toBe(false);
+    expect(isPsiuBridgeSupportedBrowser('Mozilla/5.0 Firefox/140.0')).toBe(false);
+  });
+
   it('scans only a valid local PSIU UID', async () => {
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ uid: 'psiu-uid-001', telemetry: 'discarded' }));
     const client = createPsuClient(fetchMock);

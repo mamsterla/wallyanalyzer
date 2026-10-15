@@ -6,8 +6,17 @@ export type FetchLike = typeof fetch;
 type BridgeCommand = 'probe' | 'uid' | 'status' | 'signal' | 'inputsel' | 'samplerate' | 'sampling' | 'audio' | 'audio-cancel';
 type BridgeResponse = { channel: 'wally-psiu-bridge'; type: 'result' | 'error' | 'audio-start' | 'audio-chunk' | 'audio-complete'; requestId: string; value?: unknown; data?: string; message?: string; totalBytes?: number };
 const bridgeChannel = 'wally-psiu-bridge';
+export const PSIU_CHROME_STORE_URL = 'https://chromewebstore.google.com/detail/wally-psiu-bridge/finhaggoihbejjpmhpgkicnifllfaiop';
 
-/** Local Compose uses its same-origin proxy; deployed Wally uses the installed browser bridge. */
+export function psiuBridgeStoreUrl(userAgent = typeof navigator === 'undefined' ? '' : navigator.userAgent): string | undefined {
+  return /Chrome\//.test(userAgent) && !/Edg\//.test(userAgent) ? PSIU_CHROME_STORE_URL : undefined;
+}
+
+export function isPsiuBridgeSupportedBrowser(userAgent = typeof navigator === 'undefined' ? '' : navigator.userAgent): boolean {
+  return Boolean(psiuBridgeStoreUrl(userAgent));
+}
+
+/** Local Compose uses its same-origin proxy; deployed Wally uses the installed Chrome bridge. */
 export function createPsuClient(fetchImplementation: FetchLike = fetch): PsiuClient {
   const localDevelopment = typeof window === 'undefined' || ['localhost', '127.0.0.1'].includes(window.location.hostname);
   return localDevelopment ? createDirectClient(fetchImplementation, '/api/psiu') : createExtensionClient();
@@ -28,6 +37,7 @@ function createDirectClient(fetchImplementation: FetchLike, base: string): PsiuC
 
 export async function isPsiuBridgeInstalled(): Promise<boolean> {
   if (typeof window === 'undefined' || ['localhost', '127.0.0.1'].includes(window.location.hostname)) return true;
+  if (!isPsiuBridgeSupportedBrowser()) return false;
   try { await bridgeRequest('probe', undefined, 1_500); return true; } catch { return false; }
 }
 

@@ -1,5 +1,7 @@
 # Wally PSIU Bridge
 
+[Install Wally PSIU Bridge from the Chrome Web Store](https://chromewebstore.google.com/detail/wally-psiu-bridge/finhaggoihbejjpmhpgkicnifllfaiop).
+
 Chrome/Edge Manifest V3 extension that transports fixed PSIU commands from Wally Analyzer to `http://psiu.local`. It is not a proxy and never accepts arbitrary LAN URLs.
 
 ## Commands
@@ -27,4 +29,4 @@ npm run build --workspace=@wally/psiu-bridge
 
 ## Distribution
 
-Production distribution must use the Chrome Web Store and Edge Add-ons channels. Do not deploy the Wally UI transport switch until the extension is available to every intended desktop user.
+The production Chrome listing is available in the [Chrome Web Store](https://chromewebstore.google.com/detail/wally-psiu-bridge/finhaggoihbejjpmhpgkicnifllfaiop). Edge Add-ons support remains a separate future distribution channel. Do not enable unsupported browsers in the Wally UI.

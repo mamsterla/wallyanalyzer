@@ -20,7 +20,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { request } from '../api.js';
 import { hardDeletePsiuRequest } from './adminActions.js';
-import { createPsuClient } from '../features/controller/psiuClient.js';
+import { createPsuClient, PSIU_CHROME_STORE_URL } from '../features/controller/psiuClient.js';
 import { WallySelect } from '../designSystemSelect.js';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
@@ -353,7 +353,7 @@ function Psiu() {
     try {
       setUid(await createPsuClient().scanUid());
     } catch {
-      d.setMessage('PSIU UID scan failed. Check power, network, and psiu.local.');
+      d.setMessage('PSIU UID scan failed. In Google Chrome, confirm Wally PSIU Bridge is installed, then check PSIU power, network, and psiu.local.');
     } finally {
       setScanning(false);
     }
@@ -462,7 +462,8 @@ function Psiu() {
       <Paper sx={{ p: 2 }}>
         <Typography variant="h6">Inventory actions</Typography>
         <Typography variant="body2" color="text.secondary">
-          Scan a local PSIU UID, then add it to inventory. These actions do not affect list filters.
+          Scan a local PSIU UID, then add it to inventory. Use Google Chrome with the{' '}
+          <a href={PSIU_CHROME_STORE_URL} target="_blank" rel="noreferrer">Wally PSIU Bridge extension</a>. These actions do not affect list filters.
         </Typography>
         <Stack direction={{ xs: 'column', md: 'row' }} spacing={1} sx={{ mt: 1 }}>
           <Button onClick={() => void scan()} disabled={scanning}>
