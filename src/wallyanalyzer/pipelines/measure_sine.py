@@ -11,8 +11,10 @@ from wallyanalyzer.metadata import MetadataProvider
 from wallyanalyzer.schemas import MeasureSineConfig, MeasurementResult
 from wallyanalyzer.signal import (
     EnvelopeDetectionError,
+    ToneRegion,
     analyze_period_envelope,
     build_snippet_geometry,
+    detect_orientation_preamble,
     detect_tone_region,
     fftlag,
     nuttall_window,
@@ -76,10 +78,31 @@ def measure_sine_file(
             "start": tone_region.first_tone_snr_db,
             "end": tone_region.last_tone_snr_db,
         }
+        try:
+            orientation_preamble = detect_orientation_preamble(
+                audio.samples,
+                effective_sample_rate_hz,
+                tone_region.start_sample,
+                config.rotation_period_s,
+            )
+        except EnvelopeDetectionError:
+            orientation_preamble = None
+        else:
+            trimmed_start = max(tone_region.start_sample, orientation_preamble.end_sample)
+            if trimmed_start >= tone_region.end_sample:
+                raise MeasurementPipelineError("80 Hz orientation preamble consumes the 1 kHz program")
+            tone_region = ToneRegion(
+                start_sample=trimmed_start,
+                end_sample=tone_region.end_sample,
+                first_tone_snr_db=tone_region.first_tone_snr_db,
+                last_tone_snr_db=tone_region.last_tone_snr_db,
+            )
+            envelope_result = replace(envelope_result, start_sample=trimmed_start)
     except EnvelopeDetectionError:
         # Preserve compatibility for non-1 kHz or very short captures.
         tone_boundary_method = "amplitude_envelope_fallback"
         tone_boundary_snr_db = None
+        orientation_preamble = None
     t_envelope = time.perf_counter() - t1
 
     t2 = time.perf_counter()
@@ -227,6 +250,15 @@ def measure_sine_file(
         "large_lag_rejections": int(np.count_nonzero(large_lag_mask)),
         "tone_boundary_method": tone_boundary_method,
         "tone_boundary_snr_db": tone_boundary_snr_db,
+        "orientation_preamble": None if orientation_preamble is None else {
+            "frequency_hz": 80.0,
+            "start_sample": orientation_preamble.start_sample,
+            "end_sample": orientation_preamble.end_sample,
+            "dominant_channel": orientation_preamble.dominant_channel,
+            "lag_polarity": orientation_preamble.lag_polarity,
+            "dominant_channel_snr_db": orientation_preamble.dominant_channel_snr_db,
+            "channel_dominance_db": orientation_preamble.channel_dominance_db,
+        },
         "reference_track_revolutions": float(config.reference_track_revolutions),
         "reference_fundamental_frequency_hz": float(config.reference_fundamental_frequency_hz),
         "carrier_frequency_hz": carrier_frequency_hz,

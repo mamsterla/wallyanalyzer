@@ -27,6 +27,7 @@ PRESET = {
     "cartridge_name": "Yaw Angle Report reference cartridge",
     "cartridge_lr_um": 10.0,
     "channel_polarity": "normal",
+    "alignment": "baerwald",
 }
 
 def build_tracking_error_artifacts(
@@ -95,6 +96,10 @@ def _resolve_preset(values: Mapping[str, Any] | None) -> dict[str, Any]:
     if channel_polarity not in ("normal", "inverted"):
         raise ValueError("Yaw Angle Report channel polarity is invalid.")
     preset["channel_polarity"] = channel_polarity
+    alignment = values.get("alignment", preset["alignment"])
+    if alignment not in ("linear", "lofgren", "baerwald", "stevenson"):
+        raise ValueError("Yaw Angle Report alignment is invalid.")
+    preset["alignment"] = alignment
     if "effectiveLengthMm" in values or "overhangMm" in values:
         preset["actual_pivot_to_spindle_mm"] = float(preset["effective_length_mm"] - preset["overhang_mm"])
     return preset
@@ -107,12 +112,13 @@ def _geometry_provenance(preset: Mapping[str, Any]) -> dict[str, float]:
         "overhangMm": float(preset["overhang_mm"]),
         "mountYawDeg": float(preset["cantilever_yaw_deg"]),
         "channelPolarity": str(preset["channel_polarity"]),
+        "alignment": str(preset["alignment"]),
     }
 
 
 def _provider(inputs: list[Path], preset: Mapping[str, Any]) -> InMemoryMetadataProvider:
     track = TestTrackRecord(name=preset["name"], outer_radius_mm=preset["outer_radius_mm"], inner_radius_mm=preset["inner_radius_mm"])
-    acquisitions = {path.stem: AcquisitionRecord(file_stem=path.stem, digitizer=preset["digitizer"], test_track_name=preset["name"], system_id=preset["system_id"], cartridge_name=preset["cartridge_name"], cantilever_yaw_deg=preset["cantilever_yaw_deg"], stylus_yaw_deg=preset["stylus_yaw_deg"], effective_length_mm=preset["effective_length_mm"], offset_angle_deg=preset["offset_angle_deg"], overhang_mm=preset["overhang_mm"], actual_pivot_to_spindle_mm=preset["actual_pivot_to_spindle_mm"], lag_polarity=-1 if preset["channel_polarity"] == "inverted" else 1) for path in inputs}
+    acquisitions = {path.stem: AcquisitionRecord(file_stem=path.stem, digitizer=preset["digitizer"], test_track_name=preset["name"], system_id=preset["system_id"], cartridge_name=preset["cartridge_name"], cantilever_yaw_deg=preset["cantilever_yaw_deg"], stylus_yaw_deg=preset["stylus_yaw_deg"], effective_length_mm=preset["effective_length_mm"], offset_angle_deg=preset["offset_angle_deg"], overhang_mm=preset["overhang_mm"], actual_pivot_to_spindle_mm=preset["actual_pivot_to_spindle_mm"], lag_polarity=-1 if preset["channel_polarity"] == "inverted" else 1, alignment=preset["alignment"]) for path in inputs}
     cartridge = CartridgeRecord(cartridge_name=preset["cartridge_name"], lr_um=preset["cartridge_lr_um"])
     return InMemoryMetadataProvider(acquisitions=acquisitions, test_tracks={track.name: track}, cartridges={cartridge.cartridge_name: cartridge}, systems={preset["system_id"]: SystemRecord(system_id=preset["system_id"])})
 

@@ -22,8 +22,10 @@ class AcquisitionRecord:
     overhang_adjustment_mm: Optional[float] = None
     pivot_spindle_adjustment_mm: Optional[float] = None
     actual_pivot_to_spindle_mm: Optional[float] = None
-    # Multiplies extracted left/right lag before signed yaw calculations.
+    # Retained for historical metadata compatibility; signed yaw follows recorded L/R order.
     lag_polarity: int = 1
+    # Alignment controls the two reference radii used by null-anchored L/R.
+    alignment: str = "baerwald"
     comments: Optional[str] = None
     raw_source_ref: Optional[str] = None
 

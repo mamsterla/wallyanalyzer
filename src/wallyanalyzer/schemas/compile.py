@@ -20,7 +20,7 @@ class CompileConfig:
     stylus_fit_max_iter: int = 1500
     stylus_fit_lr_min_um: float = 10.0
     stylus_fit_lr_max_um: float = 35.0
-    overhang_fit_max_deviation_mm: float = 1.0
+    overhang_fit_max_deviation_mm: float = 2.5
     distortion_fit_max_iter: int = 300
 
 
@@ -56,6 +56,7 @@ class SingleCompileResult:
     lr_diff_over_sum_rms_ratio_smooth: np.ndarray
     ate_measured_deg: np.ndarray
     ate_fitted_deg: np.ndarray
+    ate_model_full_deg: np.ndarray
     ate_raw_deg: np.ndarray
     distortion_model: np.ndarray
     distortion_fit: np.ndarray

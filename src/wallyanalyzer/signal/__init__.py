@@ -1,4 +1,4 @@
-from .envelope import EnvelopeDetectionError, EnvelopeResult, ToneRegion, analyze_period_envelope, compute_period_envelope, detect_modulated_region, detect_tone_region
+from .envelope import EnvelopeDetectionError, EnvelopeResult, OrientationPreamble, ToneRegion, analyze_period_envelope, compute_period_envelope, detect_modulated_region, detect_orientation_preamble, detect_tone_region
 from .fftlag import FFTLagError, FFTLagResult, fftlag
 from .snippets import SnippetError, SnippetGeometry, build_snippet_geometry, detrend_and_window, extract_padded_snippet, snippet_is_valid
 from .windows import nuttall_window
@@ -7,6 +7,7 @@ __all__ = [
     "EnvelopeDetectionError",
     "EnvelopeResult",
     "ToneRegion",
+    "OrientationPreamble",
     "FFTLagError",
     "FFTLagResult",
     "SnippetError",
@@ -15,6 +16,7 @@ __all__ = [
     "build_snippet_geometry",
     "compute_period_envelope",
     "detect_modulated_region",
+    "detect_orientation_preamble",
     "detect_tone_region",
     "detrend_and_window",
     "extract_padded_snippet",

@@ -80,7 +80,12 @@ def compile_one_measurement(
     lag_reject = sigma_reject_1d(measurement.lag_s, nsig=config.lag_outlier_sigma)
     if acquisition.lag_polarity not in (-1, 1):
         raise CompilePipelineError("Lag polarity must be either -1 or 1")
-    lag_clean_s = lag_reject.cleaned.copy() * float(acquisition.lag_polarity)
+    # Signed Play Yaw follows recorded electrical L/R order. The 80 Hz preamble
+    # remains durable channel-identity evidence, but does not normalize a swapped
+    # recording into the same signed yaw direction.
+    applied_lag_polarity = 1
+    lag_polarity_source = "recorded_electrical_channel_order"
+    lag_clean_s = lag_reject.cleaned.copy()
     valid_indices = np.flatnonzero(~np.isnan(lag_clean_s))
     if valid_indices.size < 3:
         raise CompilePipelineError(f"Measurement {measurement.file_stem!r} has too few valid lag points")
@@ -234,6 +239,7 @@ def compile_one_measurement(
             effective_overhang_mm,
             sample_angular_velocity_rad_per_s,
             rotation_sign,
+            alignment=acquisition.alignment,
         )
     except ValueError as error:
         null_lr = None
@@ -243,10 +249,6 @@ def compile_one_measurement(
     effective_lr_um = null_lr.lr_um if null_lr is not None else (candidate_lr_um if stylus_fit_accepted else float(np.clip(float(cartridge.lr_um), lr_sanity_min_um, lr_sanity_max_um)))
     effective_stylus_yaw_deg = (null_lr.total_yaw_deg - mount_yaw_deg) if null_lr is not None else (candidate_stylus_yaw_deg if stylus_fit_accepted else stylus_yaw_guess_deg)
     fitted_overhang_mm = effective_overhang_mm if null_lr is not None else (candidate_overhang_mm if stylus_fit_accepted else effective_overhang_mm)
-    lr_at_lower_bound = bool(np.isclose(effective_lr_um, lr_sanity_min_um, atol=0.01, rtol=0.0))
-    lr_at_upper_bound = bool(np.isclose(effective_lr_um, lr_sanity_max_um, atol=0.01, rtol=0.0))
-    lr_within_sanity_range = bool(lr_sanity_min_um <= effective_lr_um <= lr_sanity_max_um and not lr_at_lower_bound and not lr_at_upper_bound)
-    lr_sanity_warning = None if lr_within_sanity_range else f"L/R timing fit reached the {('minimum' if lr_at_lower_bound else 'maximum')} {effective_lr_um:.3g} µm bound; review cartridge data and geometry."
     t_stylus_fit = time.perf_counter() - t2
     # Plot the complete smoothed measurement.  `lag_fit_s` is deliberately sparse
     # after robust rejection and is reserved for fit quality statistics.
@@ -273,13 +275,73 @@ def compile_one_measurement(
         spot_lr_um = np.full(radius_smooth_mm.shape, np.nan)
         residual_limit_deg = float("nan")
         projection_mask = np.isfinite(lag_fit_s)
-    # The displayed fit is the accepted measured 16-rotation average.  The
-    # physical projection is used only to select coherent sections and remains
-    # diagnostic data; it must not be displayed as if it were measured yaw.
-    ate_fitted_deg = np.where(projection_mask, ate_measured_deg, np.nan)
+    # Recreate the historical full-model path on only the locally coherent
+    # 16-rotation-average points.  The null estimate supplies the initial L/R
+    # and the section-quality mask; this bounded fit supplies the smooth model
+    # curve and is iterated after residual rejection.
+    section_model_fit = None
+    section_model_iterations = 0
+    if null_lr is not None and np.count_nonzero(projection_mask) >= 3:
+        # The section-model search range must include the provenance-backed
+        # null interval.  The narrower configured range remains a reported
+        # sanity gate; it must not make the physical-model objective infinite
+        # before comparison is possible.
+        section_fit_lr_min_um = max(1.0, min(lr_sanity_min_um, null_lr.interval_10_90_um[0]))
+        section_fit_lr_max_um = max(lr_sanity_max_um, null_lr.interval_10_90_um[1])
+        for section_model_iterations in range(1, 3):
+            section_model_fit = fit_stylus_width_yaw_and_overhang(
+                radius_mm=radius_smooth_mm[projection_mask],
+                lag_s=lag_smooth_s[projection_mask],
+                effective_length_mm=effective_length_mm,
+                offset_angle_deg=offset_angle_deg,
+                overhang_guess_mm=fitted_overhang_mm,
+                mount_yaw_deg=mount_yaw_deg,
+                stylus_yaw_guess_deg=effective_stylus_yaw_deg,
+                lr_guess_um=float(np.clip(effective_lr_um, section_fit_lr_min_um, section_fit_lr_max_um)),
+                rotation_sign=rotation_sign,
+                angular_velocity_rad_per_s=sample_angular_velocity_rad_per_s,
+                max_iter=config.stylus_fit_max_iter,
+                lr_min_um=section_fit_lr_min_um,
+                lr_max_um=section_fit_lr_max_um,
+                overhang_min_mm=overhang_fit_min_mm,
+                overhang_max_mm=overhang_fit_max_mm,
+            )
+            fit_lr_um, fit_stylus_yaw_deg, fit_overhang_mm = map(float, section_model_fit.x)
+            if not (section_model_fit.success and np.all(np.isfinite(section_model_fit.x))):
+                break
+            effective_lr_um = fit_lr_um
+            effective_stylus_yaw_deg = fit_stylus_yaw_deg
+            fitted_overhang_mm = fit_overhang_mm
+            ate_measured_deg = apparent_tracking_error_from_lag_deg(radius_smooth_mm, lag_smooth_s, effective_lr_um, sample_angular_velocity_rad_per_s)
+            ate_fit_input_deg = apparent_tracking_error_from_lag_deg(radius_smooth_mm, lag_fit_s, effective_lr_um, sample_angular_velocity_rad_per_s)
+            ate_projection_full_deg = modeled_apparent_tracking_error_deg(
+                radius_mm=radius_smooth_mm,
+                effective_length_mm=effective_length_mm,
+                offset_angle_deg=offset_angle_deg,
+                overhang_mm=fitted_overhang_mm,
+                stylus_yaw_deg=effective_stylus_yaw_deg,
+                mount_yaw_deg=mount_yaw_deg,
+                rotation_sign=rotation_sign,
+            )
+            residual_deg = ate_measured_deg - ate_projection_full_deg
+            residual_median_deg = float(np.nanmedian(residual_deg))
+            residual_mad_deg = float(np.nanmedian(np.abs(residual_deg - residual_median_deg)))
+            residual_limit_deg = max(0.25, 3.0 * 1.4826 * residual_mad_deg)
+            next_projection_mask = np.isfinite(spot_lr_um) & (spot_lr_um >= lower_lr_um) & (spot_lr_um <= upper_lr_um) & (np.abs(residual_deg - residual_median_deg) <= residual_limit_deg)
+            if np.array_equal(next_projection_mask, projection_mask):
+                break
+            projection_mask = next_projection_mask
+
+    lr_at_lower_bound = bool(np.isclose(effective_lr_um, lr_sanity_min_um, atol=0.01, rtol=0.0))
+    lr_at_upper_bound = bool(np.isclose(effective_lr_um, lr_sanity_max_um, atol=0.01, rtol=0.0))
+    lr_within_sanity_range = bool(lr_sanity_min_um <= effective_lr_um <= lr_sanity_max_um and not lr_at_lower_bound and not lr_at_upper_bound)
+    lr_sanity_warning = None if lr_within_sanity_range else f"L/R timing fit reached the {('minimum' if lr_at_lower_bound else 'maximum')} {effective_lr_um:.3g} µm bound; review cartridge data and geometry."
+    # Draw the physical model only across validated contiguous sections.  Blue
+    # remains the full measured 16-rotation average for direct comparison.
+    ate_fitted_deg = np.where(projection_mask, ate_projection_full_deg, np.nan)
     ate_raw_deg = apparent_tracking_error_from_lag_deg(radius_valid_mm, lag_valid_s, effective_lr_um, sample_angular_velocity_rad_per_s)
     stylus_fit_objective = float(rms(ate_fit_input_deg - ate_fitted_deg))
-    valid_lag_s = measurement.lag_s[np.isfinite(measurement.lag_s)]
+    valid_lag_s = lag_clean_s[np.isfinite(lag_clean_s)]
     lag_median_s = float(np.median(valid_lag_s)) if valid_lag_s.size else float("nan")
     lag_mean_s = float(np.mean(valid_lag_s)) if valid_lag_s.size else float("nan")
     lag_p05_s, lag_p95_s = (np.quantile(valid_lag_s, [0.05, 0.95]).astype(float) if valid_lag_s.size else (float("nan"), float("nan")))
@@ -329,7 +391,9 @@ def compile_one_measurement(
         "lag_bad_indices": lag_reject.bad_indices,
         "smoothing_window": int(smoothing_window),
         "rotation_sign": float(rotation_sign),
-        "lag_polarity": int(acquisition.lag_polarity),
+        "lag_polarity": applied_lag_polarity,
+        "lag_polarity_source": lag_polarity_source,
+        "alignment": acquisition.alignment,
         "radius_mapping": {
             "method": radius_mapping_method,
             "outer_radius_mm": float(measurement.outer_radius_mm),
@@ -342,8 +406,8 @@ def compile_one_measurement(
             "radial_pitch_mm_per_revolution": measurement.pitch_estimate,
         },
         "projection": {
-            "method": "local_lr_and_residual_sections",
-            "displayed_trace": "accepted_16_rotation_average",
+            "method": "null_selected_iterative_full_model",
+            "displayed_trace": "accepted_section_full_physical_model",
             "retained_point_count": int(np.count_nonzero(projection_mask)),
             "retained_fraction": float(np.mean(projection_mask)),
             "residual_limit_deg": residual_limit_deg,
@@ -366,8 +430,10 @@ def compile_one_measurement(
         "stylus_fit_overhang_delta_mm": fitted_overhang_mm - effective_overhang_mm,
         "stylus_fit_accepted": stylus_fit_accepted,
         "lr_estimation": {
-            "method": "null_anchored_weighted_spots" if null_lr is not None else "legacy_optimizer_fallback",
+            "method": "accepted_section_full_model" if section_model_fit is not None and section_model_fit.success else ("null_anchored_weighted_spots" if null_lr is not None else "legacy_optimizer_fallback"),
+            "alignment": None if null_lr is None else null_lr.alignment,
             "lr_um": effective_lr_um,
+            "null_anchored_lr_um": None if null_lr is None else null_lr.lr_um,
             "interval_10_90_um": None if null_lr is None else list(null_lr.interval_10_90_um),
             "total_yaw_deg": None if null_lr is None else null_lr.total_yaw_deg,
             "channel_baseline_lag_ns": None if null_lr is None else null_lr.channel_baseline_lag_s * 1e9,
@@ -376,6 +442,14 @@ def compile_one_measurement(
             "spot_count": None if null_lr is None else null_lr.spot_count,
             "fallback_reason": null_lr_error,
             "legacy_optimizer_lr_um": candidate_lr_um if stylus_fit_accepted else None,
+            "accepted_section_model": None if section_model_fit is None else {
+                "lr_um": float(section_model_fit.x[0]),
+                "stylus_yaw_deg": float(section_model_fit.x[1]),
+                "overhang_mm": float(section_model_fit.x[2]),
+                "objective": float(section_model_fit.fun),
+                "iterations": section_model_iterations,
+                "converged": bool(section_model_fit.success),
+            },
         },
         "stylus_fit_iterations": int(stylus_fit.nit),
         "stylus_fit_converged": bool(stylus_fit.success),
@@ -427,12 +501,13 @@ def compile_one_measurement(
         lr_diff_over_sum_rms_ratio_smooth=lr_diff_over_sum_rms_ratio_smooth,
         ate_measured_deg=ate_measured_deg,
         ate_fitted_deg=ate_fitted_deg,
+        ate_model_full_deg=ate_projection_full_deg,
         ate_raw_deg=ate_raw_deg,
         distortion_model=distortion_model_trace,
         distortion_fit=distortion_fit_trace,
-        stylus_fit_params=np.asarray(stylus_fit.x, dtype=float),
-        stylus_fit_objective=float(stylus_fit.fun),
-        stylus_fit_success=bool(stylus_fit.success),
+        stylus_fit_params=np.asarray(section_model_fit.x if section_model_fit is not None and section_model_fit.success else stylus_fit.x, dtype=float),
+        stylus_fit_objective=float(section_model_fit.fun if section_model_fit is not None and section_model_fit.success else stylus_fit.fun),
+        stylus_fit_success=bool(section_model_fit.success if section_model_fit is not None else stylus_fit.success),
         distortion_fit_params=np.asarray([fitted_mount_yaw_deg, fitted_overhang_mm], dtype=float),
         distortion_fit_objective=distortion_fit_objective,
         distortion_fit_success=True,

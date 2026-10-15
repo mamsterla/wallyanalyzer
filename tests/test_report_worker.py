@@ -49,7 +49,7 @@ class TrackingErrorWorkerGeometryTests(unittest.TestCase):
             self.assertTrue((Path(tmpdir) / "tracking-error.pdf").is_file())
             metrics = json.loads((Path(tmpdir) / "metrics.json").read_text(encoding="utf-8"))
             self.assertEqual(metrics["reportType"], "Yaw Angle Report")
-            self.assertEqual(metrics["effectiveAlgorithmValues"], {"effectiveLengthMm": 250.0, "offsetAngleDeg": 23.0, "overhangMm": 17.5, "mountYawDeg": -0.4, "channelPolarity": "normal"})
+            self.assertEqual(metrics["effectiveAlgorithmValues"], {"effectiveLengthMm": 250.0, "offsetAngleDeg": 23.0, "overhangMm": 17.5, "mountYawDeg": -0.4, "channelPolarity": "normal", "alignment": "baerwald"})
 
 
 if __name__ == "__main__":

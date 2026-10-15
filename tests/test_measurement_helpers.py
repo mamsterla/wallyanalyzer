@@ -11,6 +11,7 @@ from wallyanalyzer.signal import (
     analyze_period_envelope,
     build_snippet_geometry,
     detrend_and_window,
+    detect_orientation_preamble,
     detect_tone_region,
     extract_padded_snippet,
     fftlag,
@@ -71,6 +72,18 @@ class MeasurementHelperTests(unittest.TestCase):
         self.assertEqual(result.start_sample, 4 * block + block // 2)
         self.assertEqual(result.end_sample, (4 + tone_blocks - 1) * block + block // 2)
         self.assertGreater(result.level, 0.0)
+
+    def test_80_hz_orientation_preamble_sets_absolute_lag_polarity(self):
+        rate = 8_000
+        revolution = 1.8
+        t = np.arange(round(rate * revolution), dtype=float) / rate
+        preamble = np.column_stack((0.9 * np.sin(2 * np.pi * 80 * t), 0.03 * np.sin(2 * np.pi * 80 * t)))
+        result = detect_orientation_preamble(preamble, rate, len(preamble), revolution)
+        self.assertEqual(result.dominant_channel, "left")
+        self.assertEqual(result.lag_polarity, 1)
+        reversed_result = detect_orientation_preamble(preamble[:, ::-1], rate, len(preamble), revolution)
+        self.assertEqual(reversed_result.dominant_channel, "right")
+        self.assertEqual(reversed_result.lag_polarity, -1)
 
     def test_detect_tone_region_excludes_broadband_lead_in_and_out(self):
         sample_rate = 8_000

@@ -26,6 +26,76 @@ class ToneRegion:
     last_tone_snr_db: float
 
 
+@dataclass(frozen=True)
+class OrientationPreamble:
+    start_sample: int
+    end_sample: int
+    dominant_channel: str
+    lag_polarity: int
+    dominant_channel_snr_db: float
+    channel_dominance_db: float
+
+
+def detect_orientation_preamble(
+    samples: np.ndarray,
+    sample_rate_hz: float,
+    one_khz_start_sample: int,
+    rotation_period_s: float,
+    target_hz: float = 80.0,
+    minimum_snr_db: float = 20.0,
+    minimum_dominance_db: float = 12.0,
+) -> OrientationPreamble:
+    """Read the one-revolution 80 Hz channel-identity preamble before 1 kHz.
+
+    The reference tone is cut on the physical left channel. A right-dominant
+    preamble therefore records a reversed physical channel identity. Signed Play
+    Yaw still follows the recorded electrical L/R order.
+    """
+    if samples.ndim != 2 or samples.shape[1] != 2 or sample_rate_hz <= 0.0:
+        raise ValueError("Orientation preamble requires stereo samples and a positive sample rate")
+    length = int(round(rotation_period_s * sample_rate_hz))
+    boundary = int(one_khz_start_sample)
+    if length < 16 or boundary < 0 or boundary > samples.shape[0]:
+        raise EnvelopeDetectionError("80 Hz orientation preamble is unavailable near the 1 kHz program")
+    # Production captures can overlap the 80 Hz reference with the first 1 kHz
+    # blocks. Search around that spectral boundary, then trim through the selected
+    # one-revolution window before timing the 1 kHz program.
+    first_start = max(0, boundary - length)
+    last_start = min(samples.shape[0] - length, boundary + length)
+    if last_start < first_start:
+        raise EnvelopeDetectionError("80 Hz orientation preamble does not fit in the capture")
+    step = max(1, int(round(sample_rate_hz / 10.0)))
+    frequencies = np.fft.rfftfreq(length, 1.0 / sample_rate_hz)
+    tone_index = int(np.argmin(np.abs(frequencies - target_hz)))
+    noise_band = (frequencies >= 30.0) & (frequencies <= 180.0) & (np.abs(frequencies - target_hz) > 10.0)
+    best: tuple[float, int, int, float, np.ndarray] | None = None
+    for start in range(first_start, last_start + 1, step):
+        snippet = samples[start : start + length] * np.hanning(length)[:, None]
+        spectrum = np.abs(np.fft.rfft(snippet, axis=0))
+        tone = spectrum[tone_index]
+        noise = np.maximum(np.median(spectrum[noise_band], axis=0), 1e-30)
+        snr_db = 20.0 * np.log10(np.maximum(tone, 1e-30) / noise)
+        dominant_index = int(np.argmax(tone))
+        other_index = 1 - dominant_index
+        dominance_db = float(20.0 * np.log10(max(float(tone[dominant_index]), 1e-30) / max(float(tone[other_index]), 1e-30)))
+        score = float(np.min(snr_db) + dominance_db)
+        if best is None or score > best[0]:
+            best = (score, start, dominant_index, dominance_db, snr_db)
+    assert best is not None
+    _, start, dominant_index, dominance_db, snr_db = best
+    if snr_db[dominant_index] < minimum_snr_db or dominance_db < minimum_dominance_db:
+        raise EnvelopeDetectionError("80 Hz orientation preamble does not identify one channel reliably")
+    dominant_channel = "left" if dominant_index == 0 else "right"
+    return OrientationPreamble(
+        start_sample=start,
+        end_sample=start + length,
+        dominant_channel=dominant_channel,
+        lag_polarity=1 if dominant_channel == "left" else -1,
+        dominant_channel_snr_db=float(snr_db[dominant_index]),
+        channel_dominance_db=dominance_db,
+    )
+
+
 def detect_tone_region(
     samples: np.ndarray,
     sample_rate_hz: float,

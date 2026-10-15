@@ -63,27 +63,34 @@ def render_compile_validation_svg(
     piv_spin_adj = 0.0 if acquisition.pivot_spindle_adjustment_mm is None else float(acquisition.pivot_spindle_adjustment_mm)
     lag_leader = result.diagnostics.get("stereo_lag_leading_channel")
     lag_median_us = result.diagnostics.get("stereo_lag_median_us")
-    lag_summary = "Stereo lag unavailable"
+    stereo_timing_summary = "Stereo lag unavailable"
     if lag_leader in {"left", "right"} and isinstance(lag_median_us, (int, float)) and np.isfinite(lag_median_us):
-        lag_summary = f"{str(lag_leader).title()} leads by {abs(float(lag_median_us)):.3g} µs (median)"
+        stereo_timing_summary = f"{str(lag_leader).title()} leads by {abs(float(lag_median_us)):.3g} µs (median)"
     elif lag_leader == "neither":
-        lag_summary = "No median stereo lead"
+        stereo_timing_summary = "No median stereo lead"
     lr_estimation = result.diagnostics.get("lr_estimation", {})
     lr_interval = lr_estimation.get("interval_10_90_um") if isinstance(lr_estimation, dict) else None
     null_mismatch = lr_estimation.get("null_mismatch_percent") if isinstance(lr_estimation, dict) else None
     channel_baseline_ns = lr_estimation.get("channel_baseline_lag_ns") if isinstance(lr_estimation, dict) else None
-    lr_summary = f"Null-anchored L/R {summary.effective_lr_um:.3g} µm"
+    null_lr_um = lr_estimation.get("null_anchored_lr_um") if isinstance(lr_estimation, dict) else None
+    section_model = lr_estimation.get("accepted_section_model") if isinstance(lr_estimation, dict) else None
+    if isinstance(section_model, dict) and bool(section_model.get("converged")):
+        lr_summary = f"Accepted-section model L/R {summary.effective_lr_um:.3g} µm"
+        if isinstance(null_lr_um, (int, float)) and np.isfinite(null_lr_um):
+            lr_summary += f" (null estimate {float(null_lr_um):.3g} µm)"
+    else:
+        lr_summary = f"Null-anchored L/R {summary.effective_lr_um:.3g} µm"
     if isinstance(lr_interval, list) and len(lr_interval) == 2:
-        lr_summary += f" (10–90% {float(lr_interval[0]):.3g}–{float(lr_interval[1]):.3g} µm)"
+        lr_summary += f" · null 10–90% {float(lr_interval[0]):.3g}–{float(lr_interval[1]):.3g} µm"
     carrier_error_hz = result.measurement.diagnostics.get("carrier_frequency_error_hz")
     carrier_summary = f"   ·   1 kHz error {float(carrier_error_hz):+.3f} Hz" if isinstance(carrier_error_hz, (int, float)) and np.isfinite(carrier_error_hz) else ""
-    polarity = "inverted" if acquisition.lag_polarity == -1 else "normal"
-    lag_report_summary = f"Stereo timing  ·  {lag_summary}{carrier_summary}   ·   polarity {polarity}"
-    confidence_ok = isinstance(null_mismatch, (int, float)) and abs(float(null_mismatch)) <= 5.0 and isinstance(lr_interval, list) and len(lr_interval) == 2 and float(lr_interval[1]) - float(lr_interval[0]) <= summary.effective_lr_um
-    recommendation = (f"Yaw correction  ·  apply mount-yaw adjustment {-summary.effective_stylus_yaw_deg:+.3g}° (signed convention)" if confidence_ok else "Yaw correction  ·  withheld: null consistency or L/R interval requires review")
+    lag_report_summary = f"Stereo timing  ·  {stereo_timing_summary}{carrier_summary}"
+    model_lr_consistent = isinstance(lr_interval, list) and len(lr_interval) == 2 and float(lr_interval[0]) <= summary.effective_lr_um <= float(lr_interval[1])
+    confidence_ok = isinstance(null_mismatch, (int, float)) and abs(float(null_mismatch)) <= 7.5 and isinstance(lr_interval, list) and len(lr_interval) == 2 and float(lr_interval[1]) - float(lr_interval[0]) <= summary.effective_lr_um and model_lr_consistent
+    recommendation = (f"Yaw correction  ·  apply mount-yaw adjustment {-summary.effective_stylus_yaw_deg:+.3g}° (signed convention)" if confidence_ok else "Yaw correction  ·  withheld: null consistency, L/R interval, or model agreement requires review")
     projection_diagnostics = result.diagnostics.get("projection", {})
     projection_visible = isinstance(projection_diagnostics, dict) and int(projection_diagnostics.get("retained_point_count", 0)) >= 2
-    lr_quality_summary = f"L/R quality  ·  null mismatch {float(null_mismatch):+.3g}%" if isinstance(null_mismatch, (int, float)) else "L/R quality  ·  legacy estimator fallback"
+    lr_quality_summary = (f"L/R quality  ·  null mismatch {float(null_mismatch):+.3g}% · model {'within' if model_lr_consistent else 'outside'} null interval" if isinstance(null_mismatch, (int, float)) else "L/R quality  ·  legacy estimator fallback")
     input_geometry = (
         f'<tspan font-weight="bold">Input: L {float(acquisition.effective_length_mm):.3f} mm   '
         f'Offset {float(acquisition.offset_angle_deg):.3g}°   OH {float(acquisition.overhang_mm):.3f} mm   '
@@ -105,7 +112,7 @@ def render_compile_validation_svg(
 
     svg = [
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{SVG_WIDTH}" height="{validation_svg_height}" viewBox="0 0 {SVG_WIDTH} {validation_svg_height}">',
-        '<style>text{font-family:Arial,sans-serif;fill:#000} .title{font-size:22px;font-weight:bold} .subtitle{font-size:20px;font-weight:bold} .label{font-size:14px} .small{font-size:12px;fill:#000} .mid{font-size:13px} .axis{stroke:#444;stroke-width:1} .grid{stroke:#ddd;stroke-width:1} .raw{fill:none;stroke:#e6a400;stroke-width:1.1;opacity:0.95;stroke-dasharray:2 2} .fit1{fill:none;stroke:#0057ff;stroke-width:2;stroke-dasharray:8 5} .fit2{fill:none;stroke:#111;stroke-width:2;stroke-dasharray:10 6} .fit3{fill:none;stroke:#d95f02;stroke-width:2} .fit4{fill:none;stroke:#1b9e77;stroke-width:2} .fit5{fill:none;stroke:#7f3fbf;stroke-width:2;stroke-dasharray:5 4} .legend-bg{fill:#fff;fill-opacity:1;stroke:#555;stroke-width:1} .marker-blue{fill:white;stroke:#0057ff;stroke-width:2} .marker-black{fill:#111;stroke:#111} .marker-red{fill:#d62728;stroke:#d62728} .marker-green{fill:#2ca02c;stroke:#2ca02c} .marker-open{fill:white;stroke-width:2}</style>',
+        '<style>text{font-family:Arial,sans-serif;fill:#000} .title{font-size:22px;font-weight:bold} .subtitle{font-size:20px;font-weight:bold} .label{font-size:14px} .small{font-size:12px;fill:#000} .mid{font-size:13px} .axis{stroke:#444;stroke-width:1} .grid{stroke:#ddd;stroke-width:1} .raw{fill:none;stroke:#e6a400;stroke-width:1.1;opacity:0.95;stroke-dasharray:2 2} .fit1{fill:none;stroke:#0057ff;stroke-width:2;stroke-dasharray:8 5} .fit2{fill:none;stroke:#111;stroke-width:2;stroke-dasharray:10 6} .fit3{fill:none;stroke:#d95f02;stroke-width:2} .fit4{fill:none;stroke:#1b9e77;stroke-width:2} .fit5{fill:none;stroke:#7f3fbf;stroke-width:2;stroke-dasharray:5 4} .legend-bg{fill:#fff;fill-opacity:1;stroke:#555;stroke-width:1} .marker-blue{fill:white;stroke:#0057ff;stroke-width:2} .marker-black{fill:#111;stroke:#111} .marker-red{fill:#d62728;stroke:#d62728} .marker-green{fill:#2ca02c;stroke:#2ca02c} .marker-open{fill:white;stroke-width:2}</style>'
         f'<rect x="0" y="0" width="{SVG_WIDTH}" height="{SVG_HEIGHT}" fill="#fff"/>',
         f'<rect x="0" y="0" width="{SVG_WIDTH}" height="82" fill="#f6f8fa"/>',
         '<text x="80" y="25" class="small" style="font-weight:bold;letter-spacing:1.5px;fill:#36536b">WALLY ANALYZER</text>',
@@ -131,11 +138,12 @@ def render_compile_validation_svg(
     play_yaw_values = np.concatenate(play_yaw_scale_series)
     ate_ymin = float(np.min(play_yaw_values) - 1.5)
     ate_ymax = float(np.max(play_yaw_values) + 1.5)
-    projection_summary = "validated measured sections" if projection_visible else "validated sections unavailable"
     upper_x_series = [radius_valid, radius_smooth]
     upper_y_series = [result.ate_raw_deg, result.ate_measured_deg]
     upper_classes = ["raw", "fit1"]
     if projection_visible:
+        # Rejected sections remain blank; solid green is reserved for the
+        # full physical model where it agrees with the measured average.
         upper_x_series.append(radius_smooth)
         upper_y_series.append(result.ate_fitted_deg)
         upper_classes.append("fit4")
@@ -181,8 +189,9 @@ def render_compile_validation_svg(
             entries=[
                 ("raw", f"Raw play-yaw estimates (±{float(raw_noise_deg):.3g}°)"),
                 ("fit1", f"{avg_rotations}-rotation average (all smoothed points, dashed)"),
-                *(([("fit4", "Validated 16-rotation average sections")] if projection_visible else [])),
-                *(([("raw", "Validated sections unavailable")] if not projection_visible else [])),
+                *(([("fit4", "Full physical model fit")] if projection_visible else [])),
+
+                *(([("raw", "Accepted-section model unavailable")] if not projection_visible else [])),
             ],
         )
     )
@@ -192,9 +201,8 @@ def render_compile_validation_svg(
         f'<rect x="{MARGIN_LEFT}" y="{summary_top:.1f}" width="{panel_width}" height="160" rx="5" fill="#f6f8fa" stroke="#d5dde5"/>',
         f'<text x="{MARGIN_LEFT + 20}" y="{summary_top + 24:.1f}" class="small" style="font-weight:bold;fill:#36536b">MEASUREMENT SUMMARY</text>',
         f'<text x="{MARGIN_LEFT + 20}" y="{summary_top + 50:.1f}" class="mid">{geometry_summary}</text>',
-        f'<text x="{MARGIN_LEFT + 20}" y="{summary_top + 75:.1f}" class="mid">{_escape(f"Play Yaw  ·  mean {summary.apparent_tracking_error_mean_deg:+.3g}°   {projection_summary}   scale {ate_ymin:.2f}° to {ate_ymax:.2f}°")}</text>',
+        f'<text x="{MARGIN_LEFT + 20}" y="{summary_top + 75:.1f}" class="mid">{_escape(f"Play Yaw  ·  mean {summary.apparent_tracking_error_mean_deg:+.3g}°")}</text>',
         f'<text x="{MARGIN_LEFT + 20}" y="{summary_top + 99:.1f}" class="small">{_escape(lag_report_summary)}</text>',
-        f'<text x="{MARGIN_LEFT + 20}" y="{summary_top + 122:.1f}" class="small">{_escape(lr_summary + "   ·   " + lr_quality_summary)}</text>',
         f'<text x="{MARGIN_LEFT + 20}" y="{summary_top + 145:.1f}" class="small">{_escape(recommendation)}</text>',
     ])
 
@@ -263,9 +271,9 @@ def render_compile_validation_svg(
     )
     svg.extend(
         _legend_svg(
-            left=SVG_WIDTH - 320,
+            left=SVG_WIDTH - 340,
             top=diagnostic_top + 10,
-            width=290,
+            width=310,
             entries=[("fit3", f"Mean L/R difference-over-sum RMS: {float(np.nanmean(lr_diff_over_sum_rms_pct)):.4g}%")],
         )
     )
@@ -569,10 +577,14 @@ def _marker_svg(left, top, width, height, xmin, xmax, ymin, ymax, x, y, klass, k
     return [f'<circle cx="{px:.2f}" cy="{py:.2f}" r="5" class="{klass}"/>']
 
 
-def _legend_svg(left: float, top: float, entries: list[tuple[str, str]], width: float = 280) -> list[str]:
+def _legend_svg(left: float, top: float, entries: list[tuple[str, str]], width: float | None = None) -> list[str]:
     row_h = 20
     height = 14 + row_h * len(entries)
-    lines = [f'<rect x="{left:.1f}" y="{top:.1f}" width="{width}" height="{height}" rx="6" ry="6" class="legend-bg"/>']
+    # Arial 12 px labels average roughly 5.8 px per glyph. Keep marker, text,
+    # and right-side padding inside the box rather than clipping long legends.
+    required_width = 74 + 5.8 * max((len(label) for _, label in entries), default=0)
+    legend_width = max(280.0, required_width) if width is None else max(width, required_width)
+    lines = [f'<rect x="{left:.1f}" y="{top:.1f}" width="{legend_width:.1f}" height="{height}" rx="6" ry="6" class="legend-bg"/>']
     for idx, (klass, label) in enumerate(entries):
         y = top + 18 + idx * row_h
         if klass.startswith("marker"):

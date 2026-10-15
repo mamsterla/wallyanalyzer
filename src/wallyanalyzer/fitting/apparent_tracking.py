@@ -60,6 +60,7 @@ def estimate_local_lag_at_radius(
 @dataclass(frozen=True)
 class NullAnchoredLrEstimate:
     lr_um: float
+    alignment: str
     total_yaw_deg: float
     channel_baseline_lag_s: float
     null_mismatch_percent: float
@@ -77,6 +78,63 @@ def _weighted_quantile(values: np.ndarray, weights: np.ndarray, quantile: float)
     return float(values[order][np.searchsorted(cumulative, quantile * cumulative[-1])])
 
 
+ALIGNMENT_NULL_RADII_MM: dict[str, tuple[float, float]] = {
+    "baerwald": (66.0, 120.9),
+    "lofgren": (70.3, 116.6),
+    "stevenson": (60.3, 117.4),
+}
+
+
+def _linear_reference_radii(radius_mm: np.ndarray, lag_s: np.ndarray, bandwidth_mm: float) -> tuple[float, float]:
+    """Choose the cleanest pair equidistant from track center for linear arms."""
+    lower, upper = float(np.nanmin(radius_mm)), float(np.nanmax(radius_mm))
+    center = (lower + upper) / 2.0
+    half_span = (upper - lower) / 2.0
+    candidates: list[tuple[float, float, float]] = []
+    for offset in np.linspace(half_span * 0.15, half_span * 0.75, 49):
+        inner, outer = center - offset, center + offset
+        try:
+            first = estimate_local_lag_at_radius(radius_mm, lag_s, inner, bandwidth_mm)
+            second = estimate_local_lag_at_radius(radius_mm, lag_s, outer, bandwidth_mm)
+        except ValueError:
+            continue
+        candidates.append((first.residual_standard_deviation_s + second.residual_standard_deviation_s, inner, outer))
+    if not candidates:
+        raise ValueError("Linear alignment could not find two clean symmetric reference points")
+    _, inner, outer = min(candidates, key=lambda item: item[0])
+    return float(inner), float(outer)
+
+
+def _alignment_reference_radii(
+    alignment: str,
+    radius_mm: np.ndarray,
+    lag_s: np.ndarray,
+    bandwidth_mm: float,
+    effective_length_mm: float,
+    offset_angle_deg: float,
+    overhang_mm: float,
+) -> tuple[float, float]:
+    key = alignment.lower()
+    if key == "linear":
+        return _linear_reference_radii(radius_mm, lag_s, bandwidth_mm)
+    if key in ALIGNMENT_NULL_RADII_MM:
+        nulls = ALIGNMENT_NULL_RADII_MM[key]
+        lower, upper = float(np.nanmin(radius_mm)), float(np.nanmax(radius_mm))
+        # Snippet edge trimming can remove a few millimetres at either end.
+        # Keep the selected alignment while using the nearest clean available
+        # sample when its nominal null falls outside the retained measurement.
+        return tuple(float(np.clip(null, lower, upper)) for null in nulls)
+    if key == "physical":
+        lower, upper = float(np.nanmin(radius_mm)), float(np.nanmax(radius_mm))
+        grid = np.linspace(lower, upper, 20_001)
+        geometry = baerwald_tracking_error_deg(grid, effective_length_mm, offset_angle_deg, overhang_mm)
+        crossings = np.flatnonzero(np.signbit(geometry[:-1]) != np.signbit(geometry[1:]))
+        if crossings.size != 2:
+            raise ValueError("Physical geometry must produce exactly two nulls within the measured track")
+        return tuple(float(grid[i] - geometry[i] * (grid[i + 1] - grid[i]) / (geometry[i + 1] - geometry[i])) for i in crossings)
+    raise ValueError("Alignment must be linear, lofgren, baerwald, stevenson, or physical")
+
+
 def estimate_lr_from_nulls(
     radius_mm: np.ndarray,
     lag_s: np.ndarray,
@@ -85,6 +143,7 @@ def estimate_lr_from_nulls(
     overhang_mm: float,
     angular_velocity_rad_per_s: float,
     rotation_sign: float,
+    alignment: str = "baerwald",
     bandwidth_mm: float = 2.0,
     spot_step_mm: float = 0.5,
     minimum_geometry_deg: float = 0.25,
@@ -93,12 +152,9 @@ def estimate_lr_from_nulls(
     radii = np.asarray(radius_mm, dtype=float)
     values = np.asarray(lag_s, dtype=float)
     lower, upper = float(np.nanmin(radii)), float(np.nanmax(radii))
-    grid = np.linspace(lower, upper, 20_001)
-    geometry = baerwald_tracking_error_deg(grid, effective_length_mm, offset_angle_deg, overhang_mm)
-    crossings = np.flatnonzero(np.signbit(geometry[:-1]) != np.signbit(geometry[1:]))
-    if crossings.size != 2:
-        raise ValueError("Physical geometry must produce exactly two nulls within the measured track")
-    nulls = tuple(float(grid[i] - geometry[i] * (grid[i + 1] - grid[i]) / (geometry[i + 1] - geometry[i])) for i in crossings)
+    nulls = _alignment_reference_radii(
+        alignment, radii, values, bandwidth_mm, effective_length_mm, offset_angle_deg, overhang_mm
+    )
     first, second = (estimate_local_lag_at_radius(radii, values, target, bandwidth_mm) for target in nulls)
     null_product = (first.lag_s - second.lag_s) / (1.0 / nulls[0] - 1.0 / nulls[1])
     baseline = first.lag_s - null_product / nulls[0]
@@ -127,7 +183,7 @@ def estimate_lr_from_nulls(
     lr_um = _weighted_quantile(candidate_array, weight_array, 0.5)
     total_yaw_deg = float(np.degrees(np.arcsin(np.clip(null_product / (lr_um / (1000.0 * angular_velocity_rad_per_s)), -1.0, 1.0))))
     return NullAnchoredLrEstimate(
-        lr_um, total_yaw_deg, float(baseline), float(mismatch), nulls,
+        lr_um, alignment.lower(), total_yaw_deg, float(baseline), float(mismatch), nulls,
         (_weighted_quantile(candidate_array, weight_array, .1), _weighted_quantile(candidate_array, weight_array, .9)),
         len(candidates), np.asarray(spot_radii), candidate_array, weight_array,
     )
