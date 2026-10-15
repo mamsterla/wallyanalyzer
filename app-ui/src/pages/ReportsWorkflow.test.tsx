@@ -26,7 +26,7 @@ describe('ReportPicker', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Queue 2 reports' }));
     expect(screen.getByDisplayValue('245')).toBeTruthy();
     expect(screen.getByDisplayValue('22.42')).toBeTruthy();
-    expect(submit).toHaveBeenCalledWith([{ definitionKey: 'tracking-error', presetKey: 'rti-demo', yawGeometry: { effectiveLengthMm: 245, offsetAngleDeg: 22.42, overhangMm: 16.9, mountYawDeg: 0 } }, { definitionKey: 'future-report', presetKey: 'future-preset' }]);
+    expect(submit).toHaveBeenCalledWith([{ definitionKey: 'tracking-error', presetKey: 'rti-demo', yawGeometry: { effectiveLengthMm: 245, offsetAngleDeg: 22.42, overhangMm: 16.9, mountYawDeg: 0, channelPolarity: 'normal' } }, { definitionKey: 'future-report', presetKey: 'future-preset' }]);
   });
 });
 
