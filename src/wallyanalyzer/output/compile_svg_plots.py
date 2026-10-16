@@ -74,12 +74,19 @@ def render_compile_validation_svg(
     channel_baseline_ns = lr_estimation.get("channel_baseline_lag_ns") if isinstance(lr_estimation, dict) else None
     null_lr_um = lr_estimation.get("null_anchored_lr_um") if isinstance(lr_estimation, dict) else None
     section_model = lr_estimation.get("accepted_section_model") if isinstance(lr_estimation, dict) else None
-    if isinstance(section_model, dict) and bool(section_model.get("converged")):
-        lr_summary = f"Accepted-section model L/R {summary.effective_lr_um:.3g} µm"
-        if isinstance(null_lr_um, (int, float)) and np.isfinite(null_lr_um):
-            lr_summary += f" (null estimate {float(null_lr_um):.3g} µm)"
+    # Always display the L/R value selected by the pipeline, including bounded
+    # optimizer fallback values. A failed convergence is a qualification of the
+    # estimate, not a reason to hide it from the report.
+    lr_summary = f"L/R estimate  ·  {summary.effective_lr_um:.3g} µm"
+    if isinstance(section_model, dict):
+        if bool(section_model.get("converged")):
+            lr_note = "accepted-section model converged"
+        else:
+            lr_note = "accepted-section model did not converge; estimate is provisional"
+    elif isinstance(null_lr_um, (int, float)) and np.isfinite(null_lr_um):
+        lr_note = "null-anchored estimate; accepted-section model unavailable"
     else:
-        lr_summary = f"Null-anchored L/R {summary.effective_lr_um:.3g} µm"
+        lr_note = "fallback estimate; model did not converge"
     if isinstance(lr_interval, list) and len(lr_interval) == 2:
         lr_summary += f" · null 10–90% {float(lr_interval[0]):.3g}–{float(lr_interval[1]):.3g} µm"
     carrier_error_hz = result.measurement.diagnostics.get("carrier_frequency_error_hz")
@@ -203,6 +210,7 @@ def render_compile_validation_svg(
         f'<text x="{MARGIN_LEFT + 20}" y="{summary_top + 50:.1f}" class="mid">{geometry_summary}</text>',
         f'<text x="{MARGIN_LEFT + 20}" y="{summary_top + 75:.1f}" class="mid">{_escape(f"Play Yaw  ·  mean {summary.apparent_tracking_error_mean_deg:+.3g}°")}</text>',
         f'<text x="{MARGIN_LEFT + 20}" y="{summary_top + 99:.1f}" class="small">{_escape(lag_report_summary)}</text>',
+        f'<text x="{MARGIN_LEFT + 20}" y="{summary_top + 122:.1f}" class="small">{_escape(lr_summary + " · " + lr_note)}</text>',
         f'<text x="{MARGIN_LEFT + 20}" y="{summary_top + 145:.1f}" class="small">{_escape(recommendation)}</text>',
     ])
 

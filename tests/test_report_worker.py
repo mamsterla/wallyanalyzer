@@ -50,6 +50,7 @@ class TrackingErrorWorkerGeometryTests(unittest.TestCase):
             self.assertIn("Input: L 250.000 mm", svg)
             self.assertIn("Calculated: OH", svg)
             self.assertIn("pivot/spindle", svg)
+            self.assertIn("L/R estimate", svg)
             self.assertTrue((Path(tmpdir) / "tracking-error.pdf").is_file())
             metrics = json.loads((Path(tmpdir) / "metrics.json").read_text(encoding="utf-8"))
             self.assertEqual(metrics["reportType"], "Yaw Angle Report")
