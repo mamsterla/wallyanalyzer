@@ -22,13 +22,17 @@ class TrackingErrorWorkerGeometryTests(unittest.TestCase):
         self.assertEqual(preset["effective_length_mm"], 250.0)
         self.assertEqual(preset["offset_angle_deg"], 23.0)
         self.assertEqual(preset["overhang_mm"], 17.5)
-        self.assertEqual(preset["cantilever_yaw_deg"], -0.4)
-        self.assertEqual(_geometry_provenance(preset)["mountYawDeg"], -0.4)
+        self.assertEqual(preset["cantilever_yaw_deg"], 0.0)
+        self.assertEqual(_geometry_provenance(preset)["mountYawDeg"], 0.0)
         self.assertEqual(PRESET["effective_length_mm"], 245.0)
+
+    def test_linear_alignment_forces_the_ten_metre_surrogate(self) -> None:
+        preset = _resolve_preset({"alignment": "linear", "effectiveLengthMm": 245.0, "offsetAngleDeg": 22.42, "overhangMm": 16.9})
+        self.assertEqual(_geometry_provenance(preset), {"effectiveLengthMm": 10_000.0, "offsetAngleDeg": 0.0, "overhangMm": 0.0, "mountYawDeg": 0.0, "channelPolarity": "normal", "alignment": "linear"})
 
     def test_invalid_persisted_geometry_is_rejected(self) -> None:
         with self.assertRaisesRegex(ValueError, "Yaw Angle Report geometry is invalid"):
-            _resolve_preset({"mountYawDeg": 90.0})
+            _resolve_preset({"effectiveLengthMm": -1.0})
 
     def test_report_pdf_and_metrics_use_persisted_geometry(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -49,7 +53,7 @@ class TrackingErrorWorkerGeometryTests(unittest.TestCase):
             self.assertTrue((Path(tmpdir) / "tracking-error.pdf").is_file())
             metrics = json.loads((Path(tmpdir) / "metrics.json").read_text(encoding="utf-8"))
             self.assertEqual(metrics["reportType"], "Yaw Angle Report")
-            self.assertEqual(metrics["effectiveAlgorithmValues"], {"effectiveLengthMm": 250.0, "offsetAngleDeg": 23.0, "overhangMm": 17.5, "mountYawDeg": -0.4, "channelPolarity": "normal", "alignment": "baerwald"})
+            self.assertEqual(metrics["effectiveAlgorithmValues"], {"effectiveLengthMm": 250.0, "offsetAngleDeg": 23.0, "overhangMm": 17.5, "mountYawDeg": 0.0, "channelPolarity": "normal", "alignment": "baerwald"})
 
 
 if __name__ == "__main__":

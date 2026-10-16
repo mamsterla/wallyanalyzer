@@ -646,7 +646,7 @@ async function reportRoute(
     return sendJson(
       response,
       200,
-      await reports.history(ownerId, { limit: pageQuery(query).limit, cursor: cursorQuery(query) }),
+      await reports.history(ownerId, { limit: pageQuery(query).limit, cursor: cursorQuery(query), title: query.get('title') ?? undefined }),
     );
   }
   const artifact = path.match(

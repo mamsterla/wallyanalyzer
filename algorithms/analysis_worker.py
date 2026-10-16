@@ -41,7 +41,10 @@ def handler(event: dict[str, Any] | str, _context: Any) -> dict[str, Any]:
         effective_values=event.get('effectiveAlgorithmValues', {})
         if not isinstance(effective_values, dict):
             raise ValueError('Yaw Angle Report calculation values are invalid.')
-        artifacts=build_tracking_error_artifacts(inputs,root/'output','Recording system',effective_values)
+        report_title=event.get('reportTitle', '')
+        if not isinstance(report_title, str) or len(report_title) > 120:
+            raise ValueError('Yaw Angle Report title is invalid.')
+        artifacts=build_tracking_error_artifacts(inputs,root/'output','Recording system',effective_values,report_title=report_title)
         output=[]; graph_count=0
         for artifact in artifacts:
             kind=artifact['kind']

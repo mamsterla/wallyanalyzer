@@ -34,7 +34,7 @@ export async function dispatch(){
 /** Re-reads and pins immutable inputs. Sensitive provenance stays in Postgres, never in workflow state. */
 export async function preflight(event:WorkflowInput){
   const p=await db();
-  const r=await p.query<any>(`select ar.id,rr.id request_id,rr.owner_id,ar.algorithm_version,ar.parameter_provenance,
+  const r=await p.query<any>(`select ar.id,rr.id request_id,rr.owner_id,ar.algorithm_version,ar.report_title,ar.parameter_provenance,
     i.sample_id,i.object_key pinned_object_key,i.object_version_id pinned_version_id,i.object_checksum_sha256 pinned_checksum,
     s.object_key,s.checksum_sha256,s.content_type
     from analysis_reports ar join report_requests rr on rr.id=ar.request_id join analysis_report_inputs i on i.report_id=ar.id
@@ -53,14 +53,14 @@ export async function preflight(event:WorkflowInput){
     inputs.push({sampleId:row.sample_id,objectKey:key,versionId:head.VersionId,checksumSha256:head.ChecksumSHA256,contentType:row.content_type});
   }
   await p.query(`update analysis_reports set status='running',started_at=coalesce(started_at,now()) where id=$1 and status='queued'`,[event.reportId]);
-  return buildWorkerInput({requestId:event.requestId,reportId:event.reportId,ownerId:first.owner_id,algorithmVersion:first.algorithm_version,parameterProvenance:first.parameter_provenance,inputs});
+  return buildWorkerInput({requestId:event.requestId,reportId:event.reportId,ownerId:first.owner_id,algorithmVersion:first.algorithm_version,reportTitle:first.report_title,parameterProvenance:first.parameter_provenance,inputs});
 }
 
-/** Deliberately projects only worker-required, non-display data into Step Functions state. */
-export function buildWorkerInput(value:{requestId:string;reportId:string;ownerId:string;algorithmVersion:string;parameterProvenance:Record<string,unknown>;inputs:PinnedInput[]}){
+/** Projects calculation values and the explicitly user-supplied display title into Step Functions state. */
+export function buildWorkerInput(value:{requestId:string;reportId:string;ownerId:string;algorithmVersion:string;parameterProvenance:Record<string,unknown>;reportTitle?:string;inputs:PinnedInput[]}){
   const fixed=(value.parameterProvenance?.fixedDemoValues??{}) as Record<string,unknown>;
   const entered=(value.parameterProvenance?.userEnteredValues??{}) as Record<string,unknown>;
-  return {requestId:value.requestId,reportId:value.reportId,algorithmVersion:value.algorithmVersion,inputs:value.inputs,effectiveAlgorithmValues:{...fixed,...entered},outputPrefix:prefixFor(value.ownerId,value.reportId)};
+  return {requestId:value.requestId,reportId:value.reportId,algorithmVersion:value.algorithmVersion,inputs:value.inputs,effectiveAlgorithmValues:{...fixed,...entered},reportTitle:value.reportTitle??'',outputPrefix:prefixFor(value.ownerId,value.reportId)};
 }
 
 /** Worker descriptors are accepted only at the database-derived report prefix and exact S3 version. */
@@ -77,7 +77,7 @@ export async function finalize(event:{reportId:string;artifacts:WorkerArtifact[]
   const p=await db(); const c=await p.connect();
   try{
     await c.query('begin');
-    const report=await c.query<any>(`select ar.id,ar.status,ar.algorithm_version,ar.parameter_provenance,rr.owner_id,rr.system_snapshot,rr.user_metadata_snapshot from analysis_reports ar join report_requests rr on rr.id=ar.request_id where ar.id=$1 for update`,[event.reportId]);
+    const report=await c.query<any>(`select ar.id,ar.status,ar.algorithm_version,ar.report_title,ar.parameter_provenance,rr.owner_id,rr.system_snapshot,rr.user_metadata_snapshot from analysis_reports ar join report_requests rr on rr.id=ar.request_id where ar.id=$1 for update`,[event.reportId]);
     if(!report.rowCount)throw new Error('Report was not found.');
     const row=report.rows[0], prefix=prefixFor(row.owner_id,event.reportId);
     for(const artifact of event.artifacts){
@@ -107,7 +107,7 @@ export async function finalize(event:{reportId:string;artifacts:WorkerArtifact[]
 export async function buildManifest(c:any,reportId:string,report:any){
   const artifacts=await c.query(`select kind,object_key,object_version_id,content_type,byte_length,checksum_sha256 from report_artifacts where report_id=$1 order by kind`,[reportId]);
   const inputs=await c.query(`select i.input_ordinal,i.object_key,i.object_version_id,i.object_checksum_sha256,s.id sample_id,s.content_type,s.byte_length,s.recorded_at,s.metadata,s.system_snapshot,s.psiu_unit_id,s.observed_psiu_uid from analysis_report_inputs i join samples s on s.id=i.sample_id where i.report_id=$1 order by i.input_ordinal`,[reportId]);
-  return {reportId,algorithmVersion:report.algorithm_version,workerImageIdentity:null,inputProvenance:inputs.rows.map((x:any)=>({ordinal:x.input_ordinal,sampleId:x.sample_id,objectKey:x.object_key,objectVersionId:x.object_version_id,checksumSha256:x.object_checksum_sha256,contentType:x.content_type,byteLength:Number(x.byte_length),recordedAt:x.recorded_at?.toISOString(),wavMetadata:x.metadata,systemSnapshot:x.system_snapshot,psiuUnitId:x.psiu_unit_id,observedPsiuUid:x.observed_psiu_uid??undefined})),parameterProvenance:report.parameter_provenance,requestSystemSnapshot:report.system_snapshot,userMetadataSnapshot:report.user_metadata_snapshot,artifacts:artifacts.rows};
+  return {reportId,reportTitle:report.report_title??'',algorithmVersion:report.algorithm_version,workerImageIdentity:null,inputProvenance:inputs.rows.map((x:any)=>({ordinal:x.input_ordinal,sampleId:x.sample_id,objectKey:x.object_key,objectVersionId:x.object_version_id,checksumSha256:x.object_checksum_sha256,contentType:x.content_type,byteLength:Number(x.byte_length),recordedAt:x.recorded_at?.toISOString(),wavMetadata:x.metadata,systemSnapshot:x.system_snapshot,psiuUnitId:x.psiu_unit_id,observedPsiuUid:x.observed_psiu_uid??undefined})),parameterProvenance:report.parameter_provenance,requestSystemSnapshot:report.system_snapshot,userMetadataSnapshot:report.user_metadata_snapshot,artifacts:artifacts.rows};
 }
 export async function fail(event:{reportId:string;error?:string}){const p=await db();await p.query(`update analysis_reports set status='failed',completed_at=now(),failure_code='processing_failed',failure_detail_safe=$2 where id=$1 and status in ('queued','running')`,[event.reportId,String(event.error??'Report processing failed.').slice(0,500)]);return{reportId:event.reportId,status:'failed'};}
 export async function finalizeRequest(event:{requestId:string}){const p=await db();const r=await p.query<{status:string;count:string}>(`select status,count(*) from analysis_reports where request_id=$1 group by status`,[event.requestId]);const counts=Object.fromEntries(r.rows.map(x=>[x.status,Number(x.count)]));const status=counts.failed&&counts.completed?'partial_failed':counts.failed?'failed':counts.completed?'completed':'running';await p.query(`update report_requests set status=$2 where id=$1`,[event.requestId,status]);return{requestId:event.requestId,status,counts};}

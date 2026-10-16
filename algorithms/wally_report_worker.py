@@ -65,10 +65,10 @@ def build_tracking_error_artifacts(
         render_compile_sweep_svg(compiled, sweep, title=f"{REPORT_TITLE} sweep — {system_name}")
         artifacts.append(_artifact(sweep, "graph_svg", "image/svg+xml"))
     metrics = output_dir / "metrics.json"
-    metrics.write_text(json.dumps({"reportType":REPORT_TITLE,"algorithmVersion":"1.1.0","preset":"RTI Test 1 Track 1 Side A","effectiveAlgorithmValues":_geometry_provenance(preset),"inputCount":len(inputs),"systemName":system_name,"measurements":[{"file":m.file_stem,"validSegments":m.diagnostics["n_valid_segments"],"processingSeconds":m.processing_time_s} for m in measurements]}, indent=2), encoding="utf-8")
+    metrics.write_text(json.dumps({"reportType":REPORT_TITLE,"reportTitle":report_title or "","algorithmVersion":"1.1.0","preset":"RTI Test 1 Track 1 Side A","effectiveAlgorithmValues":_geometry_provenance(preset),"inputCount":len(inputs),"systemName":system_name,"measurements":[{"file":m.file_stem,"validSegments":m.diagnostics["n_valid_segments"],"processingSeconds":m.processing_time_s} for m in measurements]}, indent=2), encoding="utf-8")
     artifacts.append(_artifact(metrics, "metrics_json", "application/json"))
     manifest = output_dir / "manifest.json"
-    manifest.write_text(json.dumps({"algorithm":"tracking-error","algorithmVersion":"1.1.0","presetSnapshot":PRESET,"effectiveAlgorithmValues":_geometry_provenance(preset),"artifacts":artifacts}, indent=2), encoding="utf-8")
+    manifest.write_text(json.dumps({"algorithm":"tracking-error","reportTitle":report_title or "","algorithmVersion":"1.1.0","presetSnapshot":PRESET,"effectiveAlgorithmValues":_geometry_provenance(preset),"artifacts":artifacts}, indent=2), encoding="utf-8")
     artifacts.append(_artifact(manifest, "manifest", "application/json"))
     return artifacts
 
@@ -79,29 +79,31 @@ def _resolve_preset(values: Mapping[str, Any] | None) -> dict[str, Any]:
         return preset
     if not isinstance(values, Mapping):
         raise ValueError("Yaw Angle Report geometry is invalid.")
-    fields = {
-        "effectiveLengthMm": ("effective_length_mm", lambda value: value > 0),
-        "offsetAngleDeg": ("offset_angle_deg", lambda value: 0 < value < 90),
-        "overhangMm": ("overhang_mm", lambda value: value >= 0),
-        "mountYawDeg": ("cantilever_yaw_deg", lambda value: abs(value) <= 45),
-    }
-    for source, (target, valid) in fields.items():
-        if source not in values:
-            continue
-        value = values[source]
-        if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or not valid(float(value)):
-            raise ValueError("Yaw Angle Report geometry is invalid.")
-        preset[target] = float(value)
-    channel_polarity = values.get("channelPolarity", preset["channel_polarity"])
-    if channel_polarity not in ("normal", "inverted"):
-        raise ValueError("Yaw Angle Report channel polarity is invalid.")
-    preset["channel_polarity"] = channel_polarity
     alignment = values.get("alignment", preset["alignment"])
     if alignment not in ("linear", "lofgren", "baerwald", "stevenson"):
         raise ValueError("Yaw Angle Report alignment is invalid.")
     preset["alignment"] = alignment
-    if "effectiveLengthMm" in values or "overhangMm" in values:
-        preset["actual_pivot_to_spindle_mm"] = float(preset["effective_length_mm"] - preset["overhang_mm"])
+    # Linear arms use the temporary, documented 10 m pivot surrogate. Geometry
+    # controls and manual orientation controls are deliberately not inputs.
+    if alignment == "linear":
+        preset.update(effective_length_mm=10_000.0, offset_angle_deg=0.0, overhang_mm=0.0, actual_pivot_to_spindle_mm=10_000.0)
+    else:
+        fields = {
+            "effectiveLengthMm": ("effective_length_mm", lambda value: value > 0),
+            "offsetAngleDeg": ("offset_angle_deg", lambda value: 0 < value < 90),
+            "overhangMm": ("overhang_mm", lambda value: value >= 0),
+        }
+        for source, (target, valid) in fields.items():
+            if source not in values:
+                continue
+            value = values[source]
+            if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or not valid(float(value)):
+                raise ValueError("Yaw Angle Report geometry is invalid.")
+            preset[target] = float(value)
+        if "effectiveLengthMm" in values or "overhangMm" in values:
+            preset["actual_pivot_to_spindle_mm"] = float(preset["effective_length_mm"] - preset["overhang_mm"])
+    preset["cantilever_yaw_deg"] = 0.0
+    preset["channel_polarity"] = "normal"
     return preset
 
 

@@ -26,11 +26,11 @@ describe('ReportPicker', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Queue 2 reports' }));
     expect(screen.getByDisplayValue('245')).toBeTruthy();
     expect(screen.getByDisplayValue('22.42')).toBeTruthy();
-    expect(submit).toHaveBeenCalledWith([{ definitionKey: 'tracking-error', presetKey: 'rti-demo', yawGeometry: { effectiveLengthMm: 245, offsetAngleDeg: 22.42, overhangMm: 16.9, mountYawDeg: 0, channelPolarity: 'normal', alignment: 'baerwald' } }, { definitionKey: 'future-report', presetKey: 'future-preset' }]);
+    expect(submit).toHaveBeenCalledWith([{ definitionKey: 'tracking-error', presetKey: 'rti-demo', reportTitle: '', yawGeometry: { effectiveLengthMm: 245, offsetAngleDeg: 22.42, overhangMm: 16.9, mountYawDeg: 0, channelPolarity: 'normal', alignment: 'baerwald' } }, { definitionKey: 'future-report', presetKey: 'future-preset', reportTitle: '' }]);
   });
 });
 
-const report=(id:string,status:'queued'|'completed',withPdf:boolean)=>({ id, requestId: 'request', reportType: 'Yaw Angle Report', algorithmVersion: '0.1.0', presetName: 'RTI Test 1', presetVersion: '1', status, createdAt: '2026-01-02T03:04:05.000Z', systemName: 'Reference system', artifacts: withPdf ? [{ kind: 'report_pdf' as const, contentType: 'application/pdf', createdAt: '2026-01-02T03:05:05.000Z' }] : [] });
+const report=(id:string,status:'queued'|'completed',withPdf:boolean)=>({ id, requestId: 'request', reportType: 'Yaw Angle Report', reportTitle: '', algorithmVersion: '0.1.0', presetName: 'RTI Test 1', presetVersion: '1', status, createdAt: '2026-01-02T03:04:05.000Z', systemName: 'Reference system', artifacts: withPdf ? [{ kind: 'report_pdf' as const, contentType: 'application/pdf', createdAt: '2026-01-02T03:05:05.000Z' }] : [] });
 const first:ReportHistoryPage={items:[report('one','completed',true),report('two','queued',true)],limit:10,nextCursor:'next'};
 const second:ReportHistoryPage={items:[report('three','completed',false)],limit:10};
 
