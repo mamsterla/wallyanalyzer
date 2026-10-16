@@ -47,6 +47,7 @@ class MeasurementHelperTests(unittest.TestCase):
         self.assertEqual(audio.num_channels, 2)
         self.assertEqual(audio.sample_rate_hz, sample_rate)
         self.assertEqual(audio.samples.shape, stereo.shape)
+        self.assertEqual(audio.samples.dtype, np.float32)
         self.assertTrue(np.all(np.abs(audio.samples[:, 0]) <= 1.0))
 
     def test_analyze_period_envelope_detects_tone_region(self):

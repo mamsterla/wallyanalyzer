@@ -107,8 +107,8 @@ def measure_sine_file(
 
     t2 = time.perf_counter()
     highpass_filter_length = int(config.highpass_window_base / audio.decimation_factor) + 1
-    smoothing_filter = nuttall_window(highpass_filter_length)
-    smoothing_filter = smoothing_filter / np.sum(smoothing_filter)
+    smoothing_filter = nuttall_window(highpass_filter_length).astype(audio.samples.dtype, copy=False)
+    smoothing_filter = smoothing_filter / np.sum(smoothing_filter, dtype=audio.samples.dtype)
     smoothing_margin = (highpass_filter_length - 1) // 2
 
     snippet_length_samples = config.periods_per_segment * samples_per_period
@@ -120,7 +120,7 @@ def measure_sine_file(
         padding_length_samples=padding_length_samples,
         skip_samples=skip_samples,
     )
-    analysis_window = nuttall_window(snippet_length_samples)
+    analysis_window = nuttall_window(snippet_length_samples).astype(audio.samples.dtype, copy=False)
     analysis_window_2d = analysis_window[:, None]
     smoothed_full = _fft_convolve_same_multichannel(audio.samples, smoothing_filter)
     t_setup = time.perf_counter() - t2
@@ -324,20 +324,27 @@ def measure_sine_file(
 
 
 def _fft_convolve_same_multichannel(samples: np.ndarray, kernel: np.ndarray, block_size: int = 1 << 18) -> np.ndarray:
-    return np.column_stack(
-        [_fft_convolve_same_1d(samples[:, channel], kernel, block_size=block_size) for channel in range(samples.shape[1])]
-    )
+    # Avoid column_stack's simultaneous source-list and destination allocation.
+    # Long stereo input otherwise transiently requires three additional full-track
+    # arrays while the original decode remains resident.
+    output = np.empty(samples.shape, dtype=np.float32)
+    for channel in range(samples.shape[1]):
+        output[:, channel] = _fft_convolve_same_1d(samples[:, channel], kernel, block_size=block_size)
+    return output
 
 
 def _fft_convolve_same_1d(signal: np.ndarray, kernel: np.ndarray, block_size: int = 1 << 18) -> np.ndarray:
-    signal = np.asarray(signal, dtype=float)
-    kernel = np.asarray(kernel, dtype=float)
+    # Preserve float32 throughout the full-track buffers. FFT temporaries are
+    # bounded to one block, while the two full-length audio arrays dominate
+    # worker memory for long high-resolution WAV inputs.
+    signal = np.asarray(signal, dtype=np.float32)
+    kernel = np.asarray(kernel, dtype=np.float32)
     n = signal.shape[0]
     m = kernel.shape[0]
     pad = m // 2
     padded = np.pad(signal, (pad, pad))
     full_len = padded.shape[0] + m - 1
-    output = np.zeros(full_len, dtype=float)
+    output = np.zeros(full_len, dtype=np.float32)
 
     fft_size = 1
     while fft_size < block_size + m - 1:

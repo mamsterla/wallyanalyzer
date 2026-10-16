@@ -22,7 +22,7 @@ class AudioFormatError(ValueError):
 
 
 def load_wav(audio_path: str | Path, decimation_factor: int = 1) -> AudioData:
-    """Load PCM WAV audio into a float64 NumPy array.
+    """Load PCM WAV audio into a float32 NumPy array.
 
     Supported formats:
     - 8-bit PCM unsigned
@@ -43,6 +43,7 @@ def load_wav(audio_path: str | Path, decimation_factor: int = 1) -> AudioData:
 
     bits_per_sample = sampwidth * 8
     samples = _decode_pcm_bytes(raw, sampwidth, num_channels)
+    del raw
 
     if decimation_factor > 1:
         samples = samples[::decimation_factor]
@@ -70,10 +71,10 @@ def infer_decimation_factor(digitizer: str | None) -> int:
 
 def _decode_pcm_bytes(raw: bytes, sampwidth: int, num_channels: int) -> np.ndarray:
     if sampwidth == 1:
-        data = np.frombuffer(raw, dtype=np.uint8).astype(np.float64)
-        data = (data - 128.0) / 128.0
+        data = np.frombuffer(raw, dtype=np.uint8).astype(np.float32)
+        data = (data - np.float32(128.0)) / np.float32(128.0)
     elif sampwidth == 2:
-        data = np.frombuffer(raw, dtype="<i2").astype(np.float64) / (2**15)
+        data = np.frombuffer(raw, dtype="<i2").astype(np.float32) / np.float32(2**15)
     elif sampwidth == 3:
         byte_array = np.frombuffer(raw, dtype=np.uint8).reshape(-1, 3)
         signed = (
@@ -83,9 +84,9 @@ def _decode_pcm_bytes(raw: bytes, sampwidth: int, num_channels: int) -> np.ndarr
         )
         sign_mask = signed & 0x800000
         signed = signed - (sign_mask << 1)
-        data = signed.astype(np.float64) / (2**23)
+        data = signed.astype(np.float32) / np.float32(2**23)
     elif sampwidth == 4:
-        data = np.frombuffer(raw, dtype="<i4").astype(np.float64) / (2**31)
+        data = np.frombuffer(raw, dtype="<i4").astype(np.float32) / np.float32(2**31)
     else:
         raise AudioFormatError(f"Unsupported WAV sample width: {sampwidth} bytes")
 
