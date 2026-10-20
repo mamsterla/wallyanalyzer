@@ -32,6 +32,7 @@ import type {
   UserSystem,
   UserAlert,
   ReportDefinition,
+  ReportHistoryItem,
 } from '@wally/contracts';
 import {
   accessToken,
@@ -316,18 +317,18 @@ function AccountOverview() {
   );
 }
 function ActivityQueue() {
-  const [items, setItems] = useState<Array<{ id:string; reportType:string; status:string; createdAt:string }>>([]);
+  const [items, setItems] = useState<Array<Pick<ReportHistoryItem, 'id' | 'reportTitle' | 'reportType' | 'status' | 'createdAt'>>>([]);
   useEffect(() => {
     let mounted = true;
     const load = () =>
-      void request<{items?:Array<{id:string;reportType:string;status:string;createdAt:string}>}>('/v1/reports?limit=10')
+      void request<{items?:Array<Pick<ReportHistoryItem, 'id' | 'reportTitle' | 'reportType' | 'status' | 'createdAt'>>}>('/v1/reports?limit=10')
         .then((value) => mounted && setItems(value.items ?? []))
         .catch(() => mounted && setItems([]));
     load();
     const timer = window.setInterval(load, 5000);
     return () => { mounted = false; window.clearInterval(timer); };
   }, []);
-  return <Paper component="section" aria-labelledby="home-activity-title" sx={{p:2,height:'100%'}}><Typography id="home-activity-title" variant="h5" sx={dashboardTitleSx}>Activity queue</Typography><Stack spacing={1} mt={1.5}>{items.length ? items.map(item => <Box key={item.id} sx={dashboardRowSx}><Typography fontWeight={700}>{item.reportType} · {item.status}</Typography><Typography variant="body2" color="text.secondary">{new Date(item.createdAt).toLocaleString()}</Typography></Box>) : <Typography color="text.secondary">No processing activity yet.</Typography>}</Stack></Paper>;
+  return <Paper component="section" aria-labelledby="home-activity-title" sx={{p:2,height:'100%'}}><Typography id="home-activity-title" variant="h5" sx={dashboardTitleSx}>Activity queue</Typography><Stack spacing={1} mt={1.5}>{items.length ? items.map(item => <Box key={item.id} sx={dashboardRowSx}><Typography fontWeight={700}>{item.reportTitle || item.reportType} · {item.status}</Typography>{item.reportTitle&&<Typography variant="body2" color="text.secondary">{item.reportType}</Typography>}<Typography variant="body2" color="text.secondary">{new Date(item.createdAt).toLocaleString()}</Typography></Box>) : <Typography color="text.secondary">No processing activity yet.</Typography>}</Stack></Paper>;
 }
 export function Home() {
   return (

@@ -224,6 +224,26 @@ test('PSIU and sample owner filters require selected IDs while general search st
   assert.equal(calls[1]!.sql.includes('u.email ilike'), false);
 });
 
+test('admin reports return the user-supplied title and sort it ahead of the report type', async () => {
+  const calls: Array<{ sql: string }> = [];
+  const pool = {
+    query: async (sql: string) => {
+      calls.push({ sql });
+      return {
+        rows: [{
+          id: 'report', status: 'completed', created_at: new Date('2026-01-02T03:04:05.000Z'), report_title: 'Ortofon calibration',
+          owner_id: 'owner', email: 'owner@example.com', first_name: 'Ada', last_name: 'Lovelace', definition_key: 'tracking-error', display_name: 'Yaw Angle Report',
+          preset_key: 'rti', preset_name: 'RTI', preset_version: '1', system_snapshot: { name: 'Reference system' },
+        }],
+      };
+    },
+  };
+  const page = await new PostgresAdminDataRepository(pool as never).reports({ sortBy: 'report' });
+  assert.equal(page.items[0]?.reportTitle, 'Ortofon calibration');
+  assert.match(calls[0]!.sql, /ar\.report_title/);
+  assert.match(calls[0]!.sql, /coalesce\(nullif\(ar\.report_title,''\),d\.display_name\)/);
+});
+
 test('admin profile update never updates email', async () => {
   const calls: Array<{ sql: string }> = [];
   const pool = {

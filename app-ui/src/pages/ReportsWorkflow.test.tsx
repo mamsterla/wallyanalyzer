@@ -30,8 +30,8 @@ describe('ReportPicker', () => {
   });
 });
 
-const report=(id:string,status:'queued'|'completed',withPdf:boolean)=>({ id, requestId: 'request', reportType: 'Yaw Angle Report', reportTitle: '', algorithmVersion: '0.1.0', presetName: 'RTI Test 1', presetVersion: '1', status, createdAt: '2026-01-02T03:04:05.000Z', systemName: 'Reference system', artifacts: withPdf ? [{ kind: 'report_pdf' as const, contentType: 'application/pdf', createdAt: '2026-01-02T03:05:05.000Z' }] : [] });
-const first:ReportHistoryPage={items:[report('one','completed',true),report('two','queued',true)],limit:10,nextCursor:'next'};
+const report=(id:string,status:'queued'|'completed',withPdf:boolean,reportTitle='')=>({ id, requestId: 'request', reportType: 'Yaw Angle Report', reportTitle, algorithmVersion: '0.1.0', presetName: 'RTI Test 1', presetVersion: '1', status, createdAt: '2026-01-02T03:04:05.000Z', systemName: 'Reference system', artifacts: withPdf ? [{ kind: 'report_pdf' as const, contentType: 'application/pdf', createdAt: '2026-01-02T03:05:05.000Z' }] : [] });
+const first:ReportHistoryPage={items:[report('one','completed',true,'Ortofon calibration'),report('two','queued',true)],limit:10,nextCursor:'next'};
 const second:ReportHistoryPage={items:[report('three','completed',false)],limit:10};
 
 describe('ReportsPage', () => {
@@ -40,6 +40,8 @@ describe('ReportsPage', () => {
     vi.stubGlobal('fetch', vi.fn(async (input:RequestInfo | URL) => { const url=String(input); calls.push(url); const body=url.includes('cursor=next') ? second : first; return new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } }); }));
     render(<MemoryRouter><ReportsPage /></MemoryRouter>);
     await screen.findAllByText(/Reference system/);
+    expect(screen.getByText(/Ortofon calibration · completed/)).toBeTruthy();
+    expect(screen.getByText('Yaw Angle Report')).toBeTruthy();
     expect(screen.getAllByText(/RTI Test 1 v1/)).toHaveLength(2);
     expect(screen.getAllByText('Download PDF')).toHaveLength(1);
     expect(screen.getByRole('button', { name: 'Previous' }).hasAttribute('disabled')).toBe(true);

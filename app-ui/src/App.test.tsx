@@ -16,7 +16,7 @@ function responseFor(url: string) {
   if (url.endsWith('/v1/me/credits')) return { balance: 8, items: [], limit: 25, offset: 0 };
   if (url.endsWith('/v1/samples')) return [{ id: 'sample-1', uploadState: 'uploaded' }];
   if (url.endsWith('/v1/me/systems')) return [];
-  if (url.includes('/v1/reports?')) return { items: [] }; 
+  if (url.includes('/v1/reports?')) return { items: [{ id: 'report-1', reportTitle: 'Ortofon calibration', reportType: 'Yaw Angle Report', status: 'queued', createdAt: '2026-01-02T03:04:05.000Z' }] };
   return {};
 }
 
@@ -46,6 +46,8 @@ describe('Home', () => {
     expect(screen.getByRole('heading', { name: 'Actions' }).compareDocumentPosition(screen.getByRole('heading', { name: 'News' }))).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     expect(screen.getByRole('heading', { name: 'Credits' })).toBeTruthy();
     expect(screen.getByRole('heading', { name: 'Activity queue' })).toBeTruthy();
+    expect(await screen.findByText(/Ortofon calibration · queued/)).toBeTruthy();
+    expect(screen.getByText('Yaw Angle Report')).toBeTruthy();
     expect(screen.getByTestId('home-actions-empty-row')).toBeTruthy();
     expect(screen.getByTestId('home-news-row')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Buy credits' })).toBeTruthy();

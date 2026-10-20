@@ -345,14 +345,14 @@ export class PostgresAdminDataRepository {
         created: 'ar.created_at',
         status: 'ar.status',
         owner: 'u.email',
-        report: 'd.display_name',
+        report: "coalesce(nullif(ar.report_title,''),d.display_name)",
         preset: 'p.display_name',
         system: "rr.system_snapshot->>'name'",
       },
       'created',
     );
     const r = await this.pool.query(
-      `select ar.id,ar.status,ar.created_at,u.id owner_id,u.email,u.first_name,u.last_name,d.key definition_key,d.display_name,p.key preset_key,p.display_name preset_name,p.version preset_version,rr.system_snapshot from analysis_reports ar join report_requests rr on rr.id=ar.request_id join users u on u.id=rr.owner_id join report_definitions d on d.id=ar.definition_id join report_presets p on p.id=ar.preset_id where ($1='' or rr.system_snapshot->>'name' ilike $2 escape '\\' or rr.system_snapshot::text ilike $2 escape '\\') and ($3::uuid is null or u.id=$3) and ($4::text is null or d.key=$4) and ($5::text is null or ar.status=$5) and ($6::text is null or p.key=$6) order by ${order},ar.id ${order.endsWith(' desc') ? 'desc' : 'asc'} limit $7 offset $8`,
+      `select ar.id,ar.status,ar.created_at,ar.report_title,u.id owner_id,u.email,u.first_name,u.last_name,d.key definition_key,d.display_name,p.key preset_key,p.display_name preset_name,p.version preset_version,rr.system_snapshot from analysis_reports ar join report_requests rr on rr.id=ar.request_id join users u on u.id=rr.owner_id join report_definitions d on d.id=ar.definition_id join report_presets p on p.id=ar.preset_id where ($1='' or rr.system_snapshot->>'name' ilike $2 escape '\\' or rr.system_snapshot::text ilike $2 escape '\\') and ($3::uuid is null or u.id=$3) and ($4::text is null or d.key=$4) and ($5::text is null or ar.status=$5) and ($6::text is null or p.key=$6) order by ${order},ar.id ${order.endsWith(' desc') ? 'desc' : 'asc'} limit $7 offset $8`,
       [
         q,
         term,
@@ -371,6 +371,7 @@ export class PostgresAdminDataRepository {
         createdAt: x.created_at?.toISOString?.() ?? x.created_at,
         reportType: x.definition_key,
         reportName: x.display_name,
+        reportTitle: String(x.report_title ?? ''),
         presetKey: x.preset_key,
         presetName: x.preset_name,
         presetVersion: x.preset_version,

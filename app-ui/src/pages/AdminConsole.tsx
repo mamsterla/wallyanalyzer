@@ -1087,7 +1087,16 @@ function Reports() {
   }, [d.state.ownerId]);
   const update = (x: Record<string, string | number>) => d.apply({ ...d.state, ...x });
   const columns = [
-    { id: 'report', label: 'Report', cell: (x: any) => x.reportName },
+    {
+      id: 'report',
+      label: 'Report',
+      cell: (x: any) => (
+        <Stack spacing={0.25}>
+          <Typography>{x.reportTitle || x.reportName}</Typography>
+          {x.reportTitle && <Typography variant="body2" color="text.secondary">{x.reportName}</Typography>}
+        </Stack>
+      ),
+    },
     {
       id: 'owner',
       label: 'Owner',
