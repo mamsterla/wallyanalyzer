@@ -83,10 +83,16 @@ def compile_one_measurement(
     raw_lag_clean_s = lag_reject.cleaned.copy()
     preamble = measurement.diagnostics.get("orientation_preamble")
     preamble_polarity = preamble.get("lag_polarity") if isinstance(preamble, dict) else None
-    # Fit the physical model in fixed channel orientation. The display then uses
-    # the recorded stereo lead: right-leading is negative; left-leading positive.
-    applied_lag_polarity = int(preamble_polarity) if preamble_polarity in (-1, 1) else int(acquisition.lag_polarity)
-    lag_polarity_source = "80hz_orientation_preamble" if preamble_polarity in (-1, 1) else "acquisition_fallback"
+    # The configured channel order is authoritative for both physical fitting and
+    # report display. The 80 Hz preamble independently verifies that the captured
+    # file has that order; it must not silently invert a report's calculation.
+    applied_lag_polarity = int(acquisition.lag_polarity)
+    if preamble_polarity in (-1, 1) and int(preamble_polarity) != applied_lag_polarity:
+        raise CompilePipelineError(
+            "80 Hz orientation preamble does not match the configured channel order"
+        )
+    lag_polarity_source = "acquisition_config_verified_by_80hz" if preamble_polarity in (-1, 1) else "acquisition_config"
+    # Signed report convention: right leads → negative; left leads → positive.
     display_yaw_polarity = -float(applied_lag_polarity)
     lag_clean_s = raw_lag_clean_s * float(applied_lag_polarity)
     valid_indices = np.flatnonzero(~np.isnan(lag_clean_s))

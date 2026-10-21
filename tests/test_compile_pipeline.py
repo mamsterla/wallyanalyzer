@@ -5,7 +5,7 @@ import numpy as np
 from wallyanalyzer.fitting import estimate_local_lag_at_radius, modeled_apparent_tracking_error_deg
 from wallyanalyzer.geometry import baerwald_tracking_error_deg
 from wallyanalyzer.metadata import InMemoryMetadataProvider
-from wallyanalyzer.pipelines import compile_one_measurement, compile_sine_results
+from wallyanalyzer.pipelines import CompilePipelineError, compile_one_measurement, compile_sine_results
 from wallyanalyzer.schemas import (
     AcquisitionRecord,
     CartridgeRecord,
@@ -143,7 +143,13 @@ class CompilePipelineTests(unittest.TestCase):
         self.assertIsNone(result.diagnostics["lr_sanity_warning"])
         self.assertEqual(result.diagnostics["stylus_fit_mode"], "bounded_timing_fit_with_floating_overhang")
         self.assertLess(result.summary.apparent_tracking_fit_rms_deg, 0.25)
-
+        measurement.diagnostics["orientation_preamble"] = {"lag_polarity": -1}
+        with self.assertRaisesRegex(CompilePipelineError, "does not match the configured channel order"):
+            compile_one_measurement(
+                measurement,
+                metadata_provider=provider,
+                config=CompileConfig(smoothing_rotations=1, stylus_fit_max_iter=200, distortion_fit_max_iter=200),
+            )
 
     def test_compile_sine_results_builds_aggregate_summary(self):
         provider = InMemoryMetadataProvider(
