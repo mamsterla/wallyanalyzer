@@ -208,7 +208,7 @@ def render_compile_validation_svg(
         f'<rect x="{MARGIN_LEFT}" y="{summary_top:.1f}" width="{panel_width}" height="160" rx="5" fill="#f6f8fa" stroke="#d5dde5"/>',
         f'<text x="{MARGIN_LEFT + 20}" y="{summary_top + 24:.1f}" class="small" style="font-weight:bold;fill:#36536b">MEASUREMENT SUMMARY</text>',
         f'<text x="{MARGIN_LEFT + 20}" y="{summary_top + 50:.1f}" class="mid">{geometry_summary}</text>',
-        f'<text x="{MARGIN_LEFT + 20}" y="{summary_top + 75:.1f}" class="mid">{_escape(f"Play Yaw  ·  mean {summary.apparent_tracking_error_mean_deg:+.3g}°")}</text>',
+        f'<text x="{MARGIN_LEFT + 20}" y="{summary_top + 75:.1f}" class="mid">{_escape(f"PY (Play Yaw)  ·  mean {summary.apparent_tracking_error_mean_deg:+.3g}°   ·   SY (Stylus Yaw)  ·  {summary.effective_stylus_yaw_deg:+.3g}°")}</text>',
         f'<text x="{MARGIN_LEFT + 20}" y="{summary_top + 99:.1f}" class="small">{_escape(lag_report_summary)}</text>',
         f'<text x="{MARGIN_LEFT + 20}" y="{summary_top + 122:.1f}" class="small">{_escape(lr_summary + " · " + lr_note)}</text>',
         f'<text x="{MARGIN_LEFT + 20}" y="{summary_top + 145:.1f}" class="small">{_escape(recommendation)}</text>',

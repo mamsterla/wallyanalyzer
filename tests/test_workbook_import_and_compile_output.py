@@ -149,6 +149,8 @@ class WorkbookImportAndCompileOutputTests(unittest.TestCase):
             svg_text = svg_path.read_text(encoding="utf-8")
             self.assertIn("demo.wav", svg_text)
             self.assertIn("UB2950", svg_text)
+            self.assertIn("PY (Play Yaw)", svg_text)
+            self.assertIn("SY (Stylus Yaw)", svg_text)
 
     def test_render_compile_sweep_svg(self):
         provider = InMemoryMetadataProvider(
