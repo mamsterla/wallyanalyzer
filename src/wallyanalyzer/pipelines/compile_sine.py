@@ -92,8 +92,8 @@ def compile_one_measurement(
             "80 Hz orientation preamble does not match the configured channel order"
         )
     lag_polarity_source = "acquisition_config_verified_by_80hz" if preamble_polarity in (-1, 1) else "acquisition_config"
-    # Signed report convention: right leads → negative; left leads → positive.
-    display_yaw_polarity = -float(applied_lag_polarity)
+    # Signed report convention: right leads → positive; left leads → negative.
+    display_yaw_polarity = float(applied_lag_polarity)
     lag_clean_s = raw_lag_clean_s * float(applied_lag_polarity)
     valid_indices = np.flatnonzero(~np.isnan(lag_clean_s))
     if valid_indices.size < 3:
@@ -411,7 +411,7 @@ def compile_one_measurement(
         "lag_polarity": applied_lag_polarity,
         "lag_polarity_source": lag_polarity_source,
         "display_yaw_polarity": display_yaw_polarity,
-        "display_yaw_sign_convention": "right_leads_negative_left_leads_positive",
+        "display_yaw_sign_convention": "right_leads_positive_left_leads_negative",
         "alignment": acquisition.alignment,
         "radius_mapping": {
             "method": radius_mapping_method,
@@ -486,7 +486,7 @@ def compile_one_measurement(
         "play_yaw_noise_deg": None
         if not np.any(np.isfinite(ate_raw_deg)) or not np.any(np.isfinite(ate_measured_deg))
         else float(3.0 * np.nanstd(ate_raw_deg[(smoothing_window // 2): (ate_measured_deg.shape[0] + smoothing_window // 2)] - ate_measured_deg)),
-        "stereo_lag_sign_convention": "positive lag means right channel leads left channel; displayed yaw uses right-leading negative",
+        "stereo_lag_sign_convention": "positive lag means right channel leads left channel; displayed yaw uses right-leading positive",
         "stereo_lag_leading_channel": lag_leading_channel,
         "stereo_lag_median_us": None if not np.isfinite(lag_median_s) else lag_median_s * 1_000_000.0,
         "stereo_lag_mean_us": None if not np.isfinite(lag_mean_s) else lag_mean_s * 1_000_000.0,

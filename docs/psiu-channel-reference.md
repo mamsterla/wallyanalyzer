@@ -41,4 +41,12 @@ physical left → recorded left
 physical right → recorded right
 ```
 
+Report yaw convention for this final ordering:
+
+```text
+right leads → positive Play Yaw
+left leads → negative Play Yaw
+counterclockwise Mount Yaw increase (top view) → positive Play Yaw increase
+```
+
 Channel mapping remains durable per system/device capture context. Record firmware version and repeat this two-recording verification whenever firmware or cabling changes.
